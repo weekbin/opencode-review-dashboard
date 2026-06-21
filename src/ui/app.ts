@@ -100,6 +100,17 @@ const EXTENSION_ICON_OVERRIDES: Record<string, string> = {
   ts: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M0 1.5A1.5 1.5 0 0 1 1.5 0h13A1.5 1.5 0 0 1 16 1.5v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 0 14.5zM2 2v12h12V2zM3.75 11h1.5V8.5h2V11h1.5V5h-1.5v2h-2V5h-1.5zm6.5 0h1.5V9.5L13 11h1.75L13 8.75 14.75 6.5H13l-1.25 1.5V5h-1.5z"/></svg>`,
   tsx: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M0 1.5A1.5 1.5 0 0 1 1.5 0h13A1.5 1.5 0 0 1 16 1.5v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 0 14.5zM2 2v12h12V2zM3 11h1.5V8.5H6V11h1.5V5H6v2H4.5V5H3zm5 0h1.5V9.5L11 11h1.75L11 8.75 12.75 6.5H11l-1.5 1.5V5H8z"/></svg>`,
   js: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 1h12v14H2zm1.5 1.5V13.5h9V2.5zM4.5 11c0 .8.5 1.5 1.5 1.5s1.5-.5 1.5-1.5V6H6v5c0 .3-.2.5-.5.5s-.5-.2-.5-.5H4c0 .3 0 0 0 0zm5.5 0c0 .8.5 1.5 1.5 1.5s1.5-.5 1.5-1.5c0-.7-.4-1.1-1.2-1.3l-.4-.1c-.4-.1-.4-.2-.4-.3 0-.2.1-.3.4-.3.3 0 .5.2.5.5h1c0-.8-.5-1.4-1.5-1.4S9.5 7.7 9.5 8.5c0 .7.4 1 1.2 1.2l.4.1c.3.1.4.2.4.3 0 .2-.2.3-.4.3-.3 0-.5-.2-.5-.5z"/></svg>`,
+  jsx: FILE_DEFAULT_ICON_SVG,
+  py: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M7.5 1h1a2.5 2.5 0 0 1 2.5 2.5V5H7.5A1.5 1.5 0 0 1 6 3.5 1.5 1.5 0 0 1 7.5 2zM4 4.5A2.5 2.5 0 0 1 6.5 2H8v.5A1.5 1.5 0 0 1 6.5 4H4.5zM2 6.5A2.5 2.5 0 0 1 4.5 4H8v-.5h.5A1.5 1.5 0 0 1 10 5v.5H6.5A2.5 2.5 0 0 1 4 8v.5h-.5A1.5 1.5 0 0 1 2 7zM12 9.5A2.5 2.5 0 0 1 9.5 12H8v.5A1.5 1.5 0 0 1 6.5 14h-.5A2.5 2.5 0 0 1 4 11.5V11h5.5A2.5 2.5 0 0 0 12 8.5V8h.5A1.5 1.5 0 0 1 14 9.5zM8 13a1.5 1.5 0 0 1-1.5 1.5H6.5z"/></svg>`,
+  c: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 7 7h-2a5 5 0 1 1-5-5V1zM9 4l5 4-5 4z"/></svg>`,
+  h: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 7 7h-2a5 5 0 1 1-5-5V1zM2 4h2v3h3V4h2v8H7V9H4v3H2zm9 4h2v-1h-1V6h1V5h-2z"/></svg>`,
+  cpp: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 7 7h-2a5 5 0 1 1-5-5V1zM3 6h2v1h1V6h1v4H6V9H5v1H3zm6 0h2v1h1V6h1v4h-1V9h-1v1H9z"/></svg>`,
+  hpp: FILE_DEFAULT_ICON_SVG,
+  go: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h5v2H4v2h3v2H4v2h3v2H2zm7 0h5v2h-3v1h3v2h-3v1h3v2H9z"/></svg>`,
+  rs: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h5v2H4v2h2a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2H2V9h4v1H3v2h3v2H2zm7 0h5v2h-3v1h3v2h-3v1h3v2H9z"/></svg>`,
+  java: FILE_DEFAULT_ICON_SVG,
+  rb: FILE_DEFAULT_ICON_SVG,
+  sh: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 7 7h-2a5 5 0 1 1-5-5 5 5 0 0 1 3.5 1.5L9 6h4V2l-1.5 1.5A7 7 0 0 0 8 1zM5 6l3 2-3 2z"/></svg>`,
   json: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h7.5zM3 1.5A.5.5 0 0 0 2.5 2v12a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V5H10a2 2 0 0 1-2-2V1.5zm6.5 4v.5c0 .8.7 1.5 1.5 1.5H11v.5h-1V7h1.5A1.5 1.5 0 0 0 13 5.5V5h-1.5a.5.5 0 0 1-.5-.5V4h-1v.5h1V6h-.5a.5.5 0 0 1-.5-.5z"/></svg>`,
   md: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M14 14V2H2v12zM3 3h10v10H3zm2 8h1V6.5l1 2.5L8 6.5V11h1V5H7.5L7 7.5 6.5 5H5zm5 0h2v-1h-1V6h1V5h-2z"/></svg>`,
   html: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 1h10l-.8 12.2L7.5 14.5l-4.7-1.3zM4.5 2.5l.6 9.4 2.4.7 2.4-.7.6-9.4zm1.5 2h4l-.1 1.5H7.5L7.4 8h2.6L9.9 9.5 7.5 10.2 5.1 9.5 5 7.5h1.5l.1.7.9.3.9-.3.1-.7H6z"/></svg>`,
@@ -107,10 +118,19 @@ const EXTENSION_ICON_OVERRIDES: Record<string, string> = {
   toml: FILE_DEFAULT_ICON_SVG,
   yaml: FILE_DEFAULT_ICON_SVG,
   yml: FILE_DEFAULT_ICON_SVG,
+  lock: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 7V5a4 4 0 0 1 8 0v2h1v8H3V7zM6 5v2h4V5a2 2 0 1 0-4 0z"/></svg>`,
+  log: FILE_DEFAULT_ICON_SVG,
+  txt: FILE_DEFAULT_ICON_SVG,
 };
 
 function fileIcon(filename: string): string {
-  const ext = filename.includes(".") ? filename.split(".").pop()!.toLowerCase() : "";
+  const base = filename.split("/").pop() ?? filename;
+  const lower = base.toLowerCase();
+  if (EXTENSION_ICON_OVERRIDES[lower]) {
+    return EXTENSION_ICON_OVERRIDES[lower]!;
+  }
+  const dot = base.lastIndexOf(".");
+  const ext = dot >= 0 ? base.slice(dot + 1).toLowerCase() : "";
   return EXTENSION_ICON_OVERRIDES[ext] ?? FILE_DEFAULT_ICON_SVG;
 }
 
