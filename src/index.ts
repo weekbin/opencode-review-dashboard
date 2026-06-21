@@ -1131,7 +1131,6 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
           });
 
           const review_url = `http://127.0.0.1:${server.port}/review/${id}?token=${token}`;
-          process.stdout.write(`[diff-review-dashboard] review URL: ${review_url}\n`);
           opened = open(review_url, { cwd: scope_root });
           context.metadata({
             title: "Diff review",
@@ -1180,11 +1179,13 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
           );
 
           const result = await wait;
-          // Give the browser ~500ms to receive the submit response and
-          // run its auto-close logic, then drop the server. The browser
-          // will see the connection reset, which is a visible "tab is
-          // going away" signal even when window.close() is blocked.
-          setTimeout(() => server.stop(true), 500);
+          // Server teardown: drop the listener once the browser's
+          // auto-close logic (about:blank navigation) has had time to
+          // run. The exact value isn't load-bearing — the UI navigates
+          // to about:blank ~400ms after submit, so 1500ms is safely
+          // past that. Earlier values produced ERR_CONNECTION_REFUSED
+          // in the tab because the navigation raced the socket close.
+          setTimeout(() => server.stop(true), 1500);
 
           if (!result.cancelled) {
             return format({
