@@ -1,10 +1,10 @@
-# opencode-diffs
+# opencode-review-dashboard
 
 An [OpenCode](https://opencode.ai) plugin that adds a `/diff-review` command for browser-based code review powered by [@pierre/diffs](https://diffs.com).
 
 ![example](example.png)
 
-## How it works
+## What it does
 
 When you run `/diff-review` inside an OpenCode session, the plugin:
 
@@ -42,17 +42,55 @@ Drafts are auto-saved as you work, so you can close the browser and reopen witho
 
 ---
 
-## Setup
+## Installation
 
-Add `"opencode-diffs"` to the `plugin` array in your `opencode.json`:
+This plugin is distributed as the npm package [`opencode-review-dashboard`](https://github.com/weekbin/opencode-review-dashboard). The package ships a pre-built `dist/` directory, so no build step is required on the consumer side.
+
+### Option 1 — install from GitHub (recommended, no publish required)
+
+Add this to your `opencode.json` (either your global config or a per-project `.opencode/opencode.json`):
 
 ```json
 {
-  "plugin": ["opencode-diffs"]
+  "plugin": ["github:weekbin/opencode-review-dashboard"]
 }
 ```
 
-OpenCode will install the plugin automatically. This registers the `/diff-review` slash command.
+OpenCode will clone the repo into its plugin directory and pick up `dist/plugin/index.mjs` via the `main` field in `package.json`.
+
+### Option 2 — install from npm (when published)
+
+```json
+{
+  "plugin": ["opencode-review-dashboard"]
+}
+```
+
+### Option 3 — install from a local clone (best for hacking on the plugin itself)
+
+If you have this repo cloned at `~/Projects/opencode-review-dashboard`, point OpenCode at it directly:
+
+```json
+{
+  "plugin": ["file:~/Projects/opencode-review-dashboard"]
+}
+```
+
+Relative paths work too:
+
+```json
+{
+  "plugin": ["file:../opencode-review-dashboard"]
+}
+```
+
+Use this when you want to edit the plugin code and see changes after a rebuild (`bun run build`) + OpenCode restart.
+
+### After install
+
+Restart OpenCode. The `/diff-review` slash command will be registered.
+
+---
 
 ## Usage
 
@@ -68,7 +106,7 @@ Review against a specific branch:
 /diff-review --base origin/main
 ```
 
-Filter to specific files:
+Filter to specific files (comma-separated, no spaces):
 
 ```
 /diff-review --files src/foo.ts,src/bar.ts
@@ -79,6 +117,16 @@ Combine flags:
 ```
 /diff-review --base origin/main --files src/foo.ts
 ```
+
+When you submit a review, the plugin returns the findings as a tool result. The AI in your OpenCode session can then read those findings and propose a fix plan. Nothing happens automatically — submit the review, then ask the AI to act on the findings in chat.
+
+### Tips
+
+- The browser tab is just `http://127.0.0.1:<random-port>/` — bookmarking the URL only works for the current round (the server is a one-shot per `/diff-review` invocation).
+- Findings are anchored to file + line + a code snippet. If the surrounding code changes between rounds, the finding auto-closes (shown in the UI as "stale").
+- Close the browser tab to abandon a review without submitting.
+
+---
 
 ## Review UI
 
@@ -92,16 +140,24 @@ Findings from prior rounds appear with a "Resolve" button. The drawer also has a
 
 Light/dark mode follows your system preference, or you can toggle it manually.
 
+---
+
 ## Development
+
+This repo is a fork of [`oorestisime/opencode-diffs`](https://github.com/oorestisime/opencode-diffs) with workspace isolation fixes. If you're hacking on the plugin itself:
 
 ```bash
 bun install
-bun run build        # build plugin + UI
+bun run build        # build plugin + UI (writes to dist/)
 bun run lint         # lint with oxlint
 bun run format       # format with oxfmt
 bun run typecheck    # type-check with tsc
 bun run check        # all three checks
 ```
+
+To test a local change, use the `file:` install above, then run `bun run build` and restart OpenCode.
+
+---
 
 ## License
 
