@@ -93,6 +93,27 @@ function writeStored(key: string, value: string) {
   }
 }
 
+const FOLDER_ICON_SVG = `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 3.5A1.5 1.5 0 0 1 3 2h3.5a1.5 1.5 0 0 1 1.06.44L8.69 3.5H13a1.5 1.5 0 0 1 1.5 1.5v7.5A1.5 1.5 0 0 1 13 14H3a1.5 1.5 0 0 1-1.5-1.5z"/></svg>`;
+const FILE_DEFAULT_ICON_SVG = `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 1A1.5 1.5 0 0 0 2 2.5v11A1.5 1.5 0 0 0 3.5 15h9a1.5 1.5 0 0 0 1.5-1.5V6.06a1.5 1.5 0 0 0-.44-1.06L10.5 1.94A1.5 1.5 0 0 0 9.44 1.5z"/></svg>`;
+
+const EXTENSION_ICON_OVERRIDES: Record<string, string> = {
+  ts: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M0 1.5A1.5 1.5 0 0 1 1.5 0h13A1.5 1.5 0 0 1 16 1.5v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 0 14.5zM2 2v12h12V2zM3.75 11h1.5V8.5h2V11h1.5V5h-1.5v2h-2V5h-1.5zm6.5 0h1.5V9.5L13 11h1.75L13 8.75 14.75 6.5H13l-1.25 1.5V5h-1.5z"/></svg>`,
+  tsx: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M0 1.5A1.5 1.5 0 0 1 1.5 0h13A1.5 1.5 0 0 1 16 1.5v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 0 14.5zM2 2v12h12V2zM3 11h1.5V8.5H6V11h1.5V5H6v2H4.5V5H3zm5 0h1.5V9.5L11 11h1.75L11 8.75 12.75 6.5H11l-1.5 1.5V5H8z"/></svg>`,
+  js: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 1h12v14H2zm1.5 1.5V13.5h9V2.5zM4.5 11c0 .8.5 1.5 1.5 1.5s1.5-.5 1.5-1.5V6H6v5c0 .3-.2.5-.5.5s-.5-.2-.5-.5H4c0 .3 0 0 0 0zm5.5 0c0 .8.5 1.5 1.5 1.5s1.5-.5 1.5-1.5c0-.7-.4-1.1-1.2-1.3l-.4-.1c-.4-.1-.4-.2-.4-.3 0-.2.1-.3.4-.3.3 0 .5.2.5.5h1c0-.8-.5-1.4-1.5-1.4S9.5 7.7 9.5 8.5c0 .7.4 1 1.2 1.2l.4.1c.3.1.4.2.4.3 0 .2-.2.3-.4.3-.3 0-.5-.2-.5-.5z"/></svg>`,
+  json: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h7.5zM3 1.5A.5.5 0 0 0 2.5 2v12a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V5H10a2 2 0 0 1-2-2V1.5zm6.5 4v.5c0 .8.7 1.5 1.5 1.5H11v.5h-1V7h1.5A1.5 1.5 0 0 0 13 5.5V5h-1.5a.5.5 0 0 1-.5-.5V4h-1v.5h1V6h-.5a.5.5 0 0 1-.5-.5z"/></svg>`,
+  md: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M14 14V2H2v12zM3 3h10v10H3zm2 8h1V6.5l1 2.5L8 6.5V11h1V5H7.5L7 7.5 6.5 5H5zm5 0h2v-1h-1V6h1V5h-2z"/></svg>`,
+  html: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 1h10l-.8 12.2L7.5 14.5l-4.7-1.3zM4.5 2.5l.6 9.4 2.4.7 2.4-.7.6-9.4zm1.5 2h4l-.1 1.5H7.5L7.4 8h2.6L9.9 9.5 7.5 10.2 5.1 9.5 5 7.5h1.5l.1.7.9.3.9-.3.1-.7H6z"/></svg>`,
+  css: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 1h10l-.8 12.2L7.5 14.5l-4.7-1.3zM4.5 2.5l.6 9.4 2.4.7 2.4-.7.6-9.4zm.5 2h6l-.1 1H8.5L8.4 7H10l-.1 1H7.9L7.8 9.2l1.7.4 1.7-.4.1-1.2h-1l-.1.7-.7.2-.7-.2-.1-1.2h2.3L11 5.5H6z"/></svg>`,
+  toml: FILE_DEFAULT_ICON_SVG,
+  yaml: FILE_DEFAULT_ICON_SVG,
+  yml: FILE_DEFAULT_ICON_SVG,
+};
+
+function fileIcon(filename: string): string {
+  const ext = filename.includes(".") ? filename.split(".").pop()!.toLowerCase() : "";
+  return EXTENSION_ICON_OVERRIDES[ext] ?? FILE_DEFAULT_ICON_SVG;
+}
+
 const params = new URLSearchParams(location.search);
 const token = params.get("token") || "";
 const reviewID = location.pathname.split("/").filter(Boolean).at(-1) || "";
@@ -178,8 +199,7 @@ function setTheme(mode: ThemeMode) {
   state.themeMode = mode;
   applyTheme();
   writeStored(THEME_KEY, mode);
-  // Re-render diffs with new theme
-  renderFiles();
+  renderDiffPanel();
 }
 
 themeToggle.addEventListener("click", (event) => {
@@ -200,7 +220,7 @@ function setLayout(layout: DiffLayout) {
   state.diffLayout = layout;
   applyLayout();
   writeStored(LAYOUT_KEY, layout);
-  renderFiles();
+  renderDiffPanel();
 }
 
 layoutToggle.addEventListener("click", (event) => {
@@ -223,7 +243,7 @@ function setSidebarMode(mode: SidebarMode) {
   state.sidebarMode = mode;
   applySidebarMode();
   writeStored(SIDEBAR_KEY, mode);
-  renderFiles();
+  renderSidebar();
 }
 
 sidebarMode.addEventListener("click", (event) => {
@@ -647,6 +667,11 @@ function makeSidebarItem(file: FileEntry, index: number, extraClass = ""): HTMLB
   const dot = document.createElement("span");
   dot.className = `sidebar-dot ${file.status}`;
 
+  const typeIcon = document.createElement("span");
+  typeIcon.className = "sidebar-type-icon";
+  typeIcon.innerHTML = fileIcon(file.path);
+  typeIcon.setAttribute("aria-hidden", "true");
+
   const name = document.createElement("span");
   name.className = "sidebar-name";
   name.textContent = basename(file.path);
@@ -660,6 +685,7 @@ function makeSidebarItem(file: FileEntry, index: number, extraClass = ""): HTMLB
   stats.innerHTML = parts.join(" ");
 
   item.appendChild(dot);
+  item.appendChild(typeIcon);
   item.appendChild(name);
   item.appendChild(stats);
 
@@ -693,6 +719,9 @@ function renderTreeSidebar(root: TreeNode) {
 
       const chevron = document.createElement("span");
       chevron.className = "folder-chevron";
+      const folderIcon = document.createElement("span");
+      folderIcon.className = "folder-icon";
+      folderIcon.innerHTML = FOLDER_ICON_SVG;
       const folderName = document.createElement("span");
       folderName.className = "folder-name";
       folderName.textContent = child.name;
@@ -705,6 +734,7 @@ function renderTreeSidebar(root: TreeNode) {
         directCount === totalCount ? String(totalCount) : `${directCount} / ${totalCount}`;
 
       folder.appendChild(chevron);
+      folder.appendChild(folderIcon);
       folder.appendChild(folderName);
       folder.appendChild(fileCount);
       folder.addEventListener("click", () => {
@@ -754,15 +784,8 @@ function countFiles(node: TreeNode): number {
   return n;
 }
 
-function renderFiles() {
-  for (const view of state.views.values()) {
-    view.instance.cleanUp();
-  }
-
+function renderSidebar() {
   fileListRoot.innerHTML = "";
-  diffsRoot.innerHTML = "";
-  state.views.clear();
-  state.cards.clear();
   state.sidebarItems.clear();
 
   const files = state.data?.files ?? [];
@@ -771,7 +794,17 @@ function renderFiles() {
   } else {
     renderFlatSidebar(files);
   }
+}
 
+function renderDiffPanel() {
+  for (const view of state.views.values()) {
+    view.instance.cleanUp();
+  }
+  diffsRoot.innerHTML = "";
+  state.views.clear();
+  state.cards.clear();
+
+  const files = state.data?.files ?? [];
   for (const [index, file] of files.entries()) {
     // ── Card ──
     const card = document.createElement("section");
@@ -1201,7 +1234,8 @@ async function init() {
   scopeRoot.textContent = `${scope}${diff}`;
 
   fillOptions();
-  renderFiles();
+  renderSidebar();
+  renderDiffPanel();
   renderFindings();
   renderSelection();
   syncAll();
