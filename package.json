@@ -14,18 +14,26 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/oorestisime/opencode-diffs.git"
+    "url": "git+https://github.com/weekbin/opencode-review-dashboard.git"
   },
-  "homepage": "https://github.com/oorestisime/opencode-diffs",
+  "homepage": "https://github.com/weekbin/opencode-review-dashboard",
+  "bugs": {
+    "url": "https://github.com/weekbin/opencode-review-dashboard/issues"
+  },
   "main": "./dist/plugin/index.mjs",
   "exports": {
     ".": "./dist/plugin/index.mjs"
   },
   "files": [
-    "dist"
+    "dist",
+    "src",
+    "package.json",
+    "tsdown.config.ts",
+    "tsconfig.json"
   ],
   "scripts": {
     "build": "tsdown && cp src/ui/review.html dist/ui/review.html",
+    "prepare": "bun run build",
     "lint": "oxlint src/",
     "format": "oxfmt --write src/",
     "format:check": "oxfmt src/",
