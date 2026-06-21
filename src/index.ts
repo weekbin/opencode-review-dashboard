@@ -4,7 +4,7 @@ import path from "node:path";
 
 const command = "diff-review-dashboard";
 const name = "diff_review_dashboard";
-const categories = ["bug", "style", "perf", "question"] as const;
+const categories = ["bug", "style", "perf", "question", "recommend"] as const;
 const severities = ["high", "medium", "low"] as const;
 const sides = ["additions", "deletions"] as const;
 

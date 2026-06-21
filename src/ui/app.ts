@@ -1,6 +1,6 @@
 import { File, FileDiff, type DiffLineAnnotation, type LineAnnotation } from "@pierre/diffs";
 
-type Category = "bug" | "style" | "perf" | "question";
+type Category = "bug" | "style" | "perf" | "question" | "recommend";
 type Severity = "high" | "medium" | "low";
 type Side = "additions" | "deletions";
 
@@ -119,7 +119,7 @@ const state = {
   cards: new Map<string, HTMLElement>(),
   sidebarItems: new Map<string, HTMLButtonElement>(),
   views: new Map<string, View>(),
-  themeMode: "auto" as ThemeMode,
+  themeMode: "dark" as ThemeMode,
   diffLayout: "unified" as DiffLayout,
   drawerOpen: false,
 };
