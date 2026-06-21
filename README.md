@@ -23,7 +23,7 @@ You run /diff-review-dashboard
     → Plugin reads git diff
     → Plugin prints "review URL: http://127.0.0.1:NNNN/..." to the TUI
     → Browser opens with syntax-highlighted diffs
-    → You click lines, add findings (bug/style/perf/question + severity + comment)
+    → You click lines, add findings (bug/style/perf/question/recommend + severity + comment)
     → You hit "Submit Review"
     → Plugin returns one-line JSON: { round, open_count, by_severity, by_category, notes, findings[], artifacts }
     → Agent auto-applies actionable findings, then re-runs /diff-review-dashboard
@@ -153,7 +153,7 @@ The browser UI has three main areas:
 
 - **Sidebar** (left) — lists all changed files with add/delete stats. Click a file to scroll to it.
 - **Diff cards** (center) — syntax-highlighted diffs for each file. Click line numbers to select a range. Files can be collapsed and marked as read.
-- **Review drawer** (right) — opens when you select lines. Pick a category (`bug`, `style`, `perf`, `question`), severity (`high`, `medium`, `low`), write a comment, and click "Add Finding".
+- **Review drawer** (right) — opens when you select lines. Pick a category (`bug`, `style`, `perf`, `question`, `recommend`), severity (`high`, `medium`, `low`), write a comment, and click "Add Finding". `recommend` is for positive suggestions / improvements that aren't strictly defects.
 
 Findings from prior rounds appear with a "Resolve" button. The drawer also has a notes field for general observations and the submit button.
 
