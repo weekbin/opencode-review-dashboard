@@ -682,7 +682,7 @@ function renderFlatSidebar(files: FileEntry[]) {
 }
 
 function renderTreeSidebar(root: TreeNode) {
-  const renderNode = (node: TreeNode, depth: number) => {
+  const renderNode = (node: TreeNode, depth: number, container: HTMLElement) => {
     const sortedChildren = [...node.children.values()].sort((a, b) => a.name.localeCompare(b.name));
     for (const child of sortedChildren) {
       const folder = document.createElement("div");
@@ -708,31 +708,37 @@ function renderTreeSidebar(root: TreeNode) {
       folder.appendChild(folderName);
       folder.appendChild(fileCount);
       folder.addEventListener("click", () => {
-        if (state.collapsedFolders.has(child.path)) {
+        // Toggle the attribute directly on the DOM. This avoids the
+        // full re-render that was destroying + rebuilding the entire
+        // diff panel on every chevron click — for 30+ files that was
+        // visibly laggy. Now collapse is a CSS-only operation.
+        const isCollapsed = folder.hasAttribute("data-collapsed");
+        if (isCollapsed) {
+          folder.removeAttribute("data-collapsed");
           state.collapsedFolders.delete(child.path);
         } else {
+          folder.setAttribute("data-collapsed", "");
           state.collapsedFolders.add(child.path);
         }
-        renderFiles();
+        if (childrenContainer) childrenContainer.style.display = isCollapsed ? "" : "none";
       });
-      fileListRoot.appendChild(folder);
+      container.appendChild(folder);
 
-      if (!collapsed) {
-        const childrenContainer = document.createElement("div");
-        childrenContainer.className = "sidebar-folder-children";
-        for (const [, file] of [...child.files.entries()].sort(([a], [b]) => a.localeCompare(b))) {
-          const index = state.data?.files.findIndex((f) => f.path === file.path) ?? -1;
-          const item = makeSidebarItem(file, index, "tree");
-          item.style.setProperty("--depth", String(depth));
-          childrenContainer.appendChild(item);
-          state.sidebarItems.set(file.path, item);
-        }
-        renderNode(child, depth + 1);
-        fileListRoot.appendChild(childrenContainer);
+      const childrenContainer = document.createElement("div");
+      childrenContainer.className = "sidebar-folder-children";
+      childrenContainer.style.setProperty("--depth", String(depth));
+      for (const [, file] of [...child.files.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+        const index = state.data?.files.findIndex((f) => f.path === file.path) ?? -1;
+        const item = makeSidebarItem(file, index, "tree");
+        childrenContainer.appendChild(item);
+        state.sidebarItems.set(file.path, item);
       }
+      if (collapsed) childrenContainer.style.display = "none";
+      renderNode(child, depth + 1, childrenContainer);
+      container.appendChild(childrenContainer);
     }
   };
-  renderNode(root, 0);
+  renderNode(root, 0, fileListRoot);
 
   for (const [, file] of [...root.files.entries()].sort(([a], [b]) => a.localeCompare(b))) {
     const index = state.data?.files.findIndex((f) => f.path === file.path) ?? -1;
