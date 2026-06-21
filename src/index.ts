@@ -310,39 +310,45 @@ function sanitize(items: DraftFinding[], round: number, files: Map<string, Revie
 
 function format(result: Done) {
   if (result.cancelled) {
-    return [
-      "Diff review was cancelled before submission.",
-      `You can relaunch with /${command}.`,
-      `Last opened URL: ${result.url}`,
-    ].join("\n");
+    return JSON.stringify({
+      round: result.round,
+      cancelled: true,
+      url: result.url,
+      relaunch: `/${command}`,
+    });
   }
 
   const open = result.findings.filter((item) => item.status === "open");
-  const rows = open.map(
-    (item) =>
-      `- [${item.severity}] [${item.category}] ${item.file}:${item.start_line}-${item.end_line} (${item.side}) - ${item.comment}`,
-  );
-  const findings = rows.length > 0 ? rows.join("\n") : "- No open findings";
-  const notes = result.notes ? result.notes : "(none)";
+  const by_severity: Record<string, number> = { high: 0, medium: 0, low: 0 };
+  const by_category: Record<string, number> = {};
+  for (const f of open) {
+    by_severity[f.severity] = (by_severity[f.severity] ?? 0) + 1;
+    by_category[f.category] = (by_category[f.category] ?? 0) + 1;
+  }
+  const findings = open.map((f) => ({
+    id: f.id,
+    severity: f.severity,
+    category: f.category,
+    file: f.file,
+    start_line: f.start_line,
+    end_line: f.end_line,
+    side: f.side,
+    comment: f.comment,
+  }));
 
-  return [
-    `# Diff Review Round ${result.round}`,
-    "",
-    `- Open findings: ${open.length}`,
-    `- JSON export: ${result.json_path}`,
-    `- Markdown export: ${result.md_path}`,
-    `- Review URL: ${result.url}`,
-    `- Browser opened: ${result.opened ? "yes" : "no"}`,
-    "",
-    "## Reviewer Notes",
-    notes,
-    "",
-    "## Findings",
+  return JSON.stringify({
+    round: result.round,
+    cancelled: false,
+    open_count: open.length,
+    by_severity,
+    by_category,
+    notes: result.notes ?? "",
     findings,
-    "",
-    "Use this review to propose and discuss a fix plan only.",
-    "Do not edit files yet.",
-  ].join("\n");
+    artifacts: {
+      json: result.json_path,
+      markdown: result.md_path,
+    },
+  });
 }
 
 function markdown(input: {
@@ -389,7 +395,11 @@ function open(url: string, options?: { cwd?: string }) {
   if (process.platform === "win32") {
     const bin = Bun.which("cmd");
     if (!bin) return false;
-    Bun.spawn([bin, "/c", "start", "", url], { stdout: "ignore", stderr: "ignore", cwd: options?.cwd });
+    Bun.spawn([bin, "/c", "start", "", url], {
+      stdout: "ignore",
+      stderr: "ignore",
+      cwd: options?.cwd,
+    });
     return true;
   }
 
@@ -818,10 +828,9 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
           template: [
             `Call the ${name} tool exactly once.`,
             "Pass raw command arguments from $ARGUMENTS into the tool arg `raw`.",
-            "After the tool returns, summarize the user's review findings and ask the user how they would like to proceed.",
-            "Do not propose fixes.",
-            "Do not call any other tools.",
-            "Do not edit files.",
+            "The tool returns a structured JSON payload — report the round number and open_count to the user in one sentence.",
+            "Do not rephrase, group, or summarize individual findings — they are already structured.",
+            "Do not propose fixes. Do not call any other tools. Do not edit files.",
             "Wait for the user to instruct the next step.",
           ].join("\n"),
         },
