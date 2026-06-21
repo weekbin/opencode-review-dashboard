@@ -1,35 +1,46 @@
 # opencode-review-dashboard
 
-An [OpenCode](https://opencode.ai) plugin that adds a `/diff-review` command for browser-based code review powered by [@pierre/diffs](https://diffs.com).
+An [OpenCode](https://opencode.ai) plugin that adds a `/diff-review-dashboard` command for browser-based code review powered by [@pierre/diffs](https://diffs.com).
+
+The command is named `diff-review-dashboard` (not `diff-review`) to avoid collisions with the upstream [`oorestisime/opencode-diffs`](https://github.com/oorestisime/opencode-diffs) plugin. The tool name is `diff_review_dashboard`.
 
 ![example](example.png)
 
 ## What it does
 
-When you run `/diff-review` inside an OpenCode session, the plugin:
+When you run `/diff-review-dashboard` inside an OpenCode session, the plugin:
 
 1. **Collects diffs** from your git working tree (or between a base branch and HEAD)
-2. **Starts a local HTTP server** and opens a review UI in your browser
+2. **Starts a local HTTP server** and opens a review UI in your browser — the URL is also printed to the TUI stdout so you can copy it if the browser doesn't auto-open
 3. **Waits for you to review** — you annotate lines in the diff with findings (category, severity, comment)
-4. **Returns structured results** to OpenCode when you submit, so the AI can propose a fix strategy
-
-The idea is to give you a visual, interactive way to review code changes before asking the AI to act on them. Instead of describing problems in chat, you click on the exact lines, categorize the issue, and write a short comment. The AI then receives all your findings as structured data and can reason about fixes more precisely.
+4. **Returns a structured JSON payload** to OpenCode on submit
+5. **Agent auto-applies** actionable findings (see [Auto-apply rule](#auto-apply-rule))
 
 ### Review flow
 
 ```
-You run /diff-review
+You run /diff-review-dashboard
     → Plugin reads git diff
+    → Plugin prints "review URL: http://127.0.0.1:NNNN/..." to the TUI
     → Browser opens with syntax-highlighted diffs
     → You click lines, add findings (bug/style/perf/question + severity + comment)
     → You hit "Submit Review"
-    → Plugin returns findings to OpenCode
-    → AI proposes a fix plan based on your annotations
+    → Plugin returns one-line JSON: { round, open_count, by_severity, by_category, notes, findings[], artifacts }
+    → Agent auto-applies actionable findings, then re-runs /diff-review-dashboard
 ```
+
+### Auto-apply rule
+
+The slash-command template tells the agent to **not ask the user how to proceed**. After a submit:
+
+- If `open_count > 0` and any finding has `severity in [high, medium]` with an actionable `file:line` anchor, the agent immediately reads the file and applies the fix via the Edit tool.
+- `category: question` findings and findings whose `comment` requests clarification are NOT auto-applied.
+- After fixes, the agent re-runs `/diff-review-dashboard` to confirm the changes pass review.
+- If `open_count == 0` or no findings are actionable, the agent responds with a single line: `Round N: no actionable items, closing out.` and stops.
 
 ### Multi-round reviews
 
-Each session tracks review rounds. When you run `/diff-review` again in the same session, findings from previous rounds carry over. If a file was removed or the anchored code changed, old findings are automatically closed. This lets you do iterative review — submit findings, let the AI fix things, then review the new diff.
+Each session tracks review rounds. When you run `/diff-review-dashboard` again in the same session, findings from previous rounds carry over. If a file was removed or the anchored code changed, old findings are automatically closed. This lets you do iterative review — submit findings, the agent auto-applies, then you review the new diff.
 
 ### State and exports
 
@@ -44,7 +55,7 @@ Drafts are auto-saved as you work, so you can close the browser and reopen witho
 
 ## Installation
 
-This plugin is distributed as the npm package [`opencode-review-dashboard`](https://github.com/weekbin/opencode-review-dashboard). The package ships a pre-built `dist/` directory, so no build step is required on the consumer side.
+This plugin is distributed as the npm package [`opencode-review-dashboard`](https://github.com/weekbin/opencode-review-dashboard). The `dist/` directory is built on install via the `prepare` script — no pre-shipped build artifacts.
 
 ### Option 1 — install from GitHub (recommended, no publish required)
 
@@ -56,7 +67,7 @@ Add this to your `opencode.json` (either your global config or a per-project `.o
 }
 ```
 
-OpenCode will clone the repo into its plugin directory and pick up `dist/plugin/index.mjs` via the `main` field in `package.json`.
+OpenCode will clone the repo, run `prepare` (which builds `dist/`), and pick up `dist/plugin/index.mjs` via the `main` field in `package.json`.
 
 ### Option 2 — install from npm (when published)
 
@@ -88,7 +99,7 @@ Use this when you want to edit the plugin code and see changes after a rebuild (
 
 ### After install
 
-Restart OpenCode. The `/diff-review` slash command will be registered.
+Restart OpenCode. The `/diff-review-dashboard` slash command will be registered.
 
 ---
 
@@ -97,32 +108,40 @@ Restart OpenCode. The `/diff-review` slash command will be registered.
 Review your working tree changes:
 
 ```
-/diff-review
+/diff-review-dashboard
 ```
 
 Review against a specific branch:
 
 ```
-/diff-review --base origin/main
+/diff-review-dashboard --base origin/main
 ```
 
 Filter to specific files (comma-separated, no spaces):
 
 ```
-/diff-review --files src/foo.ts,src/bar.ts
+/diff-review-dashboard --files src/foo.ts,src/bar.ts
 ```
 
 Combine flags:
 
 ```
-/diff-review --base origin/main --files src/foo.ts
+/diff-review-dashboard --base origin/main --files src/foo.ts
 ```
 
-When you submit a review, the plugin returns a single-line JSON object with the full submission inline: round number, `open_count`, `by_severity` / `by_category` counts, reviewer notes, and an array of findings (each with `id`, `severity`, `category`, `file`, `start_line`/`end_line`, `side`, `comment`). The agent does not need to re-read the round file to answer questions about what was found — the data is already in the tool result. The round JSON + markdown files are still written to `.opencode/reviews/<session>/` for human reading and re-loading in future rounds.
+When the plugin starts, it prints the review URL to the TUI:
+
+```
+[diff-review-dashboard] review URL: http://127.0.0.1:55006/review/review_abc?token=...
+```
+
+The browser also auto-opens to that URL. If the auto-open fails (e.g. headless), you can paste the URL from the TUI line.
+
+When you submit, the plugin returns a single-line JSON object: round number, `open_count`, `by_severity` / `by_category` counts, reviewer notes, and an array of findings (each with `id`, `severity`, `category`, `file`, `start_line`/`end_line`, `side`, `comment`). The agent acts on this directly per the auto-apply rule. The round JSON + markdown files are still written to `.opencode/reviews/<session>/` for human reading and re-loading in future rounds.
 
 ### Tips
 
-- The browser tab is just `http://127.0.0.1:<random-port>/` — bookmarking the URL only works for the current round (the server is a one-shot per `/diff-review` invocation).
+- The browser tab is just `http://127.0.0.1:<random-port>/` — bookmarking the URL only works for the current round (the server is a one-shot per `/diff-review-dashboard` invocation).
 - Findings are anchored to file + line + a code snippet. If the surrounding code changes between rounds, the finding auto-closes (shown in the UI as "stale").
 - Close the browser tab to abandon a review without submitting.
 
@@ -144,15 +163,27 @@ Light/dark mode follows your system preference, or you can toggle it manually.
 
 ## Development
 
-This repo is a fork of [`oorestisime/opencode-diffs`](https://github.com/oorestisime/opencode-diffs) with workspace isolation fixes. If you're hacking on the plugin itself:
+This repo is a fork of [`oorestisime/opencode-diffs`](https://github.com/oorestisime/opencode-diffs) with workspace isolation fixes plus token-cleanup improvements (auto-apply, structured JSON return, command rename to avoid collision).
+
+### Scripts
+
+| Script | What it does |
+|---|---|
+| `bun run build` | Bundle plugin (`tsdown` → `dist/plugin/index.mjs`) and UI (`dist/ui/`), then copy `src/ui/review.html` into `dist/ui/`. |
+| `bun run prepare` | Runs automatically on `bun install` (including OpenCode's plugin install). Calls `build`. Ensures `dist/` exists before consumers load the plugin. |
+| `bun run lint` | Lint `src/` with [oxlint](https://oxc.rs/docs/guide/usage/linter). |
+| `bun run format` | Format `src/` in place with [oxfmt](https://oxc.rs/docs/guide/usage/formatter). |
+| `bun run format:check` | Check formatting without writing — fails the build if `src/` is not formatted. |
+| `bun run typecheck` | Type-check with `tsc --noEmit` against `tsconfig.json`. |
+| `bun run check` | Convenience: `format:check && lint && typecheck`. Run this before committing. |
+| `bun run prepublishOnly` | Runs `check` then `build` automatically before `npm publish`. |
+
+### Setup
 
 ```bash
 bun install
-bun run build        # build plugin + UI (writes to dist/)
-bun run lint         # lint with oxlint
-bun run format       # format with oxfmt
-bun run typecheck    # type-check with tsc
-bun run check        # all three checks
+bun run check        # format:check + lint + typecheck
+bun run build        # writes dist/
 ```
 
 To test a local change, use the `file:` install above, then run `bun run build` and restart OpenCode.
