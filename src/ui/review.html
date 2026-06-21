@@ -169,6 +169,34 @@
         text-transform: uppercase;
         letter-spacing: 0.04em;
         color: light-dark(#888, #555);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .sidebar-mode {
+        display: flex;
+        gap: 0;
+        border: 1px solid light-dark(#d8d8d8, #2a2a2a);
+        border-radius: 4px;
+        overflow: hidden;
+        text-transform: none;
+        letter-spacing: 0;
+      }
+      .sidebar-mode button {
+        all: unset;
+        cursor: pointer;
+        padding: 2px 8px;
+        font-size: 11px;
+        color: light-dark(#666, #888);
+        font-weight: 500;
+      }
+      .sidebar-mode button[aria-pressed="true"] {
+        background: light-dark(#111, #eee);
+        color: light-dark(#fff, #111);
+      }
+      .sidebar-mode button:hover:not([aria-pressed="true"]) {
+        background: light-dark(#eeeeee, #1a1a1a);
       }
 
       .sidebar-list {
@@ -195,6 +223,57 @@
       .sidebar-item:hover {
         background: light-dark(#eeeeee, #1a1a1a);
         color: light-dark(#111, #eee);
+      }
+
+      .sidebar-folder {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px 4px 0;
+        font-size: 11px;
+        font-weight: 600;
+        color: light-dark(#888, #888);
+        text-transform: none;
+        letter-spacing: 0;
+        user-select: none;
+      }
+      .sidebar-folder .folder-chevron {
+        display: inline-block;
+        width: 10px;
+        text-align: center;
+        color: light-dark(#aaa, #666);
+        font-size: 10px;
+      }
+      .sidebar-folder .folder-name {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .sidebar-folder[data-collapsed] .folder-chevron::before {
+        content: "▶";
+      }
+      .sidebar-folder:not([data-collapsed]) .folder-chevron::before {
+        content: "▼";
+      }
+      .sidebar-folder[data-collapsed] + .sidebar-folder-children {
+        display: none;
+      }
+      .sidebar-folder-children {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+      }
+      .sidebar-item.tree {
+        padding-left: 8px;
+      }
+      .sidebar-item .sidebar-name {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .sidebar-item[data-active] {
@@ -838,7 +917,13 @@
 
     <div class="layout">
       <nav class="sidebar" id="sidebar">
-        <div class="sidebar-header">Files</div>
+        <div class="sidebar-header">
+          <span>Files</span>
+          <div class="sidebar-mode" id="sidebar-mode">
+            <button data-mode="tree" aria-pressed="true" title="Tree view">Tree</button>
+            <button data-mode="flat" aria-pressed="false" title="Flat list">Flat</button>
+          </div>
+        </div>
         <div class="sidebar-list" id="file-list"></div>
       </nav>
       <div class="main">

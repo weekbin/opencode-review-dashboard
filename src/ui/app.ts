@@ -70,6 +70,28 @@ type View =
 
 type ThemeMode = "light" | "dark" | "auto";
 type DiffLayout = "unified" | "split";
+type SidebarMode = "tree" | "flat";
+const SIDEBAR_KEY = "diff-review:sidebar-mode";
+const THEME_KEY = "diff-review:theme-mode";
+const LAYOUT_KEY = "diff-review:diff-layout";
+
+function readStored<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
+  try {
+    const v = localStorage.getItem(key);
+    if (v && (allowed as readonly string[]).includes(v)) return v as T;
+  } catch {
+    // ignore — localStorage may be unavailable (private mode, etc.)
+  }
+  return fallback;
+}
+
+function writeStored(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // ignore
+  }
+}
 
 const params = new URLSearchParams(location.search);
 const token = params.get("token") || "";
@@ -115,12 +137,14 @@ const state = {
   notes: "",
   timer: 0 as ReturnType<typeof setTimeout> | 0,
   collapsed: new Set<string>(),
+  collapsedFolders: new Set<string>(),
   read: new Set<string>(),
   cards: new Map<string, HTMLElement>(),
   sidebarItems: new Map<string, HTMLButtonElement>(),
   views: new Map<string, View>(),
-  themeMode: "dark" as ThemeMode,
-  diffLayout: "split" as DiffLayout,
+  themeMode: readStored<ThemeMode>(THEME_KEY, ["light", "dark", "auto"], "dark"),
+  diffLayout: readStored<DiffLayout>(LAYOUT_KEY, ["unified", "split"], "split"),
+  sidebarMode: readStored<SidebarMode>(SIDEBAR_KEY, ["tree", "flat"], "tree"),
   drawerOpen: false,
 };
 
@@ -153,6 +177,7 @@ function applyTheme() {
 function setTheme(mode: ThemeMode) {
   state.themeMode = mode;
   applyTheme();
+  writeStored(THEME_KEY, mode);
   // Re-render diffs with new theme
   renderFiles();
 }
@@ -174,6 +199,7 @@ function setLayout(layout: DiffLayout) {
   if (state.diffLayout === layout) return;
   state.diffLayout = layout;
   applyLayout();
+  writeStored(LAYOUT_KEY, layout);
   renderFiles();
 }
 
@@ -181,6 +207,29 @@ layoutToggle.addEventListener("click", (event) => {
   const btn = (event.target as HTMLElement).closest("button");
   if (!btn) return;
   setLayout(btn.dataset.layout as DiffLayout);
+});
+
+// ── Sidebar mode toggle ──
+const sidebarMode = document.querySelector("#sidebar-mode") as HTMLDivElement;
+
+function applySidebarMode() {
+  for (const btn of sidebarMode.querySelectorAll("button")) {
+    btn.setAttribute("aria-pressed", btn.dataset.mode === state.sidebarMode ? "true" : "false");
+  }
+}
+
+function setSidebarMode(mode: SidebarMode) {
+  if (state.sidebarMode === mode) return;
+  state.sidebarMode = mode;
+  applySidebarMode();
+  writeStored(SIDEBAR_KEY, mode);
+  renderFiles();
+}
+
+sidebarMode.addEventListener("click", (event) => {
+  const btn = (event.target as HTMLElement).closest("button");
+  if (!btn) return;
+  setSidebarMode(btn.dataset.mode as SidebarMode);
 });
 
 // ── Drawer ──
@@ -562,6 +611,143 @@ function basename(path: string) {
   return path.split("/").pop() || path;
 }
 
+type TreeNode = {
+  name: string;
+  path: string;
+  files: Map<string, FileEntry>;
+  children: Map<string, TreeNode>;
+};
+
+function buildTree(files: FileEntry[]): TreeNode {
+  const root: TreeNode = { name: "", path: "", files: new Map(), children: new Map() };
+  for (const file of files) {
+    const segments = file.path.split("/");
+    const filename = segments.pop()!;
+    let cursor = root;
+    let acc = "";
+    for (const segment of segments) {
+      acc = acc ? `${acc}/${segment}` : segment;
+      let next = cursor.children.get(segment);
+      if (!next) {
+        next = { name: segment, path: acc, files: new Map(), children: new Map() };
+        cursor.children.set(segment, next);
+      }
+      cursor = next;
+    }
+    cursor.files.set(filename, file);
+  }
+  return root;
+}
+
+function makeSidebarItem(file: FileEntry, index: number, extraClass = ""): HTMLButtonElement {
+  const item = document.createElement("button");
+  item.type = "button";
+  item.className = `sidebar-item ${extraClass}`.trim();
+
+  const dot = document.createElement("span");
+  dot.className = `sidebar-dot ${file.status}`;
+
+  const name = document.createElement("span");
+  name.className = "sidebar-name";
+  name.textContent = basename(file.path);
+  name.title = file.path;
+
+  const stats = document.createElement("span");
+  stats.className = "sidebar-stats";
+  const parts = [];
+  if (file.additions) parts.push(`<span class="sa">+${file.additions}</span>`);
+  if (file.deletions) parts.push(`<span class="sd">-${file.deletions}</span>`);
+  stats.innerHTML = parts.join(" ");
+
+  item.appendChild(dot);
+  item.appendChild(name);
+  item.appendChild(stats);
+
+  item.addEventListener("click", () => {
+    state.collapsed.delete(file.path);
+    applyFileState(file.path);
+    document
+      .querySelector(`#file-${index}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  return item;
+}
+
+function renderFlatSidebar(files: FileEntry[]) {
+  for (const [index, file] of files.entries()) {
+    const item = makeSidebarItem(file, index);
+    fileListRoot.appendChild(item);
+    state.sidebarItems.set(file.path, item);
+  }
+}
+
+function renderTreeSidebar(root: TreeNode) {
+  const renderNode = (node: TreeNode, depth: number) => {
+    const sortedChildren = [...node.children.values()].sort((a, b) => a.name.localeCompare(b.name));
+    for (const child of sortedChildren) {
+      const folder = document.createElement("div");
+      folder.className = "sidebar-folder";
+      folder.dataset.depth = String(depth);
+      const collapsed = state.collapsedFolders.has(child.path);
+      if (collapsed) folder.dataset.collapsed = "";
+
+      const chevron = document.createElement("span");
+      chevron.className = "folder-chevron";
+      const folderName = document.createElement("span");
+      folderName.className = "folder-name";
+      folderName.textContent = child.name;
+      folderName.title = child.path;
+      const fileCount = document.createElement("span");
+      fileCount.className = "folder-count";
+      const directCount = child.files.size;
+      const totalCount = countFiles(child);
+      fileCount.textContent =
+        directCount === totalCount ? String(totalCount) : `${directCount} / ${totalCount}`;
+
+      folder.appendChild(chevron);
+      folder.appendChild(folderName);
+      folder.appendChild(fileCount);
+      folder.addEventListener("click", () => {
+        if (state.collapsedFolders.has(child.path)) {
+          state.collapsedFolders.delete(child.path);
+        } else {
+          state.collapsedFolders.add(child.path);
+        }
+        renderFiles();
+      });
+      fileListRoot.appendChild(folder);
+
+      if (!collapsed) {
+        const childrenContainer = document.createElement("div");
+        childrenContainer.className = "sidebar-folder-children";
+        for (const [, file] of [...child.files.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+          const index = state.data?.files.findIndex((f) => f.path === file.path) ?? -1;
+          const item = makeSidebarItem(file, index, "tree");
+          item.style.setProperty("--depth", String(depth));
+          childrenContainer.appendChild(item);
+          state.sidebarItems.set(file.path, item);
+        }
+        renderNode(child, depth + 1);
+        fileListRoot.appendChild(childrenContainer);
+      }
+    }
+  };
+  renderNode(root, 0);
+
+  for (const [, file] of [...root.files.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    const index = state.data?.files.findIndex((f) => f.path === file.path) ?? -1;
+    const item = makeSidebarItem(file, index, "tree");
+    fileListRoot.appendChild(item);
+    state.sidebarItems.set(file.path, item);
+  }
+}
+
+function countFiles(node: TreeNode): number {
+  let n = node.files.size;
+  for (const child of node.children.values()) n += countFiles(child);
+  return n;
+}
+
 function renderFiles() {
   for (const view of state.views.values()) {
     view.instance.cleanUp();
@@ -573,41 +759,14 @@ function renderFiles() {
   state.cards.clear();
   state.sidebarItems.clear();
 
-  for (const [index, file] of state.data?.files.entries() ?? []) {
-    // ── Sidebar item ──
-    const item = document.createElement("button");
-    item.type = "button";
-    item.className = "sidebar-item";
+  const files = state.data?.files ?? [];
+  if (state.sidebarMode === "tree") {
+    renderTreeSidebar(buildTree(files));
+  } else {
+    renderFlatSidebar(files);
+  }
 
-    const dot = document.createElement("span");
-    dot.className = `sidebar-dot ${file.status}`;
-
-    const name = document.createElement("span");
-    name.className = "sidebar-name";
-    name.textContent = basename(file.path);
-    name.title = file.path;
-
-    const stats = document.createElement("span");
-    stats.className = "sidebar-stats";
-    const parts = [];
-    if (file.additions) parts.push(`<span class="sa">+${file.additions}</span>`);
-    if (file.deletions) parts.push(`<span class="sd">-${file.deletions}</span>`);
-    stats.innerHTML = parts.join(" ");
-
-    item.appendChild(dot);
-    item.appendChild(name);
-    item.appendChild(stats);
-
-    item.addEventListener("click", () => {
-      state.collapsed.delete(file.path);
-      applyFileState(file.path);
-      document
-        .querySelector(`#file-${index}`)
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-    fileListRoot.appendChild(item);
-    state.sidebarItems.set(file.path, item);
-
+  for (const [index, file] of files.entries()) {
     // ── Card ──
     const card = document.createElement("section");
     card.className = "card";
