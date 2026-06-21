@@ -118,7 +118,7 @@ Combine flags:
 /diff-review --base origin/main --files src/foo.ts
 ```
 
-When you submit a review, the plugin returns the findings as a tool result. The AI in your OpenCode session can then read those findings and propose a fix plan. Nothing happens automatically — submit the review, then ask the AI to act on the findings in chat.
+When you submit a review, the plugin returns a single-line JSON object with the full submission inline: round number, `open_count`, `by_severity` / `by_category` counts, reviewer notes, and an array of findings (each with `id`, `severity`, `category`, `file`, `start_line`/`end_line`, `side`, `comment`). The agent does not need to re-read the round file to answer questions about what was found — the data is already in the tool result. The round JSON + markdown files are still written to `.opencode/reviews/<session>/` for human reading and re-loading in future rounds.
 
 ### Tips
 
