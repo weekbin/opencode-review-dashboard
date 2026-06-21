@@ -1180,7 +1180,11 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
           );
 
           const result = await wait;
-          setTimeout(() => server.stop(true), 150);
+          // Give the browser ~500ms to receive the submit response and
+          // run its auto-close logic, then drop the server. The browser
+          // will see the connection reset, which is a visible "tab is
+          // going away" signal even when window.close() is blocked.
+          setTimeout(() => server.stop(true), 500);
 
           if (!result.cancelled) {
             return format({

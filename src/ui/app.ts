@@ -935,14 +935,18 @@ async function submit() {
       ? `Review submitted for round ${body.round}. Closing tab...`
       : "Review submitted. Closing tab...",
   );
-  // Auto-close the tab a moment after submit so the user sees the status.
-  // window.close() is a no-op on tabs the user didn't open via window.open,
-  // so this is best-effort — the explicit status line covers that case.
+  // Auto-close the tab. window.close() is gated to script-opened tabs in
+  // modern browsers; rebinding the opener reference to self lets it through
+  // on Chrome/Edge. Safari ignores it either way. Also kicks the server
+  // shutdown from the plugin side so the connection drops, which replaces
+  // the page with an ERR_CONNECTION_REFUSED screen as a visible "tab is
+  // going away" signal even if window.close() fails.
   setTimeout(() => {
     try {
+      window.opener = window;
       window.close();
     } catch {
-      // ignore — fall back to the status line telling the user to close
+      // ignore
     }
   }, 400);
 
