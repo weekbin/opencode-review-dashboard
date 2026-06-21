@@ -120,7 +120,7 @@ const state = {
   sidebarItems: new Map<string, HTMLButtonElement>(),
   views: new Map<string, View>(),
   themeMode: "dark" as ThemeMode,
-  diffLayout: "unified" as DiffLayout,
+  diffLayout: "split" as DiffLayout,
   drawerOpen: false,
 };
 
@@ -932,9 +932,19 @@ async function submit() {
   const body = await response.json().catch(() => ({}));
   setStatus(
     body?.round
-      ? `Review submitted for round ${body.round}. You can close this tab.`
-      : "Review submitted. You can close this tab.",
+      ? `Review submitted for round ${body.round}. Closing tab...`
+      : "Review submitted. Closing tab...",
   );
+  // Auto-close the tab a moment after submit so the user sees the status.
+  // window.close() is a no-op on tabs the user didn't open via window.open,
+  // so this is best-effort — the explicit status line covers that case.
+  setTimeout(() => {
+    try {
+      window.close();
+    } catch {
+      // ignore — fall back to the status line telling the user to close
+    }
+  }, 400);
 
   addButton.disabled = true;
   clearButton.disabled = true;
