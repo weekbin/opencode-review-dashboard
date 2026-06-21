@@ -143,7 +143,7 @@ When you submit, the plugin returns a single-line JSON object: round number, `op
 
 - The browser tab is just `http://127.0.0.1:<random-port>/` — bookmarking the URL only works for the current round (the server is a one-shot per `/diff-review-dashboard` invocation).
 - Findings are anchored to file + line + a code snippet. If the surrounding code changes between rounds, the finding auto-closes (shown in the UI as "stale").
-- After submitting, the UI replaces itself with a "Review submitted — round N" card. Click "Close tab" to blank the tab to about:blank, then use the browser's own close shortcut (Ctrl+W / ⌘W) to actually close the tab. We don't auto-close because browsers block `window.close()` on tabs the user opened themselves, and forcibly dropping the server socket just shows a dead-page error (not a real close).
+- After submitting, the UI replaces itself with a "Review submitted — round N" card. The card explains that the plugin **cannot close the tab for you** — browsers only allow scripts to close tabs the script itself opened, and the review tab was opened by the user via the OS shell. Close the tab manually with `⌘W` / `Ctrl+W` or the tab's close button.
 
 ---
 

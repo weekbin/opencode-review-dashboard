@@ -933,12 +933,6 @@ async function submit() {
   showPostSubmit(body?.round);
 }
 
-// Replaces the whole UI with a "submitted" card. The user can click
-// "Close tab" to navigate to about:blank (visually identical to
-// closing) or use the browser's own close shortcut. window.close()
-// is gated by browsers on user-opened tabs, so we don't try the
-// unreliable auto-close path anymore — explicit user action is the
-// reliable way to dismiss the tab.
 function showPostSubmit(round: number | undefined) {
   addButton.disabled = true;
   clearButton.disabled = true;
@@ -952,18 +946,10 @@ function showPostSubmit(round: number | undefined) {
   overlay.innerHTML = `
     <div class="post-submit-card">
       <h2>Review submitted${round ? ` — round ${round}` : ""}</h2>
-      <p>The findings are now in the OpenCode session. You can close this tab.</p>
-      <button type="button" class="post-submit-close">Close tab</button>
+      <p>The findings are now in the OpenCode session. The plugin cannot close this tab for you (browsers only allow scripts to close tabs the script itself opened), so please close it manually with <kbd>⌘W</kbd> / <kbd>Ctrl+W</kbd> or the tab's close button.</p>
     </div>
   `;
   document.body.appendChild(overlay);
-
-  overlay.querySelector(".post-submit-close")?.addEventListener("click", () => {
-    // Navigating to about:blank is the most reliable "make the tab
-    // look closed" trick. The user can then Ctrl+W or click the X
-    // to actually close the tab; this just blanks the UI.
-    window.location.replace("about:blank");
-  });
 }
 
 findingsRoot.addEventListener("click", (event) => {
