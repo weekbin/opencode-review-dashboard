@@ -830,7 +830,7 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
             "Pass raw command arguments from $ARGUMENTS into the tool arg `raw`.",
             "The tool returns a structured JSON payload with `open_count`, `by_severity`, `by_category`, `notes`, and `findings[]`.",
             "Auto-apply rule: if `open_count > 0` and any finding has `severity in [high, medium]` with an actionable `file:line` anchor, immediately read the file and apply the fix using the Edit tool — do not ask the user, do not rephrase, do not summarize findings. Do not auto-apply findings that are `category: question` or whose `comment` requests clarification rather than a change.",
-            "After applying fixes, run `/${command}` again to confirm the changes pass review.",
+            `After applying fixes, run /${command} again to confirm the changes pass review.`,
             "If `open_count == 0` or no findings are actionable, respond with a single line: `Round N: no actionable items, closing out.` and stop.",
             "Do not call any other tools (no read of the round file, no re-parsing).",
             "Do not edit files unless a finding is actionable as defined above.",
