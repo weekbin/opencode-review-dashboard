@@ -2,8 +2,8 @@ import { type Plugin, tool } from "@opencode-ai/plugin";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
-const command = "diff-review";
-const name = "diff_review";
+const command = "diff-review-dashboard";
+const name = "diff_review_dashboard";
 const categories = ["bug", "style", "perf", "question"] as const;
 const severities = ["high", "medium", "low"] as const;
 const sides = ["additions", "deletions"] as const;
@@ -112,7 +112,7 @@ type Done = {
 };
 
 function usage() {
-  return "Usage: /diff-review [--base origin/dev] [--files path/to/a.ts,path/to/b.ts]";
+  return `Usage: /${command} [--base origin/dev] [--files path/to/a.ts,path/to/b.ts]`;
 }
 
 function isCategory(input: string): input is Category {
@@ -828,10 +828,12 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
           template: [
             `Call the ${name} tool exactly once.`,
             "Pass raw command arguments from $ARGUMENTS into the tool arg `raw`.",
-            "The tool returns a structured JSON payload — report the round number and open_count to the user in one sentence.",
-            "Do not rephrase, group, or summarize individual findings — they are already structured.",
-            "Do not propose fixes. Do not call any other tools. Do not edit files.",
-            "Wait for the user to instruct the next step.",
+            "The tool returns a structured JSON payload with `open_count`, `by_severity`, `by_category`, `notes`, and `findings[]`.",
+            "Auto-apply rule: if `open_count > 0` and any finding has `severity in [high, medium]` with an actionable `file:line` anchor, immediately read the file and apply the fix using the Edit tool — do not ask the user, do not rephrase, do not summarize findings. Do not auto-apply findings that are `category: question` or whose `comment` requests clarification rather than a change.",
+            "After applying fixes, run `/${command}` again to confirm the changes pass review.",
+            "If `open_count == 0` or no findings are actionable, respond with a single line: `Round N: no actionable items, closing out.` and stop.",
+            "Do not call any other tools (no read of the round file, no re-parsing).",
+            "Do not edit files unless a finding is actionable as defined above.",
           ].join("\n"),
         },
       };
@@ -842,13 +844,16 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
         description:
           "Open a local Diffs-based review UI for the current session and return structured findings for proposal discussion.",
         args: {
-          raw: tool.schema.string().optional().describe("Raw command arguments from /diff-review"),
+          raw: tool.schema
+            .string()
+            .optional()
+            .describe("Raw command arguments from /diff-review-dashboard"),
         },
 
         async execute(args, context) {
           if (!html) return "Failed to load review UI template from plugin package.";
           if (!app_file) {
-            return "Failed to load built UI assets. Install packaged plugin build (dist/ui/app.js) before running /diff-review.";
+            return `Failed to load built UI assets. Install packaged plugin build (dist/ui/app.js) before running /${command}.`;
           }
 
           const parsed = parse(args.raw);
@@ -1125,6 +1130,7 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
           });
 
           const review_url = `http://127.0.0.1:${server.port}/review/${id}?token=${token}`;
+          process.stdout.write(`[diff-review-dashboard] review URL: ${review_url}\n`);
           opened = open(review_url, { cwd: scope_root });
           context.metadata({
             title: "Diff review",
