@@ -33,9 +33,9 @@ You run /diff-review-dashboard
 
 The slash-command template tells the agent to **not ask the user how to proceed**. After a submit:
 
-- If `open_count > 0` and any finding has `severity in [high, medium]` with an actionable `file:line` anchor, the agent immediately reads the file and applies the fix via the Edit tool.
-- `category: question` findings and findings whose `comment` requests clarification are NOT auto-applied.
-- After fixes, the agent re-runs `/diff-review-dashboard` to confirm the changes pass review.
+- The agent sorts findings by severity (high → medium → low) and skips `category: question` (clarification requests).
+- **Plan-first**: the agent reads every affected file once, then designs a UNIFIED fix plan addressing all actionable findings together. Per-finding fixes lose context and produce inconsistent patches — the plan must cover all findings as a coherent change.
+- The agent applies the entire plan in one go via Edit calls, then re-runs `/diff-review-dashboard` to confirm.
 - If `open_count == 0` or no findings are actionable, the agent responds with a single line: `Round N: no actionable items, closing out.` and stops.
 
 ### Multi-round reviews
@@ -153,7 +153,7 @@ The browser UI has three main areas:
 
 - **Sidebar** (left) — lists all changed files with add/delete stats. Click a file to scroll to it.
 - **Diff cards** (center) — syntax-highlighted diffs for each file. Click line numbers to select a range. Files can be collapsed and marked as read.
-- **Review drawer** (right) — opens when you select lines. Pick a category (`bug`, `style`, `perf`, `question`, `recommend`), severity (`high`, `medium`, `low`), write a comment, and click "Add Finding". `recommend` is for positive suggestions / improvements that aren't strictly defects.
+- **Review drawer** (right) — opens when you select lines. Defaults: category `recommend`, severity `medium`. Pick a different category (`bug`, `style`, `perf`, `question`, `recommend`) or severity (`high`, `medium`, `low`), write a comment, and click "Add Finding". `recommend` is for positive suggestions / improvements that aren't strictly defects.
 
 Findings from prior rounds appear with a "Resolve" button. The drawer also has a notes field for general observations and the submit button.
 

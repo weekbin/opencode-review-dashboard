@@ -4,8 +4,8 @@ import path from "node:path";
 
 const command = "diff-review-dashboard";
 const name = "diff_review_dashboard";
-const categories = ["bug", "style", "perf", "question", "recommend"] as const;
-const severities = ["high", "medium", "low"] as const;
+const categories = ["recommend", "bug", "style", "perf", "question"] as const;
+const severities = ["medium", "high", "low"] as const;
 const sides = ["additions", "deletions"] as const;
 
 type Category = (typeof categories)[number];
@@ -829,8 +829,9 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
             `Call the ${name} tool exactly once.`,
             "Pass raw command arguments from $ARGUMENTS into the tool arg `raw`.",
             "The tool returns a structured JSON payload with `open_count`, `by_severity`, `by_category`, `notes`, and `findings[]`.",
-            "Auto-apply rule: if `open_count > 0` and any finding has `severity in [high, medium]` with an actionable `file:line` anchor, immediately read the file and apply the fix using the Edit tool — do not ask the user, do not rephrase, do not summarize findings. Do not auto-apply findings that are `category: question` or whose `comment` requests clarification rather than a change.",
-            `After applying fixes, run /${command} again to confirm the changes pass review.`,
+            "Sort the findings by severity descending: high → medium → low. Do not auto-apply `category: question` (clarification requests).",
+            "Plan-first rule: read every affected file once, then design a UNIFIED fix plan that addresses all actionable findings together. Do NOT handle findings one at a time — per-finding fixes lose context and produce inconsistent patches.",
+            "Apply the entire plan in one go via Edit calls. After all fixes land, re-run /diff-review-dashboard to confirm.",
             "If `open_count == 0` or no findings are actionable, respond with a single line: `Round N: no actionable items, closing out.` and stop.",
             "Do not call any other tools (no read of the round file, no re-parsing).",
             "Do not edit files unless a finding is actionable as defined above.",
