@@ -378,24 +378,24 @@ function markdown(input: {
   ].join("\n");
 }
 
-function open(url: string) {
+function open(url: string, options?: { cwd?: string }) {
   if (process.platform === "darwin") {
     const bin = Bun.which("open");
     if (!bin) return false;
-    Bun.spawn([bin, url], { stdout: "ignore", stderr: "ignore" });
+    Bun.spawn([bin, url], { stdout: "ignore", stderr: "ignore", cwd: options?.cwd });
     return true;
   }
 
   if (process.platform === "win32") {
     const bin = Bun.which("cmd");
     if (!bin) return false;
-    Bun.spawn([bin, "/c", "start", "", url], { stdout: "ignore", stderr: "ignore" });
+    Bun.spawn([bin, "/c", "start", "", url], { stdout: "ignore", stderr: "ignore", cwd: options?.cwd });
     return true;
   }
 
   const bin = Bun.which("xdg-open");
   if (!bin) return false;
-  Bun.spawn([bin, url], { stdout: "ignore", stderr: "ignore" });
+  Bun.spawn([bin, url], { stdout: "ignore", stderr: "ignore", cwd: options?.cwd });
   return true;
 }
 
@@ -818,8 +818,11 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
           template: [
             `Call the ${name} tool exactly once.`,
             "Pass raw command arguments from $ARGUMENTS into the tool arg `raw`.",
-            "After the tool returns, propose and discuss a fix strategy.",
-            "Do not edit files yet.",
+            "After the tool returns, summarize the user's review findings and ask the user how they would like to proceed.",
+            "Do not propose fixes.",
+            "Do not call any other tools.",
+            "Do not edit files.",
+            "Wait for the user to instruct the next step.",
           ].join("\n"),
         },
       };
@@ -1113,7 +1116,7 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
           });
 
           const review_url = `http://127.0.0.1:${server.port}/review/${id}?token=${token}`;
-          opened = open(review_url);
+          opened = open(review_url, { cwd: scope_root });
           context.metadata({
             title: "Diff review",
             metadata: {
