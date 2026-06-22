@@ -639,6 +639,15 @@ type WorktreeListEntry = {
   detached: boolean;
 };
 
+async function isWorktree(root: string): Promise<boolean> {
+  const [common, gdir] = await Promise.all([
+    run(root, ["git", "rev-parse", "--git-common-dir"]),
+    run(root, ["git", "rev-parse", "--git-dir"]),
+  ]);
+  if (!common.ok || !gdir.ok) return false;
+  return text(common.stdout).trim() !== text(gdir.stdout).trim();
+}
+
 async function listWorktrees(root: string): Promise<WorktreeListEntry[]> {
   const result = await run(root, ["git", "worktree", "list", "--porcelain"]);
   if (!result.ok) return [];
@@ -1097,6 +1106,12 @@ async function collect(root: string, dir: string, base?: string): Promise<Collec
   if (current.files.length > 0) return current;
   if (current.error) return current;
 
+  // If we are inside a worktree, do not auto-pick another one — the
+  // user explicitly ran the command here. The main-checkout branch
+  // below is the only place auto-pick is allowed.
+  if (await isWorktree(root)) {
+    return current;
+  }
   const worktrees = await listWorktrees(root);
   const others = worktrees.filter((wt) => wt.path !== root);
   const candidates: { path: string; branch: string; ahead: number }[] = [];
