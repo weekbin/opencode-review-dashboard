@@ -93,6 +93,7 @@ const SIDEBAR_KEY = "diff-review:sidebar-mode";
 const SIDEBAR_WIDTH_KEY = "diff-review:sidebar-width";
 const THEME_KEY = "diff-review:theme-mode";
 const LAYOUT_KEY = "diff-review:diff-layout";
+const CONV_FILTER_KEY = "diff-review:conversation-filter";
 
 function readStored<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   try {
@@ -206,6 +207,7 @@ const state = {
   diffLayout: readStored<DiffLayout>(LAYOUT_KEY, ["unified", "split"], "split"),
   sidebarMode: readStored<SidebarMode>(SIDEBAR_KEY, ["tree", "flat"], "tree"),
   sidebarTab: "files" as "files" | "commits" | "conversation",
+  conversationFilter: readStored<"open" | "all">(CONV_FILTER_KEY, ["open", "all"], "open"),
   drawerOpen: false,
   pendingFileFinding: null as string | null,
 };
@@ -278,6 +280,8 @@ function applySidebarMode() {
     btn.setAttribute("aria-pressed", btn.dataset.mode === state.sidebarMode ? "true" : "false");
   }
 }
+applySidebarMode();
+applyConversationFilter();
 
 function setSidebarMode(mode: SidebarMode) {
   if (state.sidebarMode === mode) return;
@@ -305,6 +309,7 @@ function setSidebarTab(tab: "files" | "commits" | "conversation") {
   if (state.sidebarTab === tab) return;
   state.sidebarTab = tab;
   applySidebarTab();
+  updateTabCounts();
   renderSidebar();
 }
 
@@ -314,6 +319,35 @@ sidebarTabs.addEventListener("click", (event) => {
   const tab = btn.dataset.tab as "files" | "commits" | "conversation" | undefined;
   if (tab) setSidebarTab(tab);
 });
+
+function setConversationFilter(filter: "open" | "all") {
+  if (state.conversationFilter === filter) return;
+  state.conversationFilter = filter;
+  writeStored(CONV_FILTER_KEY, filter);
+  applyConversationFilter();
+  renderSidebar();
+}
+
+function applyConversationFilter() {
+  const root = document.querySelector("#conversation-filter");
+  if (!root) return;
+  for (const btn of root.querySelectorAll("button")) {
+    btn.setAttribute(
+      "aria-pressed",
+      btn.dataset.filter === state.conversationFilter ? "true" : "false",
+    );
+  }
+}
+
+const conversationFilter = document.querySelector("#conversation-filter");
+if (conversationFilter) {
+  conversationFilter.addEventListener("click", (event) => {
+    const btn = (event.target as HTMLElement).closest("button");
+    if (!btn) return;
+    const filter = btn.dataset.filter as "open" | "all" | undefined;
+    if (filter) setConversationFilter(filter);
+  });
+}
 
 // ── Sidebar resize ──
 const SIDEBAR_MIN = 160;
@@ -485,6 +519,29 @@ function updateFindingCount() {
   findingCount.textContent = String(count);
 }
 
+function updateTabCounts() {
+  const filesEl = document.querySelector("#files-count") as HTMLElement | null;
+  const commitsEl = document.querySelector("#commits-count") as HTMLElement | null;
+  const convEl = document.querySelector("#conversation-count") as HTMLElement | null;
+
+  const fileCount = state.data?.files.length ?? 0;
+  const commitCount = state.data?.commits?.length ?? 0;
+  const openConv = all().filter((f) => f.origin === "new" || f.status === "open").length;
+
+  if (filesEl) {
+    filesEl.textContent = String(fileCount);
+    filesEl.hidden = fileCount === 0;
+  }
+  if (commitsEl) {
+    commitsEl.textContent = String(commitCount);
+    commitsEl.hidden = commitCount === 0;
+  }
+  if (convEl) {
+    convEl.textContent = String(openConv);
+    convEl.hidden = openConv === 0;
+  }
+}
+
 function diffAnnotations(file: string) {
   return all()
     .filter((item) => item.file === file && item.kind !== "file")
@@ -567,6 +624,10 @@ function syncFile(file: string) {
   } else {
     view.instance.setLineAnnotations(fileAnnotations(file));
   }
+  // @pierre/diffs' setLineAnnotations only stores the data — it does
+  // not re-render the DOM. Call rerender() so the new annotation
+  // actually appears inline on the diff.
+  view.instance.rerender();
 
   view.instance.setSelectedLines(selectionFor(file));
 }
@@ -595,11 +656,15 @@ function applyFileState(file: string) {
   if (card) {
     card.toggleAttribute("data-collapsed", collapsed);
     card.toggleAttribute("data-read", marked);
+    const cardBadge = card.querySelector(".card-reviewed") as HTMLElement | null;
+    if (cardBadge) cardBadge.style.display = marked ? "" : "none";
   }
 
   if (item) {
     if (marked) item.setAttribute("data-read", "");
     else item.removeAttribute("data-read");
+    const badge = item.querySelector(".sidebar-reviewed") as HTMLElement | null;
+    if (badge) badge.style.display = marked ? "" : "none";
   }
 }
 
@@ -752,7 +817,7 @@ function createView(file: FileEntry, mount: HTMLElement) {
     overflow: "wrap",
     disableFileHeader: true,
     diffIndicators: "bars",
-    expandUnchanged: false,
+    expandUnchanged: true,
     collapsedContextThreshold: 5,
     hunkSeparators: "simple",
     enableLineSelection: true,
@@ -835,6 +900,7 @@ function makeSidebarItem(file: FileEntry, index: number, extraClass = ""): HTMLB
   const item = document.createElement("button");
   item.type = "button";
   item.className = `sidebar-item ${extraClass}`.trim();
+  if (state.read.has(file.path)) item.setAttribute("data-read", "");
 
   const dot = document.createElement("span");
   dot.className = `sidebar-dot ${file.status}`;
@@ -849,6 +915,11 @@ function makeSidebarItem(file: FileEntry, index: number, extraClass = ""): HTMLB
   name.textContent = basename(file.path);
   name.title = file.path;
 
+  const reviewed = document.createElement("span");
+  reviewed.className = "sidebar-reviewed";
+  reviewed.textContent = "✓ reviewed";
+  if (!state.read.has(file.path)) reviewed.style.display = "none";
+
   const stats = document.createElement("span");
   stats.className = "sidebar-stats";
   const parts = [];
@@ -859,13 +930,16 @@ function makeSidebarItem(file: FileEntry, index: number, extraClass = ""): HTMLB
   item.appendChild(dot);
   item.appendChild(typeIcon);
   item.appendChild(name);
+  item.appendChild(reviewed);
   item.appendChild(stats);
 
   item.addEventListener("click", () => {
     state.collapsed.delete(file.path);
     applyFileState(file.path);
+    const orderedIndex = getOrderedFiles().findIndex((f) => f.path === file.path);
+    const targetIndex = orderedIndex >= 0 ? orderedIndex : index;
     document
-      .querySelector(`#file-${index}`)
+      .querySelector(`#file-${targetIndex}`)
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
   return item;
@@ -881,7 +955,7 @@ function renderFlatSidebar(files: FileEntry[]) {
 
 function renderTreeSidebar(root: TreeNode) {
   const renderNode = (node: TreeNode, depth: number, container: HTMLElement) => {
-    const sortedChildren = [...node.children.values()].sort((a, b) => a.name.localeCompare(b.name));
+    const sortedChildren = [...node.children.values()].sort((a, b) => a.path.localeCompare(b.path));
     for (const child of sortedChildren) {
       const folder = document.createElement("div");
       folder.className = "sidebar-folder";
@@ -950,6 +1024,15 @@ function renderTreeSidebar(root: TreeNode) {
   }
 }
 
+// Returns the file list in the order they should appear in BOTH the
+// sidebar and the right diff panel, so the two views stay in sync.
+function getOrderedFiles(): FileEntry[] {
+  const all = state.data?.files ?? [];
+  if (state.sidebarMode === "flat") return all;
+  // tree mode: group by directory and sort by full path
+  return [...all].sort((a, b) => a.path.localeCompare(b.path));
+}
+
 function countFiles(node: TreeNode): number {
   let n = node.files.size;
   for (const child of node.children.values()) n += countFiles(child);
@@ -964,15 +1047,17 @@ function renderSidebar() {
   conversationListRoot.innerHTML = "";
   state.sidebarItems.clear();
 
-  const sidebarHeaderLabel = document.querySelector("#sidebar-header-label");
-  const sidebarModeEl = document.querySelector("#sidebar-mode") as HTMLElement | null;
+  const headers = document.querySelectorAll("[data-tab-header]");
+  for (const h of headers) {
+    (h as HTMLElement).hidden = (h as HTMLElement).dataset.tabHeader !== state.sidebarTab;
+  }
+
+  updateTabCounts();
 
   if (state.sidebarTab === "commits") {
     fileListRoot.hidden = true;
     commitsListRoot.hidden = false;
     conversationListRoot.hidden = true;
-    if (sidebarModeEl) sidebarModeEl.hidden = true;
-    if (sidebarHeaderLabel) sidebarHeaderLabel.textContent = "Commits";
     renderCommitsPanel(commitsListRoot);
     return;
   }
@@ -981,8 +1066,6 @@ function renderSidebar() {
     fileListRoot.hidden = true;
     commitsListRoot.hidden = true;
     conversationListRoot.hidden = false;
-    if (sidebarModeEl) sidebarModeEl.hidden = true;
-    if (sidebarHeaderLabel) sidebarHeaderLabel.textContent = "Conversation";
     renderConversationPanel(conversationListRoot);
     return;
   }
@@ -990,10 +1073,8 @@ function renderSidebar() {
   fileListRoot.hidden = false;
   commitsListRoot.hidden = true;
   conversationListRoot.hidden = true;
-  if (sidebarModeEl) sidebarModeEl.hidden = false;
-  if (sidebarHeaderLabel) sidebarHeaderLabel.textContent = "Files";
 
-  const files = state.data?.files ?? [];
+  const files = getOrderedFiles();
   if (state.sidebarMode === "tree") {
     renderTreeSidebar(buildTree(files));
   } else {
@@ -1084,12 +1165,23 @@ function renderConversationPanel(root: HTMLElement) {
     return;
   }
 
-  entries.sort((a, b) => {
+  const filtered =
+    state.conversationFilter === "open" ? entries.filter((e) => e.status === "open") : entries;
+  if (filtered.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "conversation-empty";
+    empty.textContent =
+      state.conversationFilter === "open" ? "No unresolved findings." : "No findings yet.";
+    root.appendChild(empty);
+    return;
+  }
+
+  const sorted = [...filtered].sort((a, b) => {
     if (a.round !== b.round) return b.round - a.round;
     return a.created_at - b.created_at;
   });
 
-  for (const entry of entries) {
+  for (const entry of sorted) {
     const item = document.createElement("div");
     item.className = "conversation-item";
     item.dataset.status = entry.status;
@@ -1194,7 +1286,7 @@ function renderDiffPanel() {
   state.views.clear();
   state.cards.clear();
 
-  const files = state.data?.files ?? [];
+  const files = getOrderedFiles();
   for (const [index, file] of files.entries()) {
     // ── Card ──
     const card = document.createElement("section");
@@ -1221,6 +1313,11 @@ function renderDiffPanel() {
     const filename = document.createElement("span");
     filename.className = "card-filename";
     filename.textContent = file.path;
+
+    const cardReviewed = document.createElement("span");
+    cardReviewed.className = "card-reviewed";
+    cardReviewed.textContent = "✓ reviewed";
+    if (!state.read.has(file.path)) cardReviewed.style.display = "none";
 
     const meta = document.createElement("span");
     meta.className = "card-meta";
@@ -1276,6 +1373,7 @@ function renderDiffPanel() {
     header.appendChild(chevron);
     header.appendChild(icon);
     header.appendChild(filename);
+    header.appendChild(cardReviewed);
     header.appendChild(meta);
     header.appendChild(actions);
 
@@ -1324,6 +1422,7 @@ function renderFindings() {
   const items = all();
   findingsRoot.innerHTML = "";
   updateFindingCount();
+  updateTabCounts();
   updateFileCommentsBadges();
 
   if (items.length === 0) {

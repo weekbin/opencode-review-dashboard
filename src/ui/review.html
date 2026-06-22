@@ -205,6 +205,25 @@
         justify-content: space-between;
         gap: 8px;
       }
+      .sidebar-count {
+        font-size: 10px;
+        font-weight: 700;
+        padding: 1px 6px;
+        border-radius: 9px;
+        background: light-dark(#d8e6f1, #1f3a55);
+        color: light-dark(#1d5a96, #95c1e8);
+        text-transform: none;
+        letter-spacing: 0;
+      }
+      .sidebar-toolbar {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .sidebar-toolbar:empty {
+        display: none;
+      }
       .sidebar-tabs {
         display: flex;
         border-bottom: 1px solid light-dark(#e0e0e0, #1e1e1e);
@@ -431,7 +450,7 @@
         display: flex;
         flex-direction: column;
         gap: 1px;
-        padding-left: calc(12px + var(--depth, 0) * 4px);
+        padding-left: calc(var(--depth, 0) * 4px);
         border-left: 1px solid light-dark(#e8e8e8, #1f1f1f);
         margin-left: 4px;
       }
@@ -452,8 +471,32 @@
       }
 
       .sidebar-item[data-read] {
-        opacity: 0.45;
-        text-decoration: line-through;
+        opacity: 0.55;
+      }
+      .sidebar-reviewed {
+        flex: 0 0 auto;
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 1px 5px;
+        border-radius: 4px;
+        background: light-dark(#e6f4ea, #1a3a23);
+        color: light-dark(#1e6b3a, #7dd8a3);
+      }
+      .card[data-read] .card-filename {
+        color: light-dark(#666, #888);
+      }
+      .card-reviewed {
+        margin-left: 6px;
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 1px 5px;
+        border-radius: 4px;
+        background: light-dark(#e6f4ea, #1a3a23);
+        color: light-dark(#1e6b3a, #7dd8a3);
       }
 
       .sidebar-dot {
@@ -1127,11 +1170,33 @@
             Conversation
           </button>
         </div>
-        <div class="sidebar-header">
-          <span id="sidebar-header-label">Files</span>
-          <div class="sidebar-mode" id="sidebar-mode">
-            <button data-mode="tree" aria-pressed="true" title="Tree view">Tree</button>
-            <button data-mode="flat" aria-pressed="false" title="Flat list">Flat</button>
+        <div class="sidebar-header" data-tab-header="files">
+          <span id="sidebar-header-label">Files changed</span>
+          <span class="sidebar-count" id="files-count" hidden>0</span>
+          <div class="sidebar-toolbar" id="sidebar-toolbar-files">
+            <div class="sidebar-mode" id="sidebar-mode">
+              <button data-mode="tree" aria-pressed="true" title="Tree view">Tree</button>
+              <button data-mode="flat" aria-pressed="false" title="Flat list">Flat</button>
+            </div>
+          </div>
+        </div>
+        <div class="sidebar-header" data-tab-header="commits" hidden>
+          <span>Commits</span>
+          <span class="sidebar-count" id="commits-count" hidden>0</span>
+          <div class="sidebar-toolbar" id="sidebar-toolbar-commits"></div>
+        </div>
+        <div class="sidebar-header" data-tab-header="conversation" hidden>
+          <span>Conversation</span>
+          <span class="sidebar-count" id="conversation-count" hidden>0</span>
+          <div class="sidebar-toolbar" id="sidebar-toolbar-conversation">
+            <div class="sidebar-mode" id="conversation-filter">
+              <button data-filter="open" aria-pressed="true" title="Show only unresolved">
+                Unresolved
+              </button>
+              <button data-filter="all" aria-pressed="false" title="Show all including resolved">
+                All
+              </button>
+            </div>
           </div>
         </div>
         <div class="sidebar-list" id="file-list"></div>
