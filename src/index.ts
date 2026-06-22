@@ -30,6 +30,7 @@ type Finding = {
   comment: string;
   status: "open" | "closed_auto" | "resolved";
   anchor: Anchor;
+  kind: "line" | "file";
   created_at: number;
   updated_at: number;
   closed_at?: number;
@@ -45,6 +46,7 @@ type DraftFinding = {
   category: Category;
   severity: Severity;
   comment: string;
+  kind?: "line" | "file";
 };
 
 type Draft = {
@@ -69,6 +71,14 @@ type ReviewFile = {
   after: string;
 };
 
+type CommitInfo = {
+  sha: string;
+  short_sha: string;
+  message: string;
+  author: string;
+  date: string;
+};
+
 type SourceFile = {
   file: string;
   status: "added" | "deleted" | "modified";
@@ -85,6 +95,7 @@ type Launch = {
   scope_root: string;
   round: number;
   files: ReviewFile[];
+  commits?: CommitInfo[];
   existing_findings: Finding[];
   draft: Draft;
   taxonomy: {
@@ -93,6 +104,11 @@ type Launch = {
   };
   filter?: string[];
   base?: string;
+  auto_base?: string;
+  auto_worktree?: string;
+  auto_worktree_branch?: string;
+  current_branch?: string;
+  is_worktree?: boolean;
 };
 
 type Submit = {
@@ -112,7 +128,7 @@ type Done = {
 };
 
 function usage() {
-  return `Usage: /${command} [--base origin/dev] [--files path/to/a.ts,path/to/b.ts]`;
+  return `Usage: /${command} [--base origin/dev] [--files path/to/a.ts,path/to/b.ts] [--worktree /path/to/worktree]`;
 }
 
 function isCategory(input: string): input is Category {
@@ -132,6 +148,7 @@ function parse(raw: string | undefined) {
     return {
       files: undefined as string[] | undefined,
       base: undefined as string | undefined,
+      worktree: undefined as string | undefined,
       error: undefined as string | undefined,
     };
   }
@@ -139,6 +156,7 @@ function parse(raw: string | undefined) {
   const tokens = raw.trim().split(/\s+/).filter(Boolean);
   let files: string[] | undefined;
   let base: string | undefined;
+  let worktree: string | undefined;
 
   for (let index = 0; index < tokens.length; index++) {
     const token = tokens[index];
@@ -151,6 +169,7 @@ function parse(raw: string | undefined) {
         return {
           files: undefined,
           base: undefined,
+          worktree: undefined,
           error: `--files expects a comma-separated list.\n${usage()}`,
         };
       }
@@ -163,6 +182,7 @@ function parse(raw: string | undefined) {
         return {
           files: undefined,
           base: undefined,
+          worktree: undefined,
           error: `--files expects a comma-separated list.\n${usage()}`,
         };
       }
@@ -178,6 +198,7 @@ function parse(raw: string | undefined) {
         return {
           files: undefined,
           base: undefined,
+          worktree: undefined,
           error: `--base expects a branch, tag, or ref name.\n${usage()}`,
         };
       }
@@ -187,9 +208,26 @@ function parse(raw: string | undefined) {
       continue;
     }
 
+    if (token === "--worktree" || token.startsWith("--worktree=")) {
+      const value = token.startsWith("--worktree=") ? token.slice("--worktree=".length) : next;
+      if (!value || value.startsWith("--")) {
+        return {
+          files: undefined,
+          base: undefined,
+          worktree: undefined,
+          error: `--worktree expects a path.\n${usage()}`,
+        };
+      }
+
+      worktree = value;
+      if (token === "--worktree") index++;
+      continue;
+    }
+
     return {
       files: undefined,
       base: undefined,
+      worktree: undefined,
       error: `Unsupported argument: ${token}\n${usage()}`,
     };
   }
@@ -197,6 +235,7 @@ function parse(raw: string | undefined) {
   return {
     files,
     base,
+    worktree,
     error: undefined,
   };
 }
@@ -247,6 +286,9 @@ function reconcile(files: ReviewFile[], findings: Finding[]) {
         updated_at: now,
       };
     }
+    if (item.kind === "file") {
+      return { ...item, updated_at: now };
+    }
     const next = remap(item, file);
     if (!next) {
       return {
@@ -279,11 +321,28 @@ function sanitize(items: DraftFinding[], round: number, files: Map<string, Revie
     const file = files.get(item.file);
     if (!file) return [];
 
-    const start_line = Math.max(1, Math.floor(Math.min(item.start_line, item.end_line)));
-    const end_line = Math.max(start_line, Math.floor(Math.max(item.start_line, item.end_line)));
-    const source = item.side === "deletions" ? file.before : file.after;
-    const next = anchor(source, start_line, end_line);
-    if (!next.selected.trim()) return [];
+    const kind: "line" | "file" = item.kind === "file" ? "file" : "line";
+
+    const start_line =
+      kind === "file" ? 0 : Math.max(1, Math.floor(Math.min(item.start_line, item.end_line)));
+    const end_line =
+      kind === "file"
+        ? 0
+        : Math.max(start_line, Math.floor(Math.max(item.start_line, item.end_line)));
+
+    let next: Anchor;
+    if (kind === "file") {
+      const fullSource = file.after || file.before;
+      next = {
+        before: "",
+        selected: fullSource.slice(0, Math.min(200, fullSource.length)),
+        after: "",
+      };
+    } else {
+      const source = item.side === "deletions" ? file.before : file.after;
+      next = anchor(source, start_line, end_line);
+      if (!next.selected.trim()) return [];
+    }
 
     const id =
       item.id?.trim() || `finding_${round}_${index + 1}_${crypto.randomUUID().slice(0, 6)}`;
@@ -301,6 +360,7 @@ function sanitize(items: DraftFinding[], round: number, files: Map<string, Revie
         comment: item.comment.trim(),
         status: "open" as const,
         anchor: next,
+        kind,
         created_at: now,
         updated_at: now,
       },
@@ -501,6 +561,208 @@ async function inside(cwd: string) {
 async function head(cwd: string) {
   const result = await run(cwd, ["git", "rev-parse", "--verify", "HEAD"]);
   return result.ok;
+}
+
+type ScopeInfo = {
+  current_branch: string;
+  is_worktree: boolean;
+};
+
+async function scopeInfo(cwd: string): Promise<ScopeInfo> {
+  const branch_result = await run(cwd, ["git", "rev-parse", "--abbrev-ref", "HEAD"]);
+  const current_branch = branch_result.ok ? branch_result.stdout.trim() : "";
+  const git_dir = await run(cwd, ["git", "rev-parse", "--git-dir"]);
+  const is_worktree = git_dir.ok ? path.isAbsolute(git_dir.stdout.trim()) : false;
+  return { current_branch, is_worktree };
+}
+
+type BranchInfo = {
+  detached: boolean;
+  branch: string;
+  upstream: string;
+  ahead: number;
+  behind: number;
+};
+
+async function branchInfo(root: string): Promise<BranchInfo> {
+  const branch_result = await run(root, ["git", "rev-parse", "--abbrev-ref", "HEAD"]);
+  if (!branch_result.ok) {
+    return { detached: true, branch: "", upstream: "", ahead: 0, behind: 0 };
+  }
+  const branch = branch_result.stdout.trim();
+  const detached = branch === "HEAD";
+
+  const upstream_result = await run(root, ["git", "rev-parse", "--abbrev-ref", "@{u}"]);
+  const upstream = upstream_result.ok ? upstream_result.stdout.trim() : "";
+
+  let ahead = 0;
+  let behind = 0;
+  if (upstream) {
+    const ahead_result = await run(root, ["git", "rev-list", "--count", "@{u}..HEAD"]);
+    if (ahead_result.ok) {
+      const parsed = parseInt(ahead_result.stdout.trim(), 10);
+      ahead = Number.isFinite(parsed) ? parsed : 0;
+    }
+    const behind_result = await run(root, ["git", "rev-list", "--count", "HEAD..@{u}"]);
+    if (behind_result.ok) {
+      const parsed = parseInt(behind_result.stdout.trim(), 10);
+      behind = Number.isFinite(parsed) ? parsed : 0;
+    }
+  }
+
+  return { detached, branch, upstream, ahead, behind };
+}
+
+const BASE_CANDIDATES = ["@{u}", "origin/main", "origin/master", "main", "master"] as const;
+
+async function detectMeaningfulBase(root: string): Promise<string | undefined> {
+  const head_result = await run(root, ["git", "rev-parse", "--verify", "HEAD"]);
+  if (!head_result.ok) return undefined;
+  const head_rev = head_result.stdout.trim();
+  if (!head_rev) return undefined;
+
+  for (const candidate of BASE_CANDIDATES) {
+    const result = await run(root, ["git", "rev-parse", "--verify", candidate]);
+    if (!result.ok) continue;
+    const candidate_rev = result.stdout.trim();
+    if (!candidate_rev || candidate_rev === head_rev) continue;
+    return candidate;
+  }
+  return undefined;
+}
+
+type WorktreeListEntry = {
+  path: string;
+  branch: string;
+  detached: boolean;
+};
+
+async function listWorktrees(root: string): Promise<WorktreeListEntry[]> {
+  const result = await run(root, ["git", "worktree", "list", "--porcelain"]);
+  if (!result.ok) return [];
+
+  const entries: WorktreeListEntry[] = [];
+  let current: { path?: string; branch?: string; detached?: boolean } = {};
+  const flush = () => {
+    if (current.path) {
+      entries.push({
+        path: current.path,
+        branch: current.branch || "",
+        detached: !!current.detached,
+      });
+    }
+    current = {};
+  };
+  for (const line of result.stdout.split("\n")) {
+    if (!line) {
+      flush();
+      continue;
+    }
+    if (line.startsWith("worktree ")) {
+      current.path = line.slice("worktree ".length).trim();
+    } else if (line.startsWith("branch ")) {
+      const ref = line.slice("branch ".length).trim();
+      current.branch = ref.replace(/^refs\/heads\//, "");
+    } else if (line === "detached") {
+      current.detached = true;
+    }
+  }
+  flush();
+  return entries;
+}
+
+type WorktreeAhead = {
+  path: string;
+  branch: string;
+  ahead: number;
+  base: string;
+};
+
+async function worktreeAheadSummary(
+  wtPath: string,
+  wtBranch: string,
+): Promise<WorktreeAhead | undefined> {
+  const upstream = await run(wtPath, ["git", "rev-parse", "--abbrev-ref", "@{u}"]);
+  if (upstream.ok) {
+    const base = upstream.stdout.trim();
+    if (base) {
+      const count = await run(wtPath, ["git", "rev-list", "--count", "@{u}..HEAD"]);
+      if (count.ok) {
+        const ahead = parseInt(count.stdout, 10) || 0;
+        const head_rev = (await run(wtPath, ["git", "rev-parse", "HEAD"])).stdout.trim();
+        return {
+          path: wtPath,
+          branch: wtBranch,
+          ahead,
+          base: `${base} (${head_rev.slice(0, 7)})`,
+        };
+      }
+    }
+  }
+
+  for (const candidate of ["main", "master"]) {
+    const verify = await run(wtPath, ["git", "rev-parse", "--verify", candidate]);
+    if (!verify.ok) continue;
+    const count = await run(wtPath, ["git", "rev-list", "--count", `${candidate}..HEAD`]);
+    if (!count.ok) continue;
+    const ahead = parseInt(count.stdout, 10) || 0;
+    if (ahead === 0) continue;
+    return {
+      path: wtPath,
+      branch: wtBranch,
+      ahead,
+      base: candidate,
+    };
+  }
+
+  return undefined;
+}
+
+async function buildNoChangesDiagnostic(repoRoot: string, info: BranchInfo): Promise<string> {
+  const lines = ["No git working-tree changes found."];
+  lines.push("");
+  lines.push(`Repository: ${repoRoot}`);
+  lines.push(`Branch: ${info.detached ? "(detached HEAD)" : info.branch || "(unknown)"}`);
+  if (info.upstream) {
+    lines.push(`Upstream: ${info.upstream} (${info.ahead} ahead, ${info.behind} behind)`);
+  } else {
+    lines.push("Upstream: (not configured)");
+  }
+  lines.push("");
+
+  const worktrees = await listWorktrees(repoRoot);
+  const otherWorktrees = worktrees.filter((item) => item.path !== repoRoot);
+  const worktreeHints: WorktreeAhead[] = [];
+  for (const wt of otherWorktrees) {
+    const summary = await worktreeAheadSummary(wt.path, wt.branch);
+    if (summary && summary.ahead > 0) worktreeHints.push(summary);
+  }
+
+  if (worktreeHints.length > 0) {
+    lines.push("Other worktrees with unmerged work:");
+    for (const wt of worktreeHints) {
+      const branch = wt.branch || "(detached)";
+      lines.push(`  ${wt.path}  [${branch}]  ${wt.ahead} ahead of ${wt.base}`);
+    }
+    lines.push("");
+    lines.push("Run from one of these worktrees, or pass --worktree <path>.");
+  }
+
+  if (info.upstream && info.ahead > 0) {
+    lines.push(`You have ${info.ahead} unpushed commit(s) on this branch.`);
+    lines.push(`Tip: re-run with --base ${info.upstream} to review them.`);
+  } else if (!worktreeHints.length) {
+    if (info.upstream) {
+      lines.push("Working tree matches upstream. No diff to review.");
+    } else {
+      lines.push("No upstream tracking branch found.");
+      lines.push("Tip: pass --base <ref> to review against a specific base, e.g.");
+      lines.push(`  /${command} --base origin/main`);
+      lines.push(`  /${command} --base main`);
+    }
+  }
+
+  return lines.join("\n");
 }
 
 function scope(root: string, dir: string) {
@@ -757,7 +1019,60 @@ async function collectBase(root: string, dir: string, base: string) {
   };
 }
 
-async function collect(root: string, dir: string, base?: string) {
+async function collectCommits(root: string, base: string | undefined): Promise<CommitInfo[]> {
+  const range = base && base !== "working_tree" ? `${base}..HEAD` : "HEAD~20..HEAD";
+  const sep = "\x1f";
+  const format = ["%H", "%h", "%s", "%an", "%ad"].join(sep) + "%d";
+  const result = await run(root, [
+    "git",
+    "log",
+    `--pretty=format:${format}`,
+    "--date=short",
+    "-n",
+    "50",
+    range,
+  ]);
+  if (!result.ok) return [];
+
+  const commits: CommitInfo[] = [];
+  for (const line of result.stdout.split("\n")) {
+    if (!line) continue;
+    const parts = line.split(sep);
+    if (!parts[0]) continue;
+    commits.push({
+      sha: parts[0],
+      short_sha: parts[1] ?? "",
+      message: parts[2] ?? "",
+      author: parts[3] ?? "",
+      date: parts[4] ?? "",
+    });
+  }
+  return commits;
+}
+
+type CollectResult = {
+  files: SourceFile[];
+  error?: string;
+  autoBase?: string;
+  autoWorktree?: string;
+  autoWorktreeBranch?: string;
+};
+
+async function tryWorktreeRoot(wtRoot: string, dir: string): Promise<CollectResult> {
+  const working = await collectWorking(wtRoot, dir);
+  if (working.files.length > 0) return working;
+  if (working.error) return working;
+
+  const detected = await detectMeaningfulBase(wtRoot);
+  if (detected) {
+    const based = await collectBase(wtRoot, dir, detected);
+    if (based.files.length > 0) return { ...based, autoBase: detected };
+  }
+
+  return working;
+}
+
+async function collect(root: string, dir: string, base?: string): Promise<CollectResult> {
   if (!(await inside(root))) {
     return {
       files: [] as SourceFile[],
@@ -766,7 +1081,36 @@ async function collect(root: string, dir: string, base?: string) {
   }
 
   if (base) return collectBase(root, dir, base);
-  return collectWorking(root, dir);
+
+  const current = await tryWorktreeRoot(root, dir);
+  if (current.files.length > 0) return current;
+  if (current.error) return current;
+
+  const worktrees = await listWorktrees(root);
+  const others = worktrees.filter((wt) => wt.path !== root);
+  const candidates: { path: string; branch: string; ahead: number }[] = [];
+  for (const wt of others) {
+    const summary = await worktreeAheadSummary(wt.path, wt.branch);
+    if (summary && summary.ahead > 0) {
+      candidates.push({ path: wt.path, branch: summary.branch, ahead: summary.ahead });
+    }
+  }
+  if (candidates.length > 0) {
+    candidates.sort((a, b) => b.ahead - a.ahead);
+    const [winner] = candidates;
+    if (winner) {
+      const result = await tryWorktreeRoot(winner.path, dir);
+      if (result.files.length > 0) {
+        return {
+          ...result,
+          autoWorktree: winner.path,
+          autoWorktreeBranch: winner.branch,
+        };
+      }
+    }
+  }
+
+  return current;
 }
 
 async function renderFiles(files: SourceFile[]) {
@@ -826,15 +1170,38 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
         [command]: {
           description: "Open a local @pierre/diffs review UI and collect annotations",
           template: [
-            `Call the ${name} tool exactly once.`,
-            "Pass raw command arguments from $ARGUMENTS into the tool arg `raw`.",
-            "The tool returns a structured JSON payload with `open_count`, `by_severity`, `by_category`, `notes`, and `findings[]`.",
-            "Sort the findings by severity descending: high → medium → low. Do not auto-apply `category: question` (clarification requests).",
-            "Plan-first rule: read every affected file once, then design a UNIFIED fix plan that addresses all actionable findings together. Do NOT handle findings one at a time — per-finding fixes lose context and produce inconsistent patches.",
-            "Apply the entire plan in one go via Edit calls. After all fixes land, re-run /diff-review-dashboard to confirm.",
-            "If `open_count == 0` or no findings are actionable, respond with a single line: `Round N: no actionable items, closing out.` and stop.",
-            "Do not call any other tools (no read of the round file, no re-parsing).",
-            "Do not edit files unless a finding is actionable as defined above.",
+            "### Task Role",
+            `You are a code review assistant responsible for executing diff review workflows using the \`${name}\` tool and applying unified fixes.`,
+            "",
+            "### Core Objective",
+            "1. Call the tool to analyze code changes, process its output to design a unified fix plan, apply the plan via Edit calls, and validate fixes until no actionable items remain.",
+            "2. Ensure all steps adhere to the specified rules to maintain context consistency and avoid fragmented fixes.",
+            "",
+            "### Tool Execution Rules",
+            "- **Tool Call Requirement**: Call the tool exactly once per round (unless re-running post-fixes to confirm resolution).",
+            "- **Argument Passing**: Extract raw command arguments from the user's input and pass them to the tool's `raw` argument.",
+            "",
+            "### Output Parsing & Priority Rules",
+            "- The tool returns a structured JSON payload with `open_count`, `by_severity`, `by_category`, `notes`, and `findings[]` fields.",
+            "- **Priority Order**: `notes` (round-level change requests) have the highest priority. If `notes` is non-empty (not whitespace), parse it as a list of change requests and act on them — even if `findings[]` is empty.",
+            "- **Findings Handling**:",
+            "  - Sort `findings[]` by severity in descending order: high → medium → low.",
+            "  - Exclude `category: question` (clarification requests) from actionable items (do not auto-apply these).",
+            "",
+            "### Workflow Execution Rules",
+            "1. **Plan-First Rule**:",
+            "   - Read all affected files associated with the diff once.",
+            "   - Design a **unified fix plan** that addresses all actionable `notes` and `findings` together. Do NOT handle items one at a time (per-item fixes cause context loss and inconsistent patches).",
+            "2. **Fix Application**: Apply the entire unified plan in a single batch via Edit calls.",
+            "3. **Validation**: After all fixes are applied, re-run the tool to confirm resolution of all actionable items.",
+            "4. **Closing Rule**: Only respond with `Round N: no actionable items, closing out.` if BOTH:",
+            "   - `notes` is empty or whitespace, AND",
+            "   - There are no actionable `findings` (excluding `category: question`).",
+            "   Otherwise, act on the non-empty `notes` or actionable `findings`.",
+            "",
+            "### Prohibitions",
+            "- Do not call any other tools (e.g., no `read` of round files, no re-parsing tools).",
+            "- Do not edit files unless there are actionable `notes` or `findings` (as defined above).",
           ].join("\n"),
         },
       };
@@ -860,20 +1227,24 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
           const parsed = parse(args.raw);
           if (parsed.error) return parsed.error;
 
-          const roots = [context.worktree, context.directory].filter(Boolean);
+          const roots = [parsed.worktree, context.worktree, context.directory].filter(
+            (item): item is string => Boolean(item),
+          );
           const resolved = await Promise.all(roots.map((item) => repo(item)));
           const root = resolved.find((item) => !item.error);
           if (!root?.path) {
             return [
               "Failed to resolve git repository root for this session.",
-              `worktree=${context.worktree}`,
-              `directory=${context.directory}`,
+              `parsed.worktree=${parsed.worktree ?? ""}`,
+              `context.worktree=${context.worktree ?? ""}`,
+              `context.directory=${context.directory ?? ""}`,
             ].join("\n");
           }
 
           const scope_root = context.worktree || context.directory;
           const source = await collect(root.path, scope_root, parsed.base);
           if (source.error) return source.error;
+          const effective_scope = source.autoWorktree || scope_root;
 
           const all = source.files;
           const scoped = parsed.files?.length
@@ -886,23 +1257,33 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
 
           if (scoped.length === 0) {
             const available = all.map((item) => `- ${item.file}`).join("\n");
-            const hint = parsed.files?.length
-              ? [
-                  "No files matched --files filter.",
-                  "",
-                  usage(),
-                  "",
-                  "Available files:",
-                  available || "- none",
-                ].join("\n")
-              : parsed.base
-                ? `No changes found for --base ${parsed.base}.`
-                : "No git working-tree changes found yet.";
-            return hint;
+            if (parsed.files?.length) {
+              return [
+                "No files matched --files filter.",
+                "",
+                usage(),
+                "",
+                "Available files:",
+                available || "- none",
+              ].join("\n");
+            }
+            if (parsed.base) {
+              return `No changes found for --base ${parsed.base}.`;
+            }
+            if (source.autoBase) {
+              return [
+                `No changes found for --base ${source.autoBase} (auto-detected).`,
+                "",
+                "Working tree is clean and the auto-detected base has no differences.",
+                "Pass an explicit --base to review against a different ref:",
+                `  /${command} --base <ref>`,
+              ].join("\n");
+            }
+            return await buildNoChangesDiagnostic(root.path, await branchInfo(root.path));
           }
 
           const files = await renderFiles(scoped);
-          const output_root = path.join(scope_root, ".opencode", "reviews", context.sessionID);
+          const output_root = path.join(effective_scope, ".opencode", "reviews", context.sessionID);
           const state_file = path.join(output_root, "state.json");
           const state = await readState(state_file, context.sessionID);
           const merged = reconcile(files, state.findings);
@@ -914,15 +1295,21 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
           };
           await saveState(state_file, base);
 
+          const info = await scopeInfo(effective_scope);
+          const commits = await collectCommits(
+            source.autoWorktree || root.path,
+            parsed.base || source.autoBase,
+          );
           const id = `review_${Date.now().toString(36)}_${crypto.randomUUID().slice(0, 6)}`;
           const token = crypto.randomUUID().replaceAll("-", "");
           const data: Launch = {
             id,
             session_id: context.sessionID,
-            repo_root: root.path,
-            scope_root,
+            repo_root: source.autoWorktree || root.path,
+            scope_root: effective_scope,
             round: base.round + 1,
             files,
+            commits,
             existing_findings: existing,
             draft: base.draft ?? {
               notes: "",
@@ -934,6 +1321,11 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
             },
             filter: parsed.files,
             base: parsed.base,
+            auto_base: source.autoBase,
+            auto_worktree: source.autoWorktree,
+            auto_worktree_branch: source.autoWorktreeBranch,
+            current_branch: info.current_branch,
+            is_worktree: info.is_worktree,
           };
 
           const map = new Map(files.map((item) => [item.path, item]));
@@ -1131,7 +1523,7 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
           });
 
           const review_url = `http://127.0.0.1:${server.port}/review/${id}?token=${token}`;
-          opened = open(review_url, { cwd: scope_root });
+          opened = open(review_url, { cwd: effective_scope });
           context.metadata({
             title: "Diff review",
             metadata: {
@@ -1140,6 +1532,8 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
               scope: parsed.files?.length ? parsed.files.join(",") : "all",
               base: parsed.base || "working_tree",
               repo: root.path,
+              auto_worktree: source.autoWorktree,
+              auto_worktree_branch: source.autoWorktreeBranch,
             },
           });
 
@@ -1154,6 +1548,8 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                 opened,
                 base: parsed.base || "working_tree",
                 repo: root.path,
+                auto_worktree: source.autoWorktree,
+                auto_worktree_branch: source.autoWorktreeBranch,
               },
             },
             query: {

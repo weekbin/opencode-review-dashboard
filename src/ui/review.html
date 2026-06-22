@@ -3,12 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Diff Review</title>
+    <title>Review Dashboard</title>
     <style>
       :root {
         color-scheme: light dark;
         --radius: 8px;
-        --sidebar-width: 280px;
+        --sidebar-width: 400px;
       }
 
       * {
@@ -158,8 +158,39 @@
         flex-shrink: 0;
         overflow-y: auto;
         background: light-dark(#fafafa, #0e0e0e);
-        border-right: 1px solid light-dark(#e0e0e0, #1e1e1e);
+        border-right: 1px solid light-dark(#e0e0e0, #1e1e0e);
         scrollbar-width: thin;
+      }
+
+      .sidebar-resizer {
+        flex-shrink: 0;
+        width: 4px;
+        height: calc(100vh - 51px);
+        cursor: col-resize;
+        background: transparent;
+        position: relative;
+        touch-action: none;
+      }
+
+      .sidebar-resizer::after {
+        content: "";
+        position: absolute;
+        left: 1px;
+        top: 0;
+        width: 2px;
+        height: 100%;
+        background: light-dark(#e0e0e0, #1e1e1e);
+        transition: background 0.15s ease;
+      }
+
+      .sidebar-resizer:hover::after,
+      .sidebar-resizer:focus-visible::after,
+      .sidebar-resizer[data-dragging]::after {
+        background: light-dark(#4a90e2, #4a90e2);
+      }
+
+      .sidebar-resizer:focus-visible {
+        outline: none;
       }
 
       .sidebar-header {
@@ -173,6 +204,142 @@
         align-items: center;
         justify-content: space-between;
         gap: 8px;
+      }
+      .sidebar-tabs {
+        display: flex;
+        border-bottom: 1px solid light-dark(#e0e0e0, #1e1e1e);
+        flex-shrink: 0;
+      }
+      .sidebar-tabs button {
+        all: unset;
+        flex: 1;
+        padding: 8px 12px;
+        font-size: 12px;
+        font-weight: 500;
+        text-align: center;
+        cursor: pointer;
+        color: light-dark(#888, #666);
+        border-bottom: 2px solid transparent;
+      }
+      .sidebar-tabs button[aria-pressed="true"] {
+        color: light-dark(#111, #eee);
+        border-bottom-color: light-dark(#4a90e2, #4a90e2);
+      }
+      .sidebar-tabs button:hover:not([aria-pressed="true"]) {
+        color: light-dark(#333, #ccc);
+      }
+      .commits-list {
+        padding: 8px 0;
+      }
+      .commit-item {
+        padding: 8px 12px;
+        border-bottom: 1px solid light-dark(#eee, #1a1a1a);
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .commit-item:hover {
+        background: light-dark(#f0f0f0, #1a1a1a);
+      }
+      .commit-msg {
+        font-weight: 500;
+        margin-bottom: 4px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .commit-meta {
+        font-size: 11px;
+        color: light-dark(#888, #666);
+        display: flex;
+        gap: 8px;
+      }
+      .commit-sha {
+        font-family: "SF Mono", Monaco, Consolas, monospace;
+      }
+      .conversation-list {
+        padding: 8px 0;
+      }
+      .conversation-item {
+        padding: 10px 12px;
+        border-bottom: 1px solid light-dark(#eee, #1a1a1a);
+        font-size: 12px;
+        border-left: 3px solid transparent;
+      }
+      .conversation-item[data-status="open"] {
+        border-left-color: light-dark(#4a90e2, #4a90e2);
+      }
+      .conversation-item[data-status="resolved"] {
+        border-left-color: light-dark(#2ea043, #2ea043);
+        opacity: 0.7;
+      }
+      .conversation-item[data-status="closed_auto"] {
+        border-left-color: light-dark(#888, #888);
+        opacity: 0.5;
+      }
+      .conversation-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 4px;
+      }
+      .conversation-file {
+        font-family: "SF Mono", Monaco, Consolas, monospace;
+        font-size: 11px;
+        color: light-dark(#888, #666);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
+        min-width: 0;
+      }
+      .conversation-status {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 1px 6px;
+        border-radius: 3px;
+        flex-shrink: 0;
+      }
+      .conversation-status[data-status="open"] {
+        background: light-dark(#e8f1fb, #1a3a5e);
+        color: light-dark(#1a5490, #8ec5ff);
+      }
+      .conversation-status[data-status="resolved"] {
+        background: light-dark(#ddf4e1, #1a4a2a);
+        color: light-dark(#1a6e2e, #7ee097);
+      }
+      .conversation-status[data-status="closed_auto"] {
+        background: light-dark(#eee, #2a2a2a);
+        color: light-dark(#666, #888);
+      }
+      .conversation-body {
+        margin: 4px 0;
+        line-height: 1.4;
+        word-wrap: break-word;
+      }
+      .conversation-actions {
+        display: flex;
+        gap: 4px;
+        margin-top: 6px;
+      }
+      .conversation-actions button {
+        all: unset;
+        cursor: pointer;
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 3px;
+        background: light-dark(#eee, #2a2a2a);
+        color: light-dark(#444, #ccc);
+      }
+      .conversation-actions button:hover {
+        background: light-dark(#ddd, #3a3a3a);
+      }
+      .conversation-empty {
+        padding: 20px;
+        text-align: center;
+        color: light-dark(#888, #666);
+        font-size: 12px;
       }
       .sidebar-mode {
         display: flex;
@@ -454,6 +621,20 @@
         flex-shrink: 0;
       }
 
+      .file-comments-badge {
+        display: inline-flex;
+        align-items: center;
+        height: 26px;
+        padding: 0 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+        background: light-dark(#e8e8e8, #2a2a2a);
+        color: light-dark(#333, #ccc);
+        cursor: default;
+        user-select: none;
+      }
+
       .btn-icon {
         all: unset;
         cursor: pointer;
@@ -700,6 +881,10 @@
         transition: border-color 120ms;
       }
 
+      .finding.file-level {
+        border-left: 3px solid light-dark(#4a90e2, #4a90e2);
+      }
+
       .finding:hover {
         border-color: light-dark(#ccc, #383838);
       }
@@ -900,7 +1085,7 @@
   <body>
     <header>
       <div class="header-left">
-        <h1>Diff Review</h1>
+        <h1>Review Dashboard</h1>
         <span class="scope" id="scope"></span>
       </div>
       <div class="header-right">
@@ -933,15 +1118,34 @@
 
     <div class="layout">
       <nav class="sidebar" id="sidebar">
+        <div class="sidebar-tabs" id="sidebar-tabs">
+          <button data-tab="files" aria-pressed="true" title="Files changed">Files changed</button>
+          <button data-tab="commits" aria-pressed="false" title="Commits in this review">
+            Commits
+          </button>
+          <button data-tab="conversation" aria-pressed="false" title="Conversation (all findings)">
+            Conversation
+          </button>
+        </div>
         <div class="sidebar-header">
-          <span>Files</span>
+          <span id="sidebar-header-label">Files</span>
           <div class="sidebar-mode" id="sidebar-mode">
             <button data-mode="tree" aria-pressed="true" title="Tree view">Tree</button>
             <button data-mode="flat" aria-pressed="false" title="Flat list">Flat</button>
           </div>
         </div>
         <div class="sidebar-list" id="file-list"></div>
+        <div class="commits-list" id="commits-list" hidden></div>
+        <div class="conversation-list" id="conversation-list" hidden></div>
       </nav>
+      <div
+        class="sidebar-resizer"
+        id="sidebar-resizer"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize sidebar"
+        tabindex="0"
+      ></div>
       <div class="main">
         <main id="diffs"></main>
       </div>
