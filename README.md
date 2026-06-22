@@ -121,6 +121,18 @@ Explicitly pick a worktree (auto-detected by default, most-active wins):
 /diff-review-dashboard --worktree /path/to/worktree
 ```
 
+### How worktree resolution works
+
+When you run `/diff-review-dashboard`, the plugin resolves the repository root and review scope in this priority order:
+
+1. `--worktree <path>` flag (explicit override — wins over everything)
+2. `context.worktree` (the OpenCode session's current worktree, if any)
+3. `context.directory` (the session's main checkout / cwd)
+
+The first one that resolves to a valid git toplevel wins. State files (`.opencode/reviews/<session>/state.json`) and the diff source are pinned to that same path across all rounds of the same session, so findings persist between `/diff-review-dashboard` invocations regardless of how you switch between auto-detect and explicit `--worktree`.
+
+Auto-detection (when `--worktree` is **not** passed): if you're in the main checkout, the plugin lists every worktree, picks the one with the most commits ahead of `origin/main` (most-active wins), and uses that as the diff source. If you're already inside a worktree, it sticks with the current one — auto-pick never jumps out of your current worktree.
+
 Filter to specific files (comma-separated, no spaces):
 
 ```
