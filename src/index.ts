@@ -1305,10 +1305,17 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
             ].join("\n");
           }
 
-          const scope_root = context.worktree || context.directory;
+          // parsed.worktree must lead the fallback chain so state.json lives at the
+          // same path whether the user auto-picked or explicitly passed --worktree.
+          const scope_root = parsed.worktree || context.worktree || context.directory || root.path;
           const source = await collect(root.path, scope_root, parsed.base);
           if (source.error) return source.error;
-          const effective_scope = source.autoWorktree || scope_root;
+          const effective_scope =
+            source.autoWorktree ||
+            parsed.worktree ||
+            context.worktree ||
+            context.directory ||
+            root.path;
 
           const all = source.files;
           const scoped = parsed.files?.length
