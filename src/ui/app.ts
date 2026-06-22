@@ -1,4 +1,4 @@
-import { File, FileDiff, type DiffLineAnnotation, type LineAnnotation } from "@pierre/diffs";
+import { FileDiff, type DiffLineAnnotation } from "@pierre/diffs";
 
 type Category = "bug" | "style" | "perf" | "question" | "recommend";
 type Severity = "high" | "medium" | "low";
@@ -86,15 +86,10 @@ type Meta = {
   comment: string;
 };
 
-type View =
-  | {
-      kind: "diff";
-      instance: FileDiff<Meta>;
-    }
-  | {
-      kind: "file";
-      instance: File<Meta>;
-    };
+type View = {
+  kind: "diff";
+  instance: FileDiff<Meta>;
+};
 
 type ThemeMode = "light" | "dark" | "auto";
 type DiffLayout = "unified" | "split";
@@ -620,31 +615,6 @@ function diffAnnotations(file: string) {
     });
 }
 
-function fileAnnotations(file: string) {
-  return all()
-    .filter((item) => item.file === file && item.kind !== "file")
-    .flatMap((item) => {
-      const parsed = range(item.start_line, item.end_line);
-      if (!parsed) return [];
-      return [
-        {
-          lineNumber: parsed.start,
-          metadata: {
-            id: item.id,
-            origin: item.origin,
-            file,
-            side: side(item.side),
-            start_line: parsed.start,
-            end_line: parsed.end,
-            category: item.category,
-            severity: item.severity,
-            comment: item.comment,
-          },
-        } satisfies LineAnnotation<Meta>,
-      ];
-    });
-}
-
 function selectionFor(file: string) {
   if (!state.selection || state.selection.file !== file) return null;
   const item = byPath(file);
@@ -666,17 +636,8 @@ function selectionFor(file: string) {
 function syncFile(file: string) {
   const view = state.views.get(file);
   if (!view) return;
-
-  if (view.kind === "diff") {
-    view.instance.setLineAnnotations(diffAnnotations(file));
-  } else {
-    view.instance.setLineAnnotations(fileAnnotations(file));
-  }
-  // @pierre/diffs' setLineAnnotations only stores the data — it does
-  // not re-render the DOM. Call rerender() so the new annotation
-  // actually appears inline on the diff.
+  view.instance.setLineAnnotations(diffAnnotations(file));
   view.instance.rerender();
-
   view.instance.setSelectedLines(selectionFor(file));
 }
 
@@ -734,7 +695,7 @@ function toggleRead(file: string) {
   applyFileState(file);
 }
 
-function renderAnnotation(annotation: LineAnnotation<Meta> | DiffLineAnnotation<Meta>) {
+function renderAnnotation(annotation: DiffLineAnnotation<Meta>) {
   const metadata = annotation.metadata;
   if (!metadata) return undefined;
 
@@ -811,53 +772,6 @@ function select(file: string, input: { start: unknown; end: unknown; side: unkno
 function createView(file: FileEntry, mount: HTMLElement) {
   const themeType = pierreThemeType();
 
-  if (file.status !== "modified") {
-    const fixed = file.status === "deleted" ? "deletions" : "additions";
-    const instance = new File<Meta>({
-      theme: pierreTheme(),
-      themeType,
-      overflow: "wrap",
-      disableFileHeader: true,
-      enableLineSelection: true,
-      onLineSelectionEnd: (value) => {
-        if (!value) {
-          state.selection = undefined;
-          renderSelection();
-          syncAll();
-          return;
-        }
-
-        select(file.path, {
-          start: value.start,
-          end: value.end,
-          side: fixed,
-        });
-      },
-      onLineClick: (value) => {
-        select(file.path, {
-          start: value.lineNumber,
-          end: value.lineNumber,
-          side: fixed,
-        });
-      },
-      renderAnnotation,
-    });
-
-    instance.render({
-      file: {
-        name: file.path,
-        contents: file.status === "deleted" ? file.before || "" : file.after || "",
-      },
-      containerWrapper: mount,
-      lineAnnotations: fileAnnotations(file.path),
-    });
-
-    return {
-      kind: "file" as const,
-      instance,
-    };
-  }
-
   const instance = new FileDiff<Meta>({
     theme: pierreTheme(),
     themeType,
@@ -878,17 +792,21 @@ function createView(file: FileEntry, mount: HTMLElement) {
         return;
       }
 
+      const fileEntry = byPath(file.path);
+      const defaultSide = fileEntry?.status === "deleted" ? "deletions" : "additions";
       select(file.path, {
         start: value.start,
         end: value.end,
-        side: value.side || value.endSide,
+        side: value.side || value.endSide || defaultSide,
       });
     },
     onLineClick: (value) => {
+      const fileEntry = byPath(file.path);
+      const defaultSide = fileEntry?.status === "deleted" ? "deletions" : "additions";
       select(file.path, {
         start: value.lineNumber,
         end: value.lineNumber,
-        side: value.annotationSide,
+        side: value.annotationSide || defaultSide,
       });
     },
     renderAnnotation,
@@ -911,6 +829,100 @@ function createView(file: FileEntry, mount: HTMLElement) {
     kind: "diff" as const,
     instance,
   };
+}
+
+function createAddedFileView(file: FileEntry, mount: HTMLElement) {
+  const themeType = pierreThemeType();
+  const instance = new FileDiff<Meta>({
+    theme: pierreTheme(),
+    themeType,
+    diffStyle: state.diffLayout,
+    overflow: "wrap",
+    disableFileHeader: true,
+    diffIndicators: "bars",
+    expandUnchanged: false,
+    collapsedContextThreshold: 3,
+    expansionLineCount: 20,
+    hunkSeparators: "line-info",
+    enableLineSelection: true,
+    onLineSelectionEnd: (value) => {
+      if (!value) {
+        state.selection = undefined;
+        renderSelection();
+        syncAll();
+        return;
+      }
+      select(file.path, {
+        start: value.start,
+        end: value.end,
+        side: value.side || value.endSide || "additions",
+      });
+    },
+    onLineClick: (value) => {
+      select(file.path, {
+        start: value.lineNumber,
+        end: value.lineNumber,
+        side: value.annotationSide || "additions",
+      });
+    },
+    renderAnnotation,
+  });
+
+  instance.render({
+    oldFile: { name: file.path, contents: "\n\n" },
+    newFile: { name: file.path, contents: file.after || "" },
+    containerWrapper: mount,
+    lineAnnotations: diffAnnotations(file.path),
+  });
+
+  return { kind: "diff" as const, instance };
+}
+
+function createDeletedFileView(file: FileEntry, mount: HTMLElement) {
+  const themeType = pierreThemeType();
+  const instance = new FileDiff<Meta>({
+    theme: pierreTheme(),
+    themeType,
+    diffStyle: state.diffLayout,
+    overflow: "wrap",
+    disableFileHeader: true,
+    diffIndicators: "bars",
+    expandUnchanged: false,
+    collapsedContextThreshold: 3,
+    expansionLineCount: 20,
+    hunkSeparators: "line-info",
+    enableLineSelection: true,
+    onLineSelectionEnd: (value) => {
+      if (!value) {
+        state.selection = undefined;
+        renderSelection();
+        syncAll();
+        return;
+      }
+      select(file.path, {
+        start: value.start,
+        end: value.end,
+        side: value.side || value.endSide || "deletions",
+      });
+    },
+    onLineClick: (value) => {
+      select(file.path, {
+        start: value.lineNumber,
+        end: value.lineNumber,
+        side: value.annotationSide || "deletions",
+      });
+    },
+    renderAnnotation,
+  });
+
+  instance.render({
+    oldFile: { name: file.path, contents: file.before || "" },
+    newFile: { name: file.path, contents: "\n\n" },
+    containerWrapper: mount,
+    lineAnnotations: diffAnnotations(file.path),
+  });
+
+  return { kind: "diff" as const, instance };
 }
 
 function basename(path: string) {
@@ -1733,7 +1745,14 @@ function renderDiffPanel() {
 
     applyFileState(file.path);
 
-    const view = createView(file, mount);
+    let view: View;
+    if (file.status === "added") {
+      view = createAddedFileView(file, mount);
+    } else if (file.status === "deleted") {
+      view = createDeletedFileView(file, mount);
+    } else {
+      view = createView(file, mount);
+    }
     state.views.set(file.path, view);
     syncFile(file.path);
   }
