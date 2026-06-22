@@ -4,8 +4,6 @@ An [OpenCode](https://opencode.ai) plugin that adds a `/diff-review-dashboard` c
 
 The command is named `diff-review-dashboard` (not `diff-review`) to avoid collisions with the upstream [`oorestisime/opencode-diffs`](https://github.com/oorestisime/opencode-diffs) plugin. The tool name is `diff_review_dashboard`.
 
-![example](example.png)
-
 ## What it does
 
 When you run `/diff-review-dashboard` inside an OpenCode session, the plugin:
@@ -117,6 +115,12 @@ Review against a specific branch:
 /diff-review-dashboard --base origin/main
 ```
 
+Explicitly pick a worktree (auto-detected by default, most-active wins):
+
+```
+/diff-review-dashboard --worktree /path/to/worktree
+```
+
 Filter to specific files (comma-separated, no spaces):
 
 ```
@@ -137,33 +141,34 @@ When the plugin starts, it prints the review URL to the TUI:
 
 The browser also auto-opens to that URL. If the auto-open fails (e.g. headless), you can paste the URL from the TUI line.
 
-When you submit, the plugin returns a single-line JSON object: round number, `open_count`, `by_severity` / `by_category` counts, reviewer notes, and an array of findings (each with `id`, `severity`, `category`, `file`, `start_line`/`end_line`, `side`, `comment`). The agent acts on this directly per the auto-apply rule. The round JSON + markdown files are still written to `.opencode/reviews/<session>/` for human reading and re-loading in future rounds.
+When you submit, the plugin closes the browser tab and returns a single-line JSON object: round number, `open_count`, `by_severity` / `by_category` counts, reviewer notes, and an array of findings (each with `id`, `severity`, `category`, `file`, `start_line`/`end_line`, `side`, `comment`, and optionally `kind: "file"`). The agent acts on this directly per the auto-apply rule. The round JSON + markdown files are still written to `.opencode/reviews/<session>/` for human reading and re-loading in future rounds.
 
 ### Tips
 
 - The browser tab is just `http://127.0.0.1:<random-port>/` — bookmarking the URL only works for the current round (the server is a one-shot per `/diff-review-dashboard` invocation).
 - Findings are anchored to file + line + a code snippet. If the surrounding code changes between rounds, the finding auto-closes (shown in the UI as "stale").
-- After submitting, the UI replaces itself with a "Review submitted — round N" card. The card explains that the plugin **cannot close the tab for you** — browsers only allow scripts to close tabs the script itself opened, and the review tab was opened by the user via the OS shell. Close the tab manually with `⌘W` / `Ctrl+W` or the tab's close button.
+- After submitting, the browser tab closes automatically (the plugin opens the tab via the OpenCode SDK's `openUrl`, which lets the same origin close it on submit).
 
 ---
 
 ## Review UI
 
-The browser UI has three main areas:
+The browser UI has two main areas:
 
-- **Sidebar** (left) — lists all changed files with add/delete stats. Click a file to scroll to it.
-- **Diff cards** (center) — syntax-highlighted diffs for each file. Click line numbers to select a range. Files can be collapsed and marked as read.
-- **Review drawer** (right) — opens when you select lines. Defaults: category `recommend`, severity `medium`. Pick a different category (`bug`, `style`, `perf`, `question`, `recommend`) or severity (`high`, `medium`, `low`), write a comment, and click "Add Finding". `recommend` is for positive suggestions / improvements that aren't strictly defects.
+- **Sidebar** (left) — resizable panel (drag the handle, persisted to localStorage). Contains three tabs:
+  - **Files changed** — lists all changed files with add/delete stats, tree or flat view toggle. File-level findings show a 📄 badge. Click a file to scroll to its diff card.
+  - **Commits** — per-file commit list with short SHA and message.
+  - **Conversation** — all findings (line-level and file-level) in chronological order with status badges (open/resolved/stale). Resolve, Remove, or Jump-to-file actions per finding.
+- **Diff cards** (center) — syntax-highlighted diffs for each file. Click line numbers to select a range and open the review drawer. Click the **+** button on a file card header to add a file-level finding (no line anchor). Files can be collapsed and marked as read.
+- **Review drawer** (overlay) — opens when you select lines or click **+**. Pick category (`bug`, `style`, `perf`, `question`, `recommend`) and severity (`high`, `medium`, `low`), write a comment, and click "Add Finding". `recommend` is for positive suggestions / improvements that aren't strictly defects. A notes field at the bottom holds general observations.
 
-Findings from prior rounds appear with a "Resolve" button. The drawer also has a notes field for general observations and the submit button.
-
-Light/dark mode follows your system preference, or you can toggle it manually.
+Findings from prior rounds appear in the Conversation tab with a "Resolve" button. Light/dark mode follows your system preference, or you can toggle it manually.
 
 ---
 
 ## Development
 
-This repo is a fork of [`oorestisime/opencode-diffs`](https://github.com/oorestisime/opencode-diffs) with workspace isolation fixes plus token-cleanup improvements (auto-apply, structured JSON return, command rename to avoid collision).
+Originally forked from [`oorestisime/opencode-diffs`](https://github.com/oorestisime/opencode-diffs), now substantially rewritten with auto-worktree detection, file-level findings, commits/conversation panels, resizable sidebar, and the full auto-apply review workflow.
 
 ### Scripts
 
@@ -177,6 +182,7 @@ This repo is a fork of [`oorestisime/opencode-diffs`](https://github.com/ooresti
 | `bun run typecheck` | Type-check with `tsc --noEmit` against `tsconfig.json`. |
 | `bun run check` | Convenience: `format:check && lint && typecheck`. Run this before committing. |
 | `bun run prepublishOnly` | Runs `check` then `build` automatically before `npm publish`. |
+| `bun run test:ui` | Run end-to-end browser tests (Playwright MCP) — 10 git scenarios with mock review server. |
 
 ### Setup
 
