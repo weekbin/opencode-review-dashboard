@@ -34,28 +34,30 @@
         min-height: 100vh;
       }
 
-      /* ── Header (page chrome scrolls away; sidebar/card-header are sticky) ── */
+      /* ── Header (sticky at top) ── */
       header {
-        position: relative;
-        z-index: 1;
+        position: sticky;
+        top: 0;
+        z-index: 50;
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 16px;
         padding: 10px 20px;
-        background: light-dark(#ffffff, #1e1e2e);
-        border-bottom: 1px solid light-dark(#e0e0e0, #313244);
+        background: light-dark(#fafafa, #1f1f1f);
+        border-bottom: 1px solid light-dark(#e0e0e0, #3a3a3a);
       }
 
-      /* ── Top Navbar tabs ── */
+      /* ── Top Navbar tabs (sticky below header) ── */
       .navbar-tabs {
-        position: relative;
-        z-index: 1;
+        position: sticky;
+        top: 50px;
+        z-index: 49;
         display: flex;
         gap: 4px;
         padding: 0 20px;
-        background: light-dark(#ffffff, #1e1e2e);
-        border-bottom: 1px solid light-dark(#e0e0e0, #313244);
+        background: light-dark(#fafafa, #1f1f1f);
+        border-bottom: 1px solid light-dark(#e0e0e0, #3a3a3a);
       }
       .navbar-tabs button {
         all: unset;
@@ -120,8 +122,8 @@
       /* ── Layout toggle ── */
       .layout-toggle {
         display: inline-flex;
-        background: light-dark(#f0f0f0, #313244);
-        border: 1px solid light-dark(#d8d8d8, #313244);
+        background: light-dark(#f0f0f0, #3a3a3a);
+        border: 1px solid light-dark(#d8d8d8, #3a3a3a);
         border-radius: 6px;
         padding: 2px;
         gap: 2px;
@@ -145,7 +147,7 @@
       }
 
       .layout-toggle button[aria-pressed="true"] {
-        background: light-dark(#ffffff, #313244);
+        background: light-dark(#ffffff, #3a3a3a);
         color: light-dark(#111, #eee);
         box-shadow: 0 1px 2px light-dark(rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.3));
       }
@@ -157,8 +159,8 @@
       /* ── Theme toggle ── */
       .theme-toggle {
         display: inline-flex;
-        background: light-dark(#f0f0f0, #313244);
-        border: 1px solid light-dark(#d8d8d8, #313244);
+        background: light-dark(#f0f0f0, #3a3a3a);
+        border: 1px solid light-dark(#d8d8d8, #3a3a3a);
         border-radius: 6px;
         padding: 2px;
         gap: 2px;
@@ -179,7 +181,7 @@
       }
 
       .theme-toggle button[aria-pressed="true"] {
-        background: light-dark(#ffffff, #313244);
+        background: light-dark(#ffffff, #3a3a3a);
         color: light-dark(#111, #eee);
         box-shadow: 0 1px 2px light-dark(rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.3));
       }
@@ -204,17 +206,17 @@
         align-items: stretch;
       }
 
-      /* ── Left sidebar (page chrome scrolls away; sidebar sticks at top: 0) ── */
+      /* ── Left sidebar (sticky below header+navbar) ── */
       .sidebar {
         position: sticky;
-        top: 0;
+        top: 91px;
         width: var(--sidebar-width);
         align-self: stretch;
         flex-shrink: 0;
         overflow-y: auto;
-        max-height: 100vh;
-        background: light-dark(#fafafa, #181825);
-        border-right: 1px solid light-dark(#e0e0e0, #313244);
+        max-height: calc(100vh - 91px);
+        background: light-dark(#fafafa, #252525);
+        border-right: 1px solid light-dark(#e0e0e0, #3a3a3a);
         scrollbar-width: thin;
       }
 
@@ -331,7 +333,7 @@
         gap: 10px;
       }
       .commit-card-head:hover {
-        background: light-dark(#f0f0f0, #313244);
+        background: light-dark(#f0f0f0, #3a3a3a);
       }
       .commit-card-title {
         display: flex;
@@ -361,7 +363,7 @@
         background: light-dark(#eaeef2, #1e1e1e);
       }
       .commit-sha:hover {
-        background: light-dark(#dde3ea, #313244);
+        background: light-dark(#dde3ea, #3a3a3a);
       }
       .commit-card-files {
         display: flex;
@@ -381,7 +383,7 @@
         border-radius: 4px;
       }
       .commit-file-row:hover {
-        background: light-dark(#f0f0f0, #313244);
+        background: light-dark(#f0f0f0, #3a3a3a);
       }
       .commit-file-name {
         flex: 1;
@@ -552,11 +554,11 @@
         font-size: 11px;
         padding: 4px 12px;
         border-radius: 4px;
-        background: light-dark(#f5f5f5, #313244);
+        background: light-dark(#f5f5f5, #3a3a3a);
         color: light-dark(#444, #ccc);
       }
       .conversation-actions button:hover {
-        background: light-dark(#e8e8e8, #313244);
+        background: light-dark(#e8e8e8, #3a3a3a);
       }
       .conversation-actions button.primary {
         background: light-dark(#1d5a96, #95c1e8);
@@ -574,7 +576,7 @@
       .sidebar-mode {
         display: flex;
         gap: 0;
-        border: 1px solid light-dark(#d8d8d8, #313244);
+        border: 1px solid light-dark(#d8d8d8, #3a3a3a);
         border-radius: 4px;
         overflow: hidden;
         text-transform: none;
@@ -590,10 +592,10 @@
       }
       .sidebar-mode button[aria-pressed="true"] {
         background: light-dark(#111, #45475a);
-        color: light-dark(#fff, #cdd6f4);
+        color: light-dark(#fff, #c8c8c8);
       }
       .sidebar-mode button:hover:not([aria-pressed="true"]) {
-        background: light-dark(#eeeeee, #313244);
+        background: light-dark(#eeeeee, #3a3a3a);
       }
 
       .sidebar-list {
@@ -618,7 +620,7 @@
       }
 
       .sidebar-item:hover {
-        background: light-dark(#eeeeee, #313244);
+        background: light-dark(#eeeeee, #3a3a3a);
         color: light-dark(#111, #eee);
       }
 
@@ -662,7 +664,7 @@
         flex-direction: column;
         gap: 1px;
         padding-left: min(8px, calc(var(--depth, 0) * 3px));
-        border-left: 1px solid light-dark(#e8e8e8, #313244);
+        border-left: 1px solid light-dark(#e8e8e8, #3a3a3a);
         margin-left: 4px;
       }
       .sidebar-item.tree {
@@ -802,15 +804,15 @@
         cursor: pointer;
         user-select: none;
         background: light-dark(#fafafa, #161616);
-        border-bottom: 1px solid light-dark(#e8e8e8, #313244);
+        border-bottom: 1px solid light-dark(#e8e8e8, #3a3a3a);
         transition: background 100ms;
         position: sticky;
-        top: 0;
+        top: 91px;
         z-index: 5;
       }
 
       .card-header:hover {
-        background: light-dark(#f0f0f0, #313244);
+        background: light-dark(#f0f0f0, #3a3a3a);
       }
 
       .card[data-collapsed] .card-header {
@@ -901,7 +903,7 @@
         border-radius: 4px;
         font-size: 12px;
         font-weight: 500;
-        background: light-dark(#e8e8e8, #313244);
+        background: light-dark(#e8e8e8, #3a3a3a);
         color: light-dark(#333, #ccc);
         cursor: default;
         user-select: none;
@@ -921,7 +923,7 @@
       }
 
       .btn-icon:hover {
-        background: light-dark(#e8e8e8, #313244);
+        background: light-dark(#e8e8e8, #3a3a3a);
         color: light-dark(#333, #ccc);
       }
 
@@ -948,8 +950,8 @@
         border-radius: 6px;
         font-size: 12px;
         font-weight: 500;
-        background: light-dark(#f0f0f0, #313244);
-        border: 1px solid light-dark(#d8d8d8, #313244);
+        background: light-dark(#f0f0f0, #3a3a3a);
+        border: 1px solid light-dark(#d8d8d8, #3a3a3a);
         color: light-dark(#333, #ccc);
         transition: all 120ms;
       }
@@ -1034,7 +1036,7 @@
       }
 
       .drawer-close:hover {
-        background: light-dark(#f0f0f0, #313244);
+        background: light-dark(#f0f0f0, #3a3a3a);
         color: light-dark(#333, #ccc);
       }
 
@@ -1077,7 +1079,7 @@
       select,
       textarea {
         width: 100%;
-        border: 1px solid light-dark(#ddd, #313244);
+        border: 1px solid light-dark(#ddd, #3a3a3a);
         background: light-dark(#fafafa, #0d0d0d);
         color: inherit;
         border-radius: 6px;
@@ -1114,7 +1116,7 @@
         font-size: 13px;
         font-weight: 500;
         transition: all 120ms;
-        border: 1px solid light-dark(#ddd, #313244);
+        border: 1px solid light-dark(#ddd, #3a3a3a);
         background: light-dark(#fafafa, #161616);
         color: light-dark(#333, #ccc);
       }
@@ -1194,9 +1196,9 @@
         font-weight: 500;
         text-transform: uppercase;
         letter-spacing: 0.02em;
-        background: light-dark(#f0f0f0, #313244);
+        background: light-dark(#f0f0f0, #3a3a3a);
         color: light-dark(#666, #888);
-        border: 1px solid light-dark(#e0e0e0, #313244);
+        border: 1px solid light-dark(#e0e0e0, #3a3a3a);
       }
 
       .badge.high {
@@ -1244,7 +1246,7 @@
 
       .btn-resolve {
         color: light-dark(#666, #888);
-        border: 1px solid light-dark(#ddd, #313244);
+        border: 1px solid light-dark(#ddd, #3a3a3a);
         background: light-dark(#f5f5f5, #0d0d0d);
       }
 
@@ -1337,8 +1339,8 @@
         z-index: 1000;
       }
       .post-submit-card {
-        background: light-dark(#ffffff, #1e1e2e);
-        border: 1px solid light-dark(#d8d8d8, #313244);
+        background: light-dark(#ffffff, #1f1f1f);
+        border: 1px solid light-dark(#d8d8d8, #3a3a3a);
         border-radius: 8px;
         padding: 32px 40px;
         max-width: 480px;
@@ -1359,11 +1361,11 @@
       .post-submit-card kbd {
         display: inline-block;
         padding: 1px 6px;
-        border: 1px solid light-dark(#d8d8d8, #313244);
+        border: 1px solid light-dark(#d8d8d8, #3a3a3a);
         border-radius: 3px;
         font-family: ui-monospace, SFMono-Regular, monospace;
         font-size: 12px;
-        background: light-dark(#f5f5f5, #313244);
+        background: light-dark(#f5f5f5, #3a3a3a);
       }
 
       /* ── Jump highlight (temporary yellow on a diff line) ── */
