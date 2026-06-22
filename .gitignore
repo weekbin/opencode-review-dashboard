@@ -1,3 +1,7 @@
 node_modules/
 dist/
 .opencode
+.playwright-mcp/
+*.tmp
+# Test artifacts and screenshots are ephemeral; regenerate via e2e tests
+scripts/test-review-ui/*.png
