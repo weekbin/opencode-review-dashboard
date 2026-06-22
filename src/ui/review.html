@@ -48,6 +48,49 @@
         border-bottom: 1px solid light-dark(#e0e0e0, #222222);
       }
 
+      /* ── Top Navbar tabs ── */
+      .navbar-tabs {
+        position: sticky;
+        top: 50px;
+        z-index: 49;
+        display: flex;
+        gap: 4px;
+        padding: 0 20px;
+        background: light-dark(#ffffff, #111111);
+        border-bottom: 1px solid light-dark(#e0e0e0, #222222);
+      }
+      .navbar-tabs button {
+        all: unset;
+        cursor: pointer;
+        padding: 10px 14px;
+        font-size: 13px;
+        font-weight: 500;
+        color: light-dark(#666, #888);
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition:
+          color 120ms,
+          border-color 120ms;
+      }
+      .navbar-tabs button:hover {
+        color: light-dark(#222, #ddd);
+      }
+      .navbar-tabs button[aria-pressed="true"] {
+        color: light-dark(#111, #eee);
+        border-bottom-color: light-dark(#1d5a96, #95c1e8);
+      }
+      .navbar-count {
+        font-size: 10px;
+        font-weight: 700;
+        padding: 1px 6px;
+        border-radius: 9px;
+        background: light-dark(#d8e6f1, #1f3a55);
+        color: light-dark(#1d5a96, #95c1e8);
+      }
+
       .header-left {
         display: flex;
         align-items: center;
@@ -143,18 +186,34 @@
         box-shadow: 0 1px 2px light-dark(rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.3));
       }
 
-      /* ── Layout: sidebar + main ── */
+      /* ── Layout: panes ── */
       .layout {
         display: flex;
-        min-height: calc(100vh - 51px);
+        flex-direction: column;
+        height: calc(100vh - 91px);
+      }
+      .pane {
+        display: flex;
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+      }
+      .pane[hidden] {
+        display: none;
+      }
+      .pane-commits,
+      .pane-conversation {
+        flex-direction: column;
+        overflow-y: auto;
+        padding: 32px 0;
       }
 
       /* ── Left sidebar ── */
       .sidebar {
         position: sticky;
-        top: 51px;
+        top: 91px;
         width: var(--sidebar-width);
-        height: calc(100vh - 51px);
+        height: calc(100vh - 91px);
         flex-shrink: 0;
         overflow-y: auto;
         background: light-dark(#fafafa, #0e0e0e);
@@ -247,78 +306,213 @@
       .sidebar-tabs button:hover:not([aria-pressed="true"]) {
         color: light-dark(#333, #ccc);
       }
+      /* ── Commits pane cards ── */
       .commits-list {
-        padding: 8px 0;
+        max-width: 720px;
+        width: 100%;
+        margin: 0 auto;
+        padding: 0 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
       }
-      .commit-item {
-        padding: 8px 12px;
-        border-bottom: 1px solid light-dark(#eee, #1a1a1a);
-        font-size: 12px;
+      @media (min-width: 1200px) {
+        .commits-list {
+          max-width: none;
+          padding: 0 240px;
+        }
+      }
+      .commit-card {
+        border: 1px solid light-dark(#e0e0e0, #222);
+        border-radius: var(--radius);
+        background: light-dark(#fff, #111);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .commit-card-head {
+        padding: 18px 20px;
+        background: light-dark(#fafafa, #161616);
         cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
       }
-      .commit-item:hover {
+      .commit-card-head:hover {
         background: light-dark(#f0f0f0, #1a1a1a);
       }
-      .commit-msg {
-        font-weight: 500;
-        margin-bottom: 4px;
+      .commit-card-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      .commit-card-msg {
+        font-size: 15px;
+        font-weight: 600;
+        line-height: 1.5;
+        color: light-dark(#111, #eee);
+      }
+      .commit-card-meta {
+        font-size: 12px;
+        color: light-dark(#666, #888);
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .commit-sha {
+        font-family: "SF Mono", Monaco, Consolas, monospace;
+        cursor: pointer;
+        padding: 2px 7px;
+        border-radius: 3px;
+        background: light-dark(#eaeef2, #1e1e1e);
+      }
+      .commit-sha:hover {
+        background: light-dark(#dde3ea, #2a2a2a);
+      }
+      .commit-card-files {
+        display: flex;
+        flex-direction: column;
+        padding: 0 12px 12px;
+      }
+      .commit-card-files[data-collapsed] {
+        display: none;
+      }
+      .commit-file-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        font-size: 13px;
+        cursor: pointer;
+        border-radius: 4px;
+      }
+      .commit-file-row:hover {
+        background: light-dark(#f0f0f0, #1a1a1a);
+      }
+      .commit-file-name {
+        flex: 1;
+        min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
-      .commit-meta {
-        font-size: 11px;
-        color: light-dark(#888, #666);
+      .commit-file-stats {
         display: flex;
         gap: 8px;
+        font-size: 12px;
+        flex-shrink: 0;
       }
-      .commit-sha {
-        font-family: "SF Mono", Monaco, Consolas, monospace;
+      .commit-file-stats .sa {
+        color: light-dark(#1a7f37, #3fb950);
+      }
+      .commit-file-stats .sd {
+        color: light-dark(#cf222e, #f85149);
+      }
+      .commit-file-jump {
+        font-size: 11px;
+        padding: 2px 10px;
+        border-radius: 4px;
+        background: light-dark(#eaeef2, #1e1e1e);
+        color: light-dark(#1d5a96, #95c1e8);
+        flex-shrink: 0;
       }
       .conversation-list {
-        padding: 8px 0;
+        max-width: 720px;
+        width: 100%;
+        margin: 0 auto;
+        padding: 0 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      @media (min-width: 1200px) {
+        .conversation-list {
+          max-width: none;
+          padding: 0 240px;
+        }
+      }
+      .pane-toolbar {
+        max-width: 720px;
+        width: 100%;
+        margin: 0 auto 12px;
+        padding: 0 20px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+      }
+      @media (min-width: 1200px) {
+        .pane-toolbar {
+          max-width: none;
+          padding: 0 240px 12px;
+        }
+      }
+      .pane-toolbar .sidebar-mode {
+        text-transform: none;
+        letter-spacing: 0;
       }
       .conversation-item {
-        padding: 10px 12px;
-        border-bottom: 1px solid light-dark(#eee, #1a1a1a);
-        font-size: 12px;
-        border-left: 3px solid transparent;
-      }
-      .conversation-item[data-status="open"] {
-        border-left-color: light-dark(#4a90e2, #4a90e2);
+        padding: 18px 20px;
+        font-size: 13px;
+        border: 1px solid light-dark(#e0e0e0, #222);
+        border-left: 3px solid light-dark(#4a90e2, #4a90e2);
+        border-radius: var(--radius);
+        background: light-dark(#fff, #111);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
       }
       .conversation-item[data-status="resolved"] {
         border-left-color: light-dark(#2ea043, #2ea043);
-        opacity: 0.7;
+        opacity: 0.55;
       }
       .conversation-item[data-status="closed_auto"] {
-        border-left-color: light-dark(#888, #888);
-        opacity: 0.5;
+        border-left-color: light-dark(#d29922, #d29922);
+      }
+      .conversation-item[data-origin="new"] {
+        background: light-dark(#eef4fc, #0f1c2e);
       }
       .conversation-head {
         display: flex;
         justify-content: space-between;
         align-items: center;
+        gap: 12px;
+      }
+      .conversation-head-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+        min-width: 0;
+      }
+      .conversation-head-right {
+        display: flex;
+        align-items: center;
         gap: 6px;
-        margin-bottom: 4px;
+        flex-shrink: 0;
       }
       .conversation-file {
         font-family: "SF Mono", Monaco, Consolas, monospace;
-        font-size: 11px;
-        color: light-dark(#888, #666);
+        font-size: 12px;
+        color: light-dark(#1d5a96, #95c1e8);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        flex: 1;
-        min-width: 0;
+        cursor: pointer;
+        font-weight: 500;
+      }
+      .conversation-file:hover {
+        text-decoration: underline;
       }
       .conversation-status {
         font-size: 10px;
         text-transform: uppercase;
         letter-spacing: 0.04em;
-        padding: 1px 6px;
+        padding: 2px 7px;
         border-radius: 3px;
         flex-shrink: 0;
+        font-weight: 600;
       }
       .conversation-status[data-status="open"] {
         background: light-dark(#e8f1fb, #1a3a5e);
@@ -329,36 +523,61 @@
         color: light-dark(#1a6e2e, #7ee097);
       }
       .conversation-status[data-status="closed_auto"] {
-        background: light-dark(#eee, #2a2a2a);
-        color: light-dark(#666, #888);
+        background: light-dark(#fdf3dc, #3a2e0e);
+        color: light-dark(#7a5510, #d29922);
+      }
+      .conversation-subhead {
+        display: flex;
+        gap: 8px;
+        font-size: 11px;
+        color: light-dark(#888, #666);
+        align-items: center;
+      }
+      .conversation-subhead .badge-new {
+        background: light-dark(#4a90e2, #4a90e2);
+        color: #fff;
+        padding: 1px 6px;
+        border-radius: 3px;
+        font-weight: 600;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
       }
       .conversation-body {
-        margin: 4px 0;
-        line-height: 1.4;
+        line-height: 1.6;
         word-wrap: break-word;
+        white-space: pre-wrap;
       }
       .conversation-actions {
         display: flex;
-        gap: 4px;
-        margin-top: 6px;
+        gap: 6px;
+        padding-top: 4px;
+        border-top: 1px solid light-dark(#f0f0f0, #1e1e1e);
       }
       .conversation-actions button {
         all: unset;
         cursor: pointer;
         font-size: 11px;
-        padding: 2px 8px;
-        border-radius: 3px;
-        background: light-dark(#eee, #2a2a2a);
+        padding: 4px 12px;
+        border-radius: 4px;
+        background: light-dark(#f5f5f5, #1a1a1a);
         color: light-dark(#444, #ccc);
       }
       .conversation-actions button:hover {
-        background: light-dark(#ddd, #3a3a3a);
+        background: light-dark(#e8e8e8, #2a2a2a);
+      }
+      .conversation-actions button.primary {
+        background: light-dark(#1d5a96, #95c1e8);
+        color: #fff;
+      }
+      .conversation-actions button.primary:hover {
+        background: light-dark(#154a7a, #6da3d4);
       }
       .conversation-empty {
-        padding: 20px;
+        padding: 40px 20px;
         text-align: center;
         color: light-dark(#888, #666);
-        font-size: 12px;
+        font-size: 13px;
       }
       .sidebar-mode {
         display: flex;
@@ -473,6 +692,20 @@
       .sidebar-item[data-read] {
         opacity: 0.55;
       }
+      .sidebar-item[data-active] {
+        background: light-dark(#e8eef5, #1a2530);
+        box-shadow: inset 2px 0 0 0 light-dark(#1d5a96, #95c1e8);
+      }
+      .sidebar-item-file-comments {
+        flex: 0 0 auto;
+        font-size: 10px;
+        font-weight: 600;
+        padding: 0 5px;
+        border-radius: 3px;
+        background: light-dark(#eaeef2, #1e2a36);
+        color: light-dark(#1d5a96, #95c1e8);
+        line-height: 16px;
+      }
       .sidebar-reviewed {
         flex: 0 0 auto;
         font-size: 10px;
@@ -572,12 +805,16 @@
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 6px 10px;
+        height: 40px;
+        padding: 0 10px;
         cursor: pointer;
         user-select: none;
         background: light-dark(#fafafa, #161616);
         border-bottom: 1px solid light-dark(#e8e8e8, #1e1e1e);
         transition: background 100ms;
+        position: sticky;
+        top: 91px;
+        z-index: 5;
       }
 
       .card-header:hover {
@@ -728,6 +965,19 @@
       .drawer-toggle:hover {
         background: light-dark(#e8e8e8, #222);
         border-color: light-dark(#ccc, #383838);
+      }
+      .drawer-toggle[data-active] {
+        background: light-dark(#1d5a96, #4a90e2);
+        border-color: light-dark(#1d5a96, #4a90e2);
+        color: #fff;
+      }
+      .drawer-toggle[data-active]:hover {
+        background: light-dark(#154a7a, #3a7ec0);
+        border-color: light-dark(#154a7a, #3a7ec0);
+      }
+      .drawer-toggle[data-active] .count {
+        background: rgba(255, 255, 255, 0.25);
+        color: #fff;
       }
 
       .drawer-toggle .count {
@@ -1123,6 +1373,19 @@
         font-size: 12px;
         background: light-dark(#f5f5f5, #1a1a1a);
       }
+
+      /* ── Jump highlight (temporary yellow on a diff line) ── */
+      @keyframes jump-highlight {
+        0% {
+          background-color: light-dark(rgba(255, 220, 80, 0.7), rgba(255, 220, 80, 0.45));
+        }
+        100% {
+          background-color: transparent;
+        }
+      }
+      .jump-highlight {
+        animation: jump-highlight 2s ease-out forwards;
+      }
     </style>
   </head>
   <body>
@@ -1159,60 +1422,59 @@
       </div>
     </header>
 
+    <nav class="navbar-tabs" id="navbar-tabs">
+      <button data-tab="files" aria-pressed="true" title="Files changed">
+        Files changed
+        <span class="navbar-count" id="files-count" hidden>0</span>
+      </button>
+      <button data-tab="commits" aria-pressed="false" title="Commits in this review">
+        Commits
+        <span class="navbar-count" id="commits-count" hidden>0</span>
+      </button>
+      <button data-tab="conversation" aria-pressed="false" title="Conversation (all findings)">
+        Conversation
+        <span class="navbar-count" id="conversation-count" hidden>0</span>
+      </button>
+    </nav>
+
     <div class="layout">
-      <nav class="sidebar" id="sidebar">
-        <div class="sidebar-tabs" id="sidebar-tabs">
-          <button data-tab="files" aria-pressed="true" title="Files changed">Files changed</button>
-          <button data-tab="commits" aria-pressed="false" title="Commits in this review">
-            Commits
-          </button>
-          <button data-tab="conversation" aria-pressed="false" title="Conversation (all findings)">
-            Conversation
-          </button>
-        </div>
-        <div class="sidebar-header" data-tab-header="files">
-          <span id="sidebar-header-label">Files changed</span>
-          <span class="sidebar-count" id="files-count" hidden>0</span>
-          <div class="sidebar-toolbar" id="sidebar-toolbar-files">
+      <div class="pane pane-files" data-pane="files">
+        <nav class="sidebar" id="sidebar">
+          <div class="sidebar-header">
             <div class="sidebar-mode" id="sidebar-mode">
               <button data-mode="tree" aria-pressed="true" title="Tree view">Tree</button>
               <button data-mode="flat" aria-pressed="false" title="Flat list">Flat</button>
             </div>
           </div>
+          <div class="sidebar-list" id="file-list"></div>
+        </nav>
+        <div
+          class="sidebar-resizer"
+          id="sidebar-resizer"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize sidebar"
+          tabindex="0"
+        ></div>
+        <div class="main">
+          <main id="diffs"></main>
         </div>
-        <div class="sidebar-header" data-tab-header="commits" hidden>
-          <span>Commits</span>
-          <span class="sidebar-count" id="commits-count" hidden>0</span>
-          <div class="sidebar-toolbar" id="sidebar-toolbar-commits"></div>
-        </div>
-        <div class="sidebar-header" data-tab-header="conversation" hidden>
-          <span>Conversation</span>
-          <span class="sidebar-count" id="conversation-count" hidden>0</span>
-          <div class="sidebar-toolbar" id="sidebar-toolbar-conversation">
-            <div class="sidebar-mode" id="conversation-filter">
-              <button data-filter="open" aria-pressed="true" title="Show only unresolved">
-                Unresolved
-              </button>
-              <button data-filter="all" aria-pressed="false" title="Show all including resolved">
-                All
-              </button>
-            </div>
+      </div>
+      <div class="pane pane-commits" data-pane="commits" hidden>
+        <div class="commits-list" id="commits-list"></div>
+      </div>
+      <div class="pane pane-conversation" data-pane="conversation" hidden>
+        <div class="pane-toolbar">
+          <div class="sidebar-mode" id="conversation-filter">
+            <button data-filter="open" aria-pressed="true" title="Show only unresolved">
+              Unresolved
+            </button>
+            <button data-filter="all" aria-pressed="false" title="Show all including resolved">
+              All
+            </button>
           </div>
         </div>
-        <div class="sidebar-list" id="file-list"></div>
-        <div class="commits-list" id="commits-list" hidden></div>
-        <div class="conversation-list" id="conversation-list" hidden></div>
-      </nav>
-      <div
-        class="sidebar-resizer"
-        id="sidebar-resizer"
-        role="separator"
-        aria-orientation="vertical"
-        aria-label="Resize sidebar"
-        tabindex="0"
-      ></div>
-      <div class="main">
-        <main id="diffs"></main>
+        <div class="conversation-list" id="conversation-list"></div>
       </div>
     </div>
 

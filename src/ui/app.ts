@@ -39,6 +39,8 @@ type CommitInfo = {
   message: string;
   author: string;
   date: string;
+  round?: number;
+  files: string[];
 };
 
 type Launch = {
@@ -94,6 +96,7 @@ const SIDEBAR_WIDTH_KEY = "diff-review:sidebar-width";
 const THEME_KEY = "diff-review:theme-mode";
 const LAYOUT_KEY = "diff-review:diff-layout";
 const CONV_FILTER_KEY = "diff-review:conversation-filter";
+const ACTIVE_TAB_KEY = "diff-review:active-tab";
 
 function readStored<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   try {
@@ -206,7 +209,11 @@ const state = {
   themeMode: readStored<ThemeMode>(THEME_KEY, ["light", "dark", "auto"], "dark"),
   diffLayout: readStored<DiffLayout>(LAYOUT_KEY, ["unified", "split"], "split"),
   sidebarMode: readStored<SidebarMode>(SIDEBAR_KEY, ["tree", "flat"], "tree"),
-  sidebarTab: "files" as "files" | "commits" | "conversation",
+  activeTab: readStored<"files" | "commits" | "conversation">(
+    ACTIVE_TAB_KEY,
+    ["files", "commits", "conversation"],
+    "files",
+  ),
   conversationFilter: readStored<"open" | "all">(CONV_FILTER_KEY, ["open", "all"], "open"),
   drawerOpen: false,
   pendingFileFinding: null as string | null,
@@ -288,7 +295,7 @@ function setSidebarMode(mode: SidebarMode) {
   state.sidebarMode = mode;
   applySidebarMode();
   writeStored(SIDEBAR_KEY, mode);
-  renderSidebar();
+  renderActivePane();
 }
 
 sidebarMode.addEventListener("click", (event) => {
@@ -297,27 +304,36 @@ sidebarMode.addEventListener("click", (event) => {
   setSidebarMode(btn.dataset.mode as SidebarMode);
 });
 
-const sidebarTabs = document.querySelector("#sidebar-tabs") as HTMLDivElement;
+const navbarTabs = document.querySelector("#navbar-tabs") as HTMLDivElement;
 
-function applySidebarTab() {
-  for (const btn of sidebarTabs.querySelectorAll("button")) {
-    btn.setAttribute("aria-pressed", btn.dataset.tab === state.sidebarTab ? "true" : "false");
+function applyActiveTab() {
+  for (const btn of navbarTabs.querySelectorAll("button")) {
+    btn.setAttribute("aria-pressed", btn.dataset.tab === state.activeTab ? "true" : "false");
+  }
+  for (const pane of document.querySelectorAll("[data-pane]")) {
+    (pane as HTMLElement).hidden = (pane as HTMLElement).dataset.pane !== state.activeTab;
   }
 }
 
-function setSidebarTab(tab: "files" | "commits" | "conversation") {
-  if (state.sidebarTab === tab) return;
-  state.sidebarTab = tab;
-  applySidebarTab();
+function setActiveTab(tab: "files" | "commits" | "conversation") {
+  if (state.activeTab === tab) {
+    renderActivePane();
+    return;
+  }
+  state.activeTab = tab;
+  cancelSidebarDrag();
+  if (state.drawerOpen) closeDrawer();
+  applyActiveTab();
+  writeStored(ACTIVE_TAB_KEY, tab);
   updateTabCounts();
-  renderSidebar();
+  renderActivePane();
 }
 
-sidebarTabs.addEventListener("click", (event) => {
+navbarTabs.addEventListener("click", (event) => {
   const btn = (event.target as HTMLElement).closest("button");
   if (!btn) return;
   const tab = btn.dataset.tab as "files" | "commits" | "conversation" | undefined;
-  if (tab) setSidebarTab(tab);
+  if (tab) setActiveTab(tab);
 });
 
 function setConversationFilter(filter: "open" | "all") {
@@ -325,7 +341,8 @@ function setConversationFilter(filter: "open" | "all") {
   state.conversationFilter = filter;
   writeStored(CONV_FILTER_KEY, filter);
   applyConversationFilter();
-  renderSidebar();
+  applyActiveTab();
+  renderActivePane();
 }
 
 function applyConversationFilter() {
@@ -352,6 +369,7 @@ if (conversationFilter) {
 // ── Sidebar resize ──
 const SIDEBAR_MIN = 160;
 const SIDEBAR_MAX_RATIO = 0.8;
+const sidebarEl = document.querySelector("#sidebar") as HTMLElement;
 const sidebarResizer = document.querySelector("#sidebar-resizer") as HTMLDivElement;
 let sidebarWidth = readSidebarWidth();
 
@@ -380,20 +398,28 @@ function applySidebarWidth(width: number): void {
 
 applySidebarWidth(clampSidebarWidth(sidebarWidth));
 
-let resizePending = false;
-function scheduleSidebarWidthUpdate(width: number): void {
-  if (resizePending) return;
-  resizePending = true;
-  requestAnimationFrame(() => {
-    resizePending = false;
-    applySidebarWidth(clampSidebarWidth(width));
-  });
+function cancelSidebarDrag() {
+  if (resizerDragging) {
+    resizerDragging = false;
+    sidebarResizer.classList.remove("dragging");
+  }
+  if (resizeRaf !== null) {
+    cancelAnimationFrame(resizeRaf);
+    resizeRaf = null;
+  }
 }
+
+let resizeRaf: number | null = null;
+let resizerDragging = false;
+let dragPreviewWidth = 0;
+let activeScrollSpyFile: string | null = null;
+let scrollSpyObserver: IntersectionObserver | null = null;
 
 sidebarResizer.addEventListener("pointerdown", (event: PointerEvent) => {
   event.preventDefault();
   sidebarResizer.setPointerCapture(event.pointerId);
   sidebarResizer.setAttribute("data-dragging", "");
+  resizerDragging = true;
   const startX = event.clientX;
   const startWidth = sidebarWidth;
   const body = document.body;
@@ -404,7 +430,9 @@ sidebarResizer.addEventListener("pointerdown", (event: PointerEvent) => {
 
   const onMove = (e: PointerEvent) => {
     const delta = e.clientX - startX;
-    scheduleSidebarWidthUpdate(startWidth + delta);
+    const target = clampSidebarWidth(startWidth + delta);
+    dragPreviewWidth = target;
+    sidebarEl.style.width = `${target}px`;
   };
   const onUp = (e: PointerEvent) => {
     sidebarResizer.releasePointerCapture(e.pointerId);
@@ -414,6 +442,9 @@ sidebarResizer.addEventListener("pointerdown", (event: PointerEvent) => {
     sidebarResizer.removeEventListener("pointermove", onMove);
     sidebarResizer.removeEventListener("pointerup", onUp);
     sidebarResizer.removeEventListener("pointercancel", onUp);
+    resizerDragging = false;
+    sidebarEl.style.width = "";
+    applySidebarWidth(dragPreviewWidth);
     try {
       localStorage.setItem(SIDEBAR_WIDTH_KEY, String(sidebarWidth));
     } catch {
@@ -458,18 +489,24 @@ function openDrawer() {
   state.drawerOpen = true;
   drawer.setAttribute("data-open", "");
   drawerBackdrop.setAttribute("data-open", "");
+  drawerToggle.setAttribute("data-active", "");
 }
 
 function closeDrawer() {
   state.drawerOpen = false;
   drawer.removeAttribute("data-open");
   drawerBackdrop.removeAttribute("data-open");
+  drawerToggle.removeAttribute("data-active");
   state.pendingFileFinding = null;
 }
 
 drawerToggle.addEventListener("click", () => {
-  if (state.drawerOpen) closeDrawer();
-  else openDrawer();
+  if (state.drawerOpen) {
+    closeDrawer();
+  } else {
+    if (state.activeTab !== "files") setActiveTab("files");
+    openDrawer();
+  }
 });
 drawerBackdrop.addEventListener("click", closeDrawer);
 drawerClose.addEventListener("click", closeDrawer);
@@ -514,6 +551,13 @@ function all() {
   ];
 }
 
+function countFileLevelFindings(path: string): number {
+  let n = 0;
+  for (const item of state.fresh) if (item.file === path && item.kind === "file") n++;
+  for (const item of state.existing) if (item.file === path && item.kind === "file") n++;
+  return n;
+}
+
 function updateFindingCount() {
   const count = all().length;
   findingCount.textContent = String(count);
@@ -526,7 +570,7 @@ function updateTabCounts() {
 
   const fileCount = state.data?.files.length ?? 0;
   const commitCount = state.data?.commits?.length ?? 0;
-  const openConv = all().filter((f) => f.origin === "new" || f.status === "open").length;
+  const totalConv = all().length;
 
   if (filesEl) {
     filesEl.textContent = String(fileCount);
@@ -537,8 +581,8 @@ function updateTabCounts() {
     commitsEl.hidden = commitCount === 0;
   }
   if (convEl) {
-    convEl.textContent = String(openConv);
-    convEl.hidden = openConv === 0;
+    convEl.textContent = String(totalConv);
+    convEl.hidden = totalConv === 0;
   }
 }
 
@@ -868,6 +912,23 @@ function basename(path: string) {
   return path.split("/").pop() || path;
 }
 
+function typeIconSvg(path: string): string {
+  return fileIcon(path);
+}
+
+function jumpToFile(filePath: string) {
+  setActiveTab("files");
+  state.collapsed.delete(filePath);
+  applyFileState(filePath);
+  const orderedIndex = getOrderedFiles().findIndex((f) => f.path === filePath);
+  if (orderedIndex < 0) return;
+  requestAnimationFrame(() => {
+    document
+      .querySelector(`#file-${orderedIndex}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
 type TreeNode = {
   name: string;
   path: string;
@@ -915,6 +976,13 @@ function makeSidebarItem(file: FileEntry, index: number, extraClass = ""): HTMLB
   name.textContent = basename(file.path);
   name.title = file.path;
 
+  const fileComments = document.createElement("span");
+  fileComments.className = "sidebar-item-file-comments";
+  fileComments.title = "File-level findings";
+  const fileCount = countFileLevelFindings(file.path);
+  fileComments.textContent = `📄 ${fileCount}`;
+  if (fileCount === 0) fileComments.style.display = "none";
+
   const reviewed = document.createElement("span");
   reviewed.className = "sidebar-reviewed";
   reviewed.textContent = "✓ reviewed";
@@ -930,6 +998,7 @@ function makeSidebarItem(file: FileEntry, index: number, extraClass = ""): HTMLB
   item.appendChild(dot);
   item.appendChild(typeIcon);
   item.appendChild(name);
+  item.appendChild(fileComments);
   item.appendChild(reviewed);
   item.appendChild(stats);
 
@@ -1024,13 +1093,45 @@ function renderTreeSidebar(root: TreeNode) {
   }
 }
 
-// Returns the file list in the order they should appear in BOTH the
-// sidebar and the right diff panel, so the two views stay in sync.
 function getOrderedFiles(): FileEntry[] {
   const all = state.data?.files ?? [];
-  if (state.sidebarMode === "flat") return all;
-  // tree mode: group by directory and sort by full path
-  return [...all].sort((a, b) => a.path.localeCompare(b.path));
+  return depthFirstOrder(all);
+}
+
+function depthFirstOrder(files: FileEntry[]): FileEntry[] {
+  const byPath = new Map<string, FileEntry>();
+  for (const f of files) byPath.set(f.path, f);
+  const childrenOf = (dir: string): FileEntry[] => {
+    const prefix = dir ? `${dir}/` : "";
+    return files
+      .filter((f) => f.path.startsWith(prefix) && f.path.slice(prefix.length).indexOf("/") === -1)
+      .sort((a, b) => a.path.localeCompare(b.path));
+  };
+  const dirsOf = (dir: string): string[] => {
+    const prefix = dir ? `${dir}/` : "";
+    const out = new Set<string>();
+    for (const f of files) {
+      const rest = f.path.startsWith(prefix) ? f.path.slice(prefix.length) : null;
+      if (rest && rest.indexOf("/") >= 0) {
+        const head = rest.split("/")[0];
+        out.add(`${prefix}${head}`);
+      }
+    }
+    return [...out].sort((a, b) => a.localeCompare(b));
+  };
+
+  const result: FileEntry[] = [];
+  const visit = (dir: string) => {
+    for (const f of childrenOf(dir)) {
+      if (byPath.has(f.path)) {
+        result.push(f);
+        byPath.delete(f.path);
+      }
+    }
+    for (const sub of dirsOf(dir)) visit(sub);
+  };
+  visit("");
+  return result;
 }
 
 function countFiles(node: TreeNode): number {
@@ -1039,40 +1140,68 @@ function countFiles(node: TreeNode): number {
   return n;
 }
 
-function renderSidebar() {
-  const commitsListRoot = document.querySelector("#commits-list") as HTMLDivElement;
-  const conversationListRoot = document.querySelector("#conversation-list") as HTMLDivElement;
-  fileListRoot.innerHTML = "";
-  commitsListRoot.innerHTML = "";
-  conversationListRoot.innerHTML = "";
-  state.sidebarItems.clear();
-
-  const headers = document.querySelectorAll("[data-tab-header]");
-  for (const h of headers) {
-    (h as HTMLElement).hidden = (h as HTMLElement).dataset.tabHeader !== state.sidebarTab;
+function renderActivePane() {
+  if (state.activeTab === "files") {
+    renderFilesPane();
+    setupScrollSpy();
+  } else {
+    teardownScrollSpy();
   }
-
+  if (state.activeTab === "commits") {
+    renderCommitsPane();
+  } else if (state.activeTab === "conversation") {
+    renderConversationPane();
+  }
   updateTabCounts();
+}
 
-  if (state.sidebarTab === "commits") {
-    fileListRoot.hidden = true;
-    commitsListRoot.hidden = false;
-    conversationListRoot.hidden = true;
-    renderCommitsPanel(commitsListRoot);
-    return;
+function setupScrollSpy() {
+  teardownScrollSpy();
+  activeScrollSpyFile = null;
+  scrollSpyObserver = new IntersectionObserver(
+    (entries) => {
+      let bestEntry: IntersectionObserverEntry | null = null;
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        if (!bestEntry || entry.intersectionRatio > bestEntry.intersectionRatio) {
+          bestEntry = entry;
+        }
+      }
+      if (!bestEntry) return;
+      const file = (bestEntry.target as HTMLElement).dataset.file;
+      if (!file || file === activeScrollSpyFile) return;
+      setActiveFileInSidebar(file);
+    },
+    {
+      // Trigger band between 30% and 50% from the top: when a card's
+      // top crosses this band, it becomes the active sidebar item.
+      rootMargin: "-30% 0px -50% 0px",
+      threshold: [0, 0.25, 0.5, 0.75, 1],
+    },
+  );
+  for (const card of diffsRoot.querySelectorAll<HTMLElement>(".card[data-file]")) {
+    scrollSpyObserver.observe(card);
   }
+}
 
-  if (state.sidebarTab === "conversation") {
-    fileListRoot.hidden = true;
-    commitsListRoot.hidden = true;
-    conversationListRoot.hidden = false;
-    renderConversationPanel(conversationListRoot);
-    return;
+function teardownScrollSpy() {
+  if (scrollSpyObserver) {
+    scrollSpyObserver.disconnect();
+    scrollSpyObserver = null;
   }
+}
 
-  fileListRoot.hidden = false;
-  commitsListRoot.hidden = true;
-  conversationListRoot.hidden = true;
+function setActiveFileInSidebar(file: string) {
+  activeScrollSpyFile = file;
+  for (const [path, item] of state.sidebarItems) {
+    if (path === file) item.setAttribute("data-active", "");
+    else item.removeAttribute("data-active");
+  }
+}
+
+function renderFilesPane() {
+  fileListRoot.innerHTML = "";
+  state.sidebarItems.clear();
 
   const files = getOrderedFiles();
   if (state.sidebarMode === "tree") {
@@ -1082,29 +1211,130 @@ function renderSidebar() {
   }
 }
 
+function renderCommitsPane() {
+  const commitsListRoot = document.querySelector("#commits-list") as HTMLDivElement;
+  commitsListRoot.innerHTML = "";
+  renderCommitsPanel(commitsListRoot);
+}
+
+function renderConversationPane() {
+  const conversationListRoot = document.querySelector("#conversation-list") as HTMLDivElement;
+  conversationListRoot.innerHTML = "";
+  renderConversationPanel(conversationListRoot);
+}
+
 function renderCommitsPanel(root: HTMLElement) {
   const commits = state.data?.commits ?? [];
   if (commits.length === 0) {
-    root.textContent = "No commits in range.";
+    const empty = document.createElement("div");
+    empty.className = "conversation-empty";
+    empty.textContent = "No commits in range.";
+    root.appendChild(empty);
     return;
   }
   for (const commit of commits) {
-    const item = document.createElement("div");
-    item.className = "commit-item";
-    item.title = commit.message;
-    item.innerHTML = `
-      <div class="commit-msg">${escapeHtml(commit.message)}</div>
-      <div class="commit-meta">
-        <span class="commit-sha">${escapeHtml(commit.short_sha)}</span>
-        <span>${escapeHtml(commit.author)}</span>
-        <span>${escapeHtml(commit.date)}</span>
-      </div>
-    `;
-    item.addEventListener("click", () => {
+    const card = document.createElement("div");
+    card.className = "commit-card";
+
+    const head = document.createElement("div");
+    head.className = "commit-card-head";
+
+    const title = document.createElement("div");
+    title.className = "commit-card-title";
+
+    const msg = document.createElement("div");
+    msg.className = "commit-card-msg";
+    msg.textContent = commit.message;
+
+    const roundBadge = document.createElement("span");
+    roundBadge.className = "navbar-count";
+    roundBadge.textContent = commit.round != null ? `Round ${commit.round}` : "";
+
+    title.appendChild(msg);
+    if (commit.round != null) title.appendChild(roundBadge);
+
+    const meta = document.createElement("div");
+    meta.className = "commit-card-meta";
+
+    const sha = document.createElement("span");
+    sha.className = "commit-sha";
+    sha.textContent = commit.short_sha;
+    sha.title = `Click to copy full SHA\n${commit.sha}`;
+    sha.addEventListener("click", (e) => {
+      e.stopPropagation();
       navigator.clipboard.writeText(commit.sha).catch(() => undefined);
       setStatus(`Copied ${commit.short_sha}`);
     });
-    root.appendChild(item);
+
+    const author = document.createElement("span");
+    author.textContent = commit.author;
+
+    const date = document.createElement("span");
+    date.textContent = commit.date;
+
+    meta.appendChild(sha);
+    meta.appendChild(author);
+    meta.appendChild(date);
+
+    head.appendChild(title);
+    head.appendChild(meta);
+
+    const filesContainer = document.createElement("div");
+    filesContainer.className = "commit-card-files";
+    for (const filePath of commit.files) {
+      const fileEntry = state.data?.files.find((f) => f.path === filePath);
+      if (!fileEntry) continue;
+      const row = document.createElement("div");
+      row.className = "commit-file-row";
+      row.title = `Jump to ${filePath} in Files tab`;
+
+      const fileIcon = document.createElement("span");
+      fileIcon.className = "sidebar-type-icon";
+      fileIcon.innerHTML = typeIconSvg(filePath);
+      fileIcon.setAttribute("aria-hidden", "true");
+
+      const name = document.createElement("span");
+      name.className = "commit-file-name";
+      name.textContent = filePath;
+      name.title = filePath;
+
+      const stats = document.createElement("span");
+      stats.className = "commit-file-stats";
+      if (fileEntry.additions) {
+        const a = document.createElement("span");
+        a.className = "sa";
+        a.textContent = `+${fileEntry.additions}`;
+        stats.appendChild(a);
+      }
+      if (fileEntry.deletions) {
+        const d = document.createElement("span");
+        d.className = "sd";
+        d.textContent = `-${fileEntry.deletions}`;
+        stats.appendChild(d);
+      }
+
+      const jump = document.createElement("span");
+      jump.className = "commit-file-jump";
+      jump.textContent = "Jump";
+
+      row.appendChild(fileIcon);
+      row.appendChild(name);
+      row.appendChild(stats);
+      row.appendChild(jump);
+      row.addEventListener("click", () => {
+        jumpToFile(filePath);
+      });
+      filesContainer.appendChild(row);
+    }
+    head.addEventListener("click", () => {
+      const isCollapsed = filesContainer.hasAttribute("data-collapsed");
+      if (isCollapsed) filesContainer.removeAttribute("data-collapsed");
+      else filesContainer.setAttribute("data-collapsed", "");
+    });
+
+    card.appendChild(head);
+    card.appendChild(filesContainer);
+    root.appendChild(card);
   }
 }
 
@@ -1131,6 +1361,22 @@ type ConversationEntry = {
   origin: "existing" | "new";
   created_at: number;
 };
+
+function formatRelativeTime(ts: number): string {
+  if (!ts) return "";
+  const now = Date.now();
+  const diff = now - ts;
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const d = new Date(ts);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
 
 function renderConversationPanel(root: HTMLElement) {
   const entries: ConversationEntry[] = [
@@ -1190,21 +1436,108 @@ function renderConversationPanel(root: HTMLElement) {
     const head = document.createElement("div");
     head.className = "conversation-head";
 
+    const headLeft = document.createElement("div");
+    headLeft.className = "conversation-head-left";
+
     const fileLabel = document.createElement("span");
     fileLabel.className = "conversation-file";
     const loc =
-      entry.kind === "file" ? entry.file : `${entry.file}:${entry.start_line}-${entry.end_line}`;
+      entry.kind === "file"
+        ? entry.file
+        : entry.start_line === entry.end_line
+          ? `${entry.file}:${entry.start_line}`
+          : `${entry.file}:${entry.start_line}-${entry.end_line}`;
     fileLabel.textContent = loc;
     fileLabel.title = loc;
+    fileLabel.addEventListener("click", (event) => {
+      event.stopPropagation();
+      jumpToFile(entry.file);
+      requestAnimationFrame(() => {
+        if (entry.start_line) flashLine(entry.file, entry.start_line, entry.end_line);
+      });
+    });
+    headLeft.appendChild(fileLabel);
 
     const statusBadge = document.createElement("span");
     statusBadge.className = "conversation-status";
     statusBadge.dataset.status = entry.status;
-    statusBadge.textContent = entry.status === "closed_auto" ? "closed" : entry.status;
+    statusBadge.textContent = entry.status === "closed_auto" ? "stale" : entry.status;
+    headLeft.appendChild(statusBadge);
 
-    head.appendChild(fileLabel);
-    head.appendChild(statusBadge);
+    head.appendChild(headLeft);
     item.appendChild(head);
+
+    const actions = document.createElement("div");
+    actions.className = "conversation-actions";
+
+    const isFresh = entry.origin === "new";
+    const isOpen = entry.status === "open";
+    const isStale = entry.status === "closed_auto";
+    const isResolved = entry.status === "resolved";
+
+    if (isFresh) {
+      const removeBtn = document.createElement("button");
+      removeBtn.className = "primary";
+      removeBtn.textContent = "Remove";
+      removeBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        state.fresh = state.fresh.filter((item) => item.id !== entry.id);
+        renderConversationPane();
+        renderFindings();
+        syncAll();
+        scheduleSave();
+      });
+      actions.appendChild(removeBtn);
+    } else if (isOpen) {
+      const resolveBtn = document.createElement("button");
+      resolveBtn.className = "primary";
+      resolveBtn.textContent = "Resolve";
+      resolveBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        resolveFinding(entry.id);
+      });
+      actions.appendChild(resolveBtn);
+    } else if (isResolved && !isStale) {
+      const reopenBtn = document.createElement("button");
+      reopenBtn.className = "primary";
+      reopenBtn.textContent = "Reopen";
+      reopenBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        reopenFinding(entry.id);
+      });
+      actions.appendChild(reopenBtn);
+    }
+
+    const jumpBtn = document.createElement("button");
+    jumpBtn.textContent = "Jump";
+    jumpBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      jumpToFile(entry.file);
+      requestAnimationFrame(() => {
+        if (entry.start_line) flashLine(entry.file, entry.start_line, entry.end_line);
+      });
+    });
+    actions.appendChild(jumpBtn);
+    item.appendChild(actions);
+
+    const subhead = document.createElement("div");
+    subhead.className = "conversation-subhead";
+    if (entry.origin === "new") {
+      const newBadge = document.createElement("span");
+      newBadge.className = "badge-new";
+      newBadge.textContent = "new";
+      subhead.appendChild(newBadge);
+    } else {
+      const round = document.createElement("span");
+      round.textContent = `Round ${entry.round}`;
+      subhead.appendChild(round);
+    }
+    if (entry.created_at) {
+      const time = document.createElement("span");
+      time.textContent = `· ${formatRelativeTime(entry.created_at)}`;
+      subhead.appendChild(time);
+    }
+    item.appendChild(subhead);
 
     const badgesRow = document.createElement("div");
     badgesRow.className = "finding-badges";
@@ -1212,9 +1545,6 @@ function renderConversationPanel(root: HTMLElement) {
       `<span class="badge ${entry.severity}">${escapeHtml(entry.severity)}</span>`,
       `<span class="badge">${escapeHtml(entry.category)}</span>`,
       `<span class="badge">${escapeHtml(entry.kind ?? "line")}</span>`,
-      entry.origin === "new"
-        ? `<span class="badge">new</span>`
-        : `<span class="badge">round ${entry.round}</span>`,
     ].join("");
     item.appendChild(badgesRow);
 
@@ -1222,57 +1552,6 @@ function renderConversationPanel(root: HTMLElement) {
     body.className = "conversation-body";
     body.textContent = entry.comment;
     item.appendChild(body);
-
-    const actions = document.createElement("div");
-    actions.className = "conversation-actions";
-    if (entry.origin === "existing" && entry.status === "open") {
-      const resolveBtn = document.createElement("button");
-      resolveBtn.textContent = "Resolve";
-      resolveBtn.addEventListener("click", (event) => {
-        event.stopPropagation();
-        resolveFinding(entry.id);
-      });
-      actions.appendChild(resolveBtn);
-    }
-    if (entry.origin === "new") {
-      const removeBtn = document.createElement("button");
-      removeBtn.textContent = "Remove";
-      removeBtn.addEventListener("click", (event) => {
-        event.stopPropagation();
-        state.fresh = state.fresh.filter((item) => item.id !== entry.id);
-        renderConversationPanel(root);
-        renderFindings();
-        syncAll();
-        scheduleSave();
-      });
-      actions.appendChild(removeBtn);
-    }
-    const jumpBtn = document.createElement("button");
-    jumpBtn.textContent = "Jump";
-    jumpBtn.addEventListener("click", (event) => {
-      event.stopPropagation();
-      jumpToFinding({
-        file: entry.file,
-        side: "additions",
-        start_line: entry.start_line,
-        end_line: entry.end_line,
-        kind: entry.kind,
-      });
-      setSidebarTab("files");
-    });
-    actions.appendChild(jumpBtn);
-    item.appendChild(actions);
-
-    item.addEventListener("click", () => {
-      jumpToFinding({
-        file: entry.file,
-        side: "additions",
-        start_line: entry.start_line,
-        end_line: entry.end_line,
-        kind: entry.kind,
-      });
-      setSidebarTab("files");
-    });
 
     root.appendChild(item);
   }
@@ -1292,6 +1571,7 @@ function renderDiffPanel() {
     const card = document.createElement("section");
     card.className = "card";
     card.id = `file-${index}`;
+    card.dataset.file = file.path;
 
     // ── Card header (always visible) ──
     const header = document.createElement("div");
@@ -1414,8 +1694,55 @@ async function resolveFinding(id: string) {
 
   state.existing = state.existing.filter((item) => item.id !== id);
   renderFindings();
+  renderConversationPane();
   syncAll();
   setStatus("Finding resolved");
+}
+
+async function reopenFinding(id: string) {
+  const response = await fetch(endpoint("/reopen"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ finding_id: id }),
+  }).catch(() => undefined);
+
+  if (!response?.ok) {
+    const data = await response?.json().catch(() => undefined);
+    setStatus(data?.error ?? "Cannot reopen (code may have changed)", true);
+    return;
+  }
+
+  const item = state.existing.find((f) => f.id === id);
+  if (item) {
+    item.status = "open";
+  }
+  renderFindings();
+  renderConversationPane();
+  syncAll();
+  setStatus("Finding reopened");
+}
+
+function flashLine(filePath: string, startLine: number, endLine: number) {
+  const file = state.data?.files.find((f) => f.path === filePath);
+  if (!file) return;
+  const view = state.views.get(filePath);
+  if (!view) return;
+  // Use the view's internal rendering to find the line element. The @pierre/diffs
+  // library exposes a `getHoveredLine` and a rendered DOM; we look for the
+  // closest line container by line number.
+  const cards = diffsRoot.querySelectorAll<HTMLElement>(".card");
+  for (const card of cards) {
+    const lines = card.querySelectorAll<HTMLElement>("[data-line-number]");
+    for (const el of lines) {
+      const ln = Number(el.dataset.lineNumber);
+      if (ln >= startLine && ln <= endLine) {
+        el.classList.add("jump-highlight");
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        setTimeout(() => el.classList.remove("jump-highlight"), 2100);
+        return;
+      }
+    }
+  }
 }
 
 function renderFindings() {
@@ -1757,6 +2084,13 @@ function updateFileCommentsBadges() {
     const count = fileLevelFindings(file).length;
     badge.textContent = `📄 ${count}`;
   }
+  for (const [filePath, item] of state.sidebarItems) {
+    const badge = item.querySelector(".sidebar-item-file-comments") as HTMLElement | null;
+    if (!badge) continue;
+    const count = countFileLevelFindings(filePath);
+    badge.textContent = `📄 ${count}`;
+    badge.style.display = count === 0 ? "none" : "";
+  }
 }
 
 notesRoot.addEventListener("input", () => {
@@ -1817,7 +2151,7 @@ async function init() {
   scopeRoot.textContent = `${scope}${diff}${scopeLabel ? ` · ${scopeLabel}` : ""}`;
 
   fillOptions();
-  renderSidebar();
+  renderActivePane();
   renderDiffPanel();
   renderFindings();
   renderSelection();

@@ -77,6 +77,8 @@ type CommitInfo = {
   message: string;
   author: string;
   date: string;
+  round?: number;
+  files: string[];
 };
 
 type SourceFile = {
@@ -1022,11 +1024,13 @@ async function collectBase(root: string, dir: string, base: string) {
 async function collectCommits(root: string, base: string | undefined): Promise<CommitInfo[]> {
   const range = base && base !== "working_tree" ? `${base}..HEAD` : "HEAD~20..HEAD";
   const sep = "\x1f";
+  const record = "\x1e";
   const format = ["%H", "%h", "%s", "%an", "%ad"].join(sep) + "%d";
   const result = await run(root, [
     "git",
     "log",
-    `--pretty=format:${format}`,
+    `--pretty=format:${record}${format}`,
+    "--name-only",
     "--date=short",
     "-n",
     "50",
@@ -1035,16 +1039,23 @@ async function collectCommits(root: string, base: string | undefined): Promise<C
   if (!result.ok) return [];
 
   const commits: CommitInfo[] = [];
-  for (const line of result.stdout.split("\n")) {
-    if (!line) continue;
-    const parts = line.split(sep);
+  for (const block of result.stdout.split(record)) {
+    if (!block.trim()) continue;
+    const lines = block.split("\n");
+    const head = lines[0] ?? "";
+    const parts = head.split(sep);
     if (!parts[0]) continue;
+    const files: string[] = [];
+    for (const fileLine of lines.slice(1)) {
+      if (fileLine.trim()) files.push(fileLine.trim());
+    }
     commits.push({
       sha: parts[0],
       short_sha: parts[1] ?? "",
       message: parts[2] ?? "",
       author: parts[3] ?? "",
       date: parts[4] ?? "",
+      files,
     });
   }
   return commits;
@@ -1189,26 +1200,35 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
             "  - Exclude `category: question` (clarification requests) from actionable items (do not auto-apply these).",
             "",
             "### Workflow Execution Rules",
-            "0. **Round Summary (must print FIRST, before any tool calls or edits)**:",
-            "   Right after the tool returns, ALWAYS print a short human-readable summary in this exact shape:",
+            "0. **Read Conversation History (do this BEFORE printing the round summary)**:",
+            "   The tool's `notes` and `findings[]` are only the CURRENT round. To understand the full conversation (every comment, every rejection, every follow-up across rounds), read `.opencode/reviews/<session>/state.json` directly. The session ID is in the `session_id` field of the tool's response (also exposed via your environment).",
+            "   Specifically:",
+            "   - Open `.opencode/reviews/<session>/state.json` and parse the `findings[]` array (every round's findings are stored there with their `round`, `comment`, `status`, `created_at`, `file`, `start_line`, etc.).",
+            "   - Note the prior round(s) of feedback, the user's earlier decisions and rejections, and the chronology of when each finding was raised vs. when it was resolved/stale.",
+            "   - Treat the current round's `notes` as the top of the stack (the user just wrote them), and treat prior findings+resolutions as the long-running thread that informs why the current state is the way it is.",
+            "   This step is mandatory when `state.json` exists (i.e. when `round > 1` or any prior finding exists). Do not skip it — the user expects you to remember the full conversation, not just the most recent round.",
+            "1. **Round Summary (must print AFTER reading history, before any tool calls or edits)**:",
+            "   Once you have read state.json, ALWAYS print a short human-readable summary in this exact shape:",
             "   ```",
             "   📋 Round N — {open_count} open finding(s) ({by_severity})",
             "   • notes: {summary of notes or '(none)'}",
             "   • actionable findings: {list of {severity}/{category}/{file}:{start_line} — short comment}",
+            "   • history context: {1-line summary of any relevant prior-round findings/rejections that inform this round}",
             "   ```",
-            "   This MUST be the first thing you output after parsing the JSON. Do not silently jump to edits. The user reads this summary to follow what is being done.",
-            "1. **Plan-First Rule**:",
+            "   This MUST be the first thing you output after parsing. Do not silently jump to edits. The user reads this summary to follow what is being done.",
+            "2. **Plan-First Rule**:",
             "   - Read all affected files associated with the diff once.",
             "   - Design a **unified fix plan** that addresses all actionable `notes` and `findings` together. Do NOT handle items one at a time (per-finding fixes lose context and produce inconsistent patches — the plan must cover all findings as a coherent change).",
-            "2. **Fix Application**: Apply the entire unified plan in a single batch via Edit calls.",
-            "3. **Validation**: After all fixes are applied, re-run the tool to confirm resolution of all actionable items.",
-            "4. **Closing Rule**: Only respond with `Round N: no actionable items, closing out.` if BOTH:",
+            "   - **Honor prior-round context**: if a previous round's finding was resolved and the user's notes this round align with it, your plan should make sure the prior resolution still holds. If the user rejected a previous fix, do not re-apply the same pattern.",
+            "3. **Fix Application**: Apply the entire unified plan in a single batch via Edit calls.",
+            "4. **Validation**: After all fixes are applied, re-run the tool to confirm resolution of all actionable items.",
+            "5. **Closing Rule**: Only respond with `Round N: no actionable items, closing out.` if BOTH:",
             "   - `notes` is empty or whitespace, AND",
             "   - There are no actionable `findings` (excluding `category: question`).",
             "   Otherwise, act on the non-empty `notes` or actionable `findings`.",
             "",
             "### Prohibitions",
-            "- Do not call any other tools (e.g., no `read` of round files, no re-parsing tools).",
+            "- Do not call any other tools besides `read` (for state.json and the files mentioned in the diff) and `edit`.",
             "- Do not edit files unless there are actionable `notes` or `findings` (as defined above).",
           ].join("\n"),
         },
@@ -1308,6 +1328,7 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
             source.autoWorktree || root.path,
             parsed.base || source.autoBase,
           );
+          for (const c of commits) c.round = base.round + 1;
           const id = `review_${Date.now().toString(36)}_${crypto.randomUUID().slice(0, 6)}`;
           const token = crypto.randomUUID().replaceAll("-", "");
           const data: Launch = {
@@ -1452,6 +1473,87 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                 // Also update the existing_findings in the launch data so UI stays in sync
                 const idx = data.existing_findings.findIndex((item) => item.id === finding_id);
                 if (idx !== -1) data.existing_findings.splice(idx, 1);
+                return new Response(JSON.stringify({ ok: true }), {
+                  headers: { "content-type": "application/json" },
+                });
+              }
+
+              if (request.method === "POST" && pathname === `/api/review/${id}/reopen`) {
+                const input = (await request.json().catch(() => ({}))) as { finding_id?: string };
+                const finding_id = input.finding_id;
+                if (!finding_id) {
+                  return new Response(JSON.stringify({ error: "finding_id required" }), {
+                    status: 400,
+                    headers: { "content-type": "application/json" },
+                  });
+                }
+                const target = base.findings.find((item) => item.id === finding_id);
+                if (!target) {
+                  return new Response(JSON.stringify({ error: "finding not found" }), {
+                    status: 404,
+                    headers: { "content-type": "application/json" },
+                  });
+                }
+                if (target.status !== "resolved") {
+                  return new Response(
+                    JSON.stringify({ error: `cannot reopen (status: ${target.status})` }),
+                    {
+                      status: 400,
+                      headers: { "content-type": "application/json" },
+                    },
+                  );
+                }
+                // Validate anchor: the code at the line numbers must still match.
+                if (target.kind === "file") {
+                  const file = map.get(target.file);
+                  if (!file) {
+                    return new Response(JSON.stringify({ error: "file removed from diff" }), {
+                      status: 409,
+                      headers: { "content-type": "application/json" },
+                    });
+                  }
+                  if (file.status === "deleted") {
+                    return new Response(JSON.stringify({ error: "file deleted, cannot reopen" }), {
+                      status: 409,
+                      headers: { "content-type": "application/json" },
+                    });
+                  }
+                } else {
+                  const file = map.get(target.file);
+                  if (!file) {
+                    return new Response(JSON.stringify({ error: "file removed from diff" }), {
+                      status: 409,
+                      headers: { "content-type": "application/json" },
+                    });
+                  }
+                  const source = file.status === "deleted" ? file.before : file.after;
+                  const lines = source.split("\n");
+                  const snippet = target.anchor?.selected ?? "";
+                  let stillMatches = false;
+                  if (target.start_line >= 1 && target.start_line <= lines.length) {
+                    const actual = lines[target.start_line - 1] ?? "";
+                    stillMatches = snippet === "" || actual.includes(snippet);
+                  }
+                  if (!stillMatches) {
+                    return new Response(
+                      JSON.stringify({
+                        error: "code at this location has changed, please create a new finding",
+                      }),
+                      { status: 409, headers: { "content-type": "application/json" } },
+                    );
+                  }
+                }
+                target.status = "open";
+                target.updated_at = Date.now();
+                target.closed_at = undefined;
+                base.updated_at = Date.now();
+                await saveState(state_file, base);
+                const idx = data.existing_findings.findIndex((item) => item.id === finding_id);
+                if (idx !== -1) {
+                  data.existing_findings[idx] = { ...target };
+                } else {
+                  data.existing_findings.push({ ...target });
+                }
                 return new Response(JSON.stringify({ ok: true }), {
                   headers: { "content-type": "application/json" },
                 });
