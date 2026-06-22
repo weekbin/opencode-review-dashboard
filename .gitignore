@@ -3,5 +3,6 @@ dist/
 .opencode
 .playwright-mcp/
 *.tmp
+.omo/
 # Test artifacts and screenshots are ephemeral; regenerate via e2e tests
 scripts/test-review-ui/*.png

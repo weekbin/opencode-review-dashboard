@@ -4,6 +4,13 @@ type Category = "bug" | "style" | "perf" | "question" | "recommend";
 type Severity = "high" | "medium" | "low";
 type Side = "additions" | "deletions";
 
+type FindingComment = {
+  id: string;
+  author: "user" | "agent";
+  text: string;
+  created_at: number;
+};
+
 type Finding = {
   id: string;
   file: string;
@@ -17,6 +24,7 @@ type Finding = {
   status?: "open" | "closed_auto" | "resolved";
   round?: number;
   created_at?: number;
+  comments?: FindingComment[];
 };
 
 type Draft = {
@@ -637,10 +645,6 @@ function fileAnnotations(file: string) {
     });
 }
 
-function fileLevelFindings(file: string) {
-  return all().filter((item) => item.file === file && item.kind === "file");
-}
-
 function selectionFor(file: string) {
   if (!state.selection || state.selection.file !== file) return null;
   const item = byPath(file);
@@ -861,9 +865,10 @@ function createView(file: FileEntry, mount: HTMLElement) {
     overflow: "wrap",
     disableFileHeader: true,
     diffIndicators: "bars",
-    expandUnchanged: true,
-    collapsedContextThreshold: 5,
-    hunkSeparators: "simple",
+    expandUnchanged: false,
+    collapsedContextThreshold: 3,
+    expansionLineCount: 20,
+    hunkSeparators: "line-info",
     enableLineSelection: true,
     onLineSelectionEnd: (value) => {
       if (!value) {
@@ -1360,6 +1365,7 @@ type ConversationEntry = {
   kind?: string;
   origin: "existing" | "new";
   created_at: number;
+  comments?: FindingComment[];
 };
 
 function formatRelativeTime(ts: number): string {
@@ -1400,6 +1406,7 @@ function renderConversationPanel(root: HTMLElement) {
       kind: item.kind ?? "line",
       origin: "new" as const,
       created_at: Date.now() + index,
+      comments: item.comments,
     })),
   ];
 
@@ -1553,6 +1560,56 @@ function renderConversationPanel(root: HTMLElement) {
     body.textContent = entry.comment;
     item.appendChild(body);
 
+    const commentsRoot = document.createElement("div");
+    commentsRoot.className = "conversation-comments";
+
+    if (entry.comments?.length) {
+      for (const comment of entry.comments) {
+        const commentEl = document.createElement("div");
+        commentEl.className = "conversation-comment";
+        const meta = document.createElement("div");
+        meta.className = "conversation-comment-meta";
+        meta.textContent = `${comment.author === "agent" ? "🤖 Agent" : "🧑 You"} · ${formatRelativeTime(comment.created_at)}`;
+        commentEl.appendChild(meta);
+        const text = document.createElement("div");
+        text.className = "conversation-comment-text";
+        text.textContent = comment.text;
+        commentEl.appendChild(text);
+        commentsRoot.appendChild(commentEl);
+      }
+    }
+
+    const inputRow = document.createElement("div");
+    inputRow.className = "conversation-comment-input-row";
+    const textarea = document.createElement("textarea");
+    textarea.className = "conversation-comment-input";
+    textarea.placeholder = "Add a comment (max 500 chars)";
+    textarea.maxLength = 500;
+    textarea.rows = 2;
+    const counter = document.createElement("span");
+    counter.className = "conversation-comment-counter";
+    counter.textContent = "0/500";
+    textarea.addEventListener("input", () => {
+      counter.textContent = `${textarea.value.length}/500`;
+    });
+    const submitBtn = document.createElement("button");
+    submitBtn.className = "primary";
+    submitBtn.textContent = "Comment";
+    submitBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const text = textarea.value.trim();
+      if (!text) return;
+      submitBtn.disabled = true;
+      addComment(entry.id, text).finally(() => {
+        submitBtn.disabled = false;
+      });
+    });
+    inputRow.appendChild(textarea);
+    inputRow.appendChild(counter);
+    inputRow.appendChild(submitBtn);
+    commentsRoot.appendChild(inputRow);
+    item.appendChild(commentsRoot);
+
     root.appendChild(item);
   }
 }
@@ -1625,7 +1682,9 @@ function renderDiffPanel() {
     fileCommentsBadge.className = "file-comments-badge";
     fileCommentsBadge.dataset.file = file.path;
     fileCommentsBadge.title = "File-level findings";
-    fileCommentsBadge.textContent = "📄 0";
+    const fileLevelCount = countFileLevelFindings(file.path);
+    fileCommentsBadge.textContent = `📄 ${fileLevelCount}`;
+    fileCommentsBadge.style.display = fileLevelCount === 0 ? "none" : "";
 
     const addFileBtn = document.createElement("button");
     addFileBtn.type = "button";
@@ -1664,8 +1723,8 @@ function renderDiffPanel() {
     const mount = document.createElement("div");
     body.appendChild(mount);
 
-    card.appendChild(header);
     card.appendChild(body);
+    card.appendChild(header);
     diffsRoot.appendChild(card);
 
     state.cards.set(file.path, card);
@@ -1720,6 +1779,43 @@ async function reopenFinding(id: string) {
   renderConversationPane();
   syncAll();
   setStatus("Finding reopened");
+}
+
+async function addComment(id: string, text: string) {
+  if (!text.trim()) return;
+  if (text.length > 500) {
+    setStatus("Comment exceeds 500 characters", true);
+    return;
+  }
+  const response = await fetch(endpoint("/comment"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ finding_id: id, text }),
+  }).catch(() => undefined);
+
+  if (!response?.ok) {
+    setStatus("Failed to add comment", true);
+    return;
+  }
+
+  const data = (await response.json().catch(() => undefined)) as
+    | { ok: true; comment: FindingComment }
+    | undefined;
+  if (!data?.ok || !data.comment) return;
+
+  const existing = state.existing.find((item) => item.id === id);
+  if (existing) {
+    existing.comments = existing.comments ?? [];
+    existing.comments.push(data.comment);
+  } else {
+    const fresh = state.fresh.find((item) => item.id === id);
+    if (fresh) {
+      fresh.comments = fresh.comments ?? [];
+      fresh.comments.push(data.comment);
+    }
+  }
+  renderConversationPane();
+  setStatus("Comment added");
 }
 
 function flashLine(filePath: string, startLine: number, endLine: number) {
@@ -2077,12 +2173,12 @@ diffsRoot.addEventListener("click", (event) => {
 });
 
 function updateFileCommentsBadges() {
-  const badges = diffsRoot.querySelectorAll<HTMLElement>(".file-comments-badge[data-file]");
-  for (const badge of badges) {
+  for (const badge of diffsRoot.querySelectorAll<HTMLElement>(".file-comments-badge[data-file]")) {
     const file = badge.dataset.file;
     if (!file) continue;
-    const count = fileLevelFindings(file).length;
+    const count = countFileLevelFindings(file);
     badge.textContent = `📄 ${count}`;
+    badge.style.display = count === 0 ? "none" : "";
   }
   for (const [filePath, item] of state.sidebarItems) {
     const badge = item.querySelector(".sidebar-item-file-comments") as HTMLElement | null;

@@ -18,6 +18,13 @@ type Anchor = {
   after: string;
 };
 
+type FindingComment = {
+  id: string;
+  author: "user" | "agent";
+  text: string;
+  created_at: number;
+};
+
 type Finding = {
   id: string;
   round: number;
@@ -35,6 +42,7 @@ type Finding = {
   updated_at: number;
   closed_at?: number;
   close_reason?: "file_removed" | "anchor_missing";
+  comments?: FindingComment[];
 };
 
 type DraftFinding = {
@@ -52,6 +60,12 @@ type DraftFinding = {
 type Draft = {
   notes: string;
   new_findings: DraftFinding[];
+};
+
+type CommentInput = {
+  finding_id?: string;
+  text?: string;
+  author?: "user" | "agent";
 };
 
 type State = {
@@ -127,6 +141,7 @@ type Done = {
   md_path: string;
   url: string;
   opened: boolean;
+  state_file: string;
 };
 
 function usage() {
@@ -409,6 +424,7 @@ function format(result: Done) {
     artifacts: {
       json: result.json_path,
       markdown: result.md_path,
+      state: result.state_file,
     },
   });
 }
@@ -422,10 +438,14 @@ function markdown(input: {
   base?: string;
 }) {
   const list = input.findings
-    .map(
-      (item) =>
-        `- [${item.status}] [${item.severity}] [${item.category}] ${item.file}:${item.start_line}-${item.end_line} (${item.side}) - ${item.comment}`,
-    )
+    .map((item) => {
+      let line = `- [${item.status}] [${item.severity}] [${item.category}] ${item.file}:${item.start_line}-${item.end_line} (${item.side}) - ${item.comment}`;
+      if (item.comments?.length) {
+        const replies = item.comments.map((c) => `    - [${c.author}] ${c.text}`).join("\n");
+        line += "\n" + replies;
+      }
+      return line;
+    })
     .join("\n");
   const notes = input.notes || "(none)";
   const files = input.filter?.length ? input.filter.join(", ") : "all changed files";
@@ -1218,9 +1238,10 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
             "0. **Read Conversation History (do this BEFORE printing the round summary)**:",
             "   The tool's `notes` and `findings[]` are only the CURRENT round. To understand the full conversation (every comment, every rejection, every follow-up across rounds), read `.opencode/reviews/<session>/state.json` directly. The session ID is in the `session_id` field of the tool's response (also exposed via your environment).",
             "   Specifically:",
-            "   - Open `.opencode/reviews/<session>/state.json` and parse the `findings[]` array (every round's findings are stored there with their `round`, `comment`, `status`, `created_at`, `file`, `start_line`, etc.).",
+            "   - Open `.opencode/reviews/<session>/state.json` and parse the `findings[]` array (every round's findings are stored there with their `round`, `comment`, `comments[]`, `status`, `created_at`, `file`, `start_line`, etc.). Read the `comments[]` thread under each finding — these are user/agent replies that inform the current round.",
             "   - Note the prior round(s) of feedback, the user's earlier decisions and rejections, and the chronology of when each finding was raised vs. when it was resolved/stale.",
-            "   - Treat the current round's `notes` as the top of the stack (the user just wrote them), and treat prior findings+resolutions as the long-running thread that informs why the current state is the way it is.",
+            "   - Read the `comments[]` thread under each finding. If you need to respond to a user comment or record your own take before editing, call the `add_review_comment` tool with the finding id and your text. Keep it under 500 characters.",
+            "   - Treat the current round's `notes` as the top of the stack (the user just wrote them), and treat prior findings+resolutions+comments as the long-running thread that informs why the current state is the way it is.",
             "   This step is mandatory when `state.json` exists (i.e. when `round > 1` or any prior finding exists). Do not skip it — the user expects you to remember the full conversation, not just the most recent round.",
             "1. **Round Summary (must print AFTER reading history, before any tool calls or edits)**:",
             "   Once you have read state.json, ALWAYS print a short human-readable summary in this exact shape:",
@@ -1243,7 +1264,7 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
             "   Otherwise, act on the non-empty `notes` or actionable `findings`.",
             "",
             "### Prohibitions",
-            "- Do not call any other tools besides `read` (for state.json and the files mentioned in the diff) and `edit`.",
+            "- Do not call any other tools besides `read` (for state.json and the files mentioned in the diff), `add_review_comment`, and `edit`.",
             "- Do not edit files unless there are actionable `notes` or `findings` (as defined above).",
           ].join("\n"),
         },
@@ -1574,6 +1595,58 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                 });
               }
 
+              if (request.method === "POST" && pathname === `/api/review/${id}/comment`) {
+                const input = (await request.json().catch(() => ({}))) as CommentInput;
+                const finding_id = input.finding_id;
+                const text = typeof input.text === "string" ? input.text.trim() : "";
+                if (!finding_id) {
+                  return new Response(JSON.stringify({ error: "finding_id required" }), {
+                    status: 400,
+                    headers: { "content-type": "application/json" },
+                  });
+                }
+                if (!text) {
+                  return new Response(JSON.stringify({ error: "comment text required" }), {
+                    status: 400,
+                    headers: { "content-type": "application/json" },
+                  });
+                }
+                if (text.length > 500) {
+                  return new Response(JSON.stringify({ error: "comment exceeds 500 characters" }), {
+                    status: 400,
+                    headers: { "content-type": "application/json" },
+                  });
+                }
+                const target = base.findings.find((item) => item.id === finding_id);
+                if (!target) {
+                  return new Response(JSON.stringify({ error: "finding not found" }), {
+                    status: 404,
+                    headers: { "content-type": "application/json" },
+                  });
+                }
+                const author = input.author === "agent" ? "agent" : "user";
+                const comment: FindingComment = {
+                  id: `comment_${Date.now().toString(36)}_${crypto.randomUUID().slice(0, 6)}`,
+                  author,
+                  text,
+                  created_at: Date.now(),
+                };
+                target.comments = target.comments ?? [];
+                target.comments.push(comment);
+                target.updated_at = Date.now();
+                base.updated_at = Date.now();
+                await saveState(state_file, base);
+                const idx = data.existing_findings.findIndex((item) => item.id === finding_id);
+                if (idx !== -1) {
+                  data.existing_findings[idx] = { ...target };
+                } else {
+                  data.existing_findings.push({ ...target });
+                }
+                return new Response(JSON.stringify({ ok: true, comment }), {
+                  headers: { "content-type": "application/json" },
+                });
+              }
+
               if (request.method === "POST" && pathname === `/api/review/${id}/submit`) {
                 const input = (await request.json().catch(() => ({}))) as Submit;
                 const notes = typeof input.notes === "string" ? input.notes.trim() : "";
@@ -1626,6 +1699,7 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                   md_path,
                   url: `http://127.0.0.1:${server.port}/review/${id}?token=${token}`,
                   opened,
+                  state_file,
                 };
 
                 queueMicrotask(() => resolve(completed));
@@ -1694,6 +1768,7 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                 md_path: "",
                 url: review_url,
                 opened,
+                state_file,
               });
             },
             { once: true },
@@ -1721,6 +1796,57 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
             url: review_url,
             opened,
           });
+        },
+      }),
+      add_review_comment: tool({
+        description:
+          "Append a comment to an existing review finding so the multi-round discussion is persisted in state.json.",
+        args: {
+          finding_id: tool.schema.string().describe("The finding id to reply to"),
+          text: tool.schema.string().describe("Comment text (max 500 characters)"),
+          state_file: tool.schema
+            .string()
+            .optional()
+            .describe("Path to .opencode/reviews/<session>/state.json from the last review result"),
+        },
+        async execute(args, ctx) {
+          const finding_id = args.finding_id;
+          const text = args.text.trim();
+          if (!finding_id) return JSON.stringify({ error: "finding_id required" });
+          if (!text) return JSON.stringify({ error: "comment text required" });
+          if (text.length > 500) return JSON.stringify({ error: "comment exceeds 500 characters" });
+
+          let state_file = args.state_file;
+          if (!state_file) {
+            state_file = path.join(
+              ctx.worktree || ctx.directory || "",
+              ".opencode",
+              "reviews",
+              ctx.sessionID,
+              "state.json",
+            );
+          }
+          if (!state_file) {
+            return JSON.stringify({ error: "state_file not provided and cannot be derived" });
+          }
+
+          const state = await readState(state_file, ctx.sessionID);
+          const target = state.findings.find((item) => item.id === finding_id);
+          if (!target) {
+            return JSON.stringify({ error: "finding not found" });
+          }
+          const comment: FindingComment = {
+            id: `comment_${Date.now().toString(36)}_${crypto.randomUUID().slice(0, 6)}`,
+            author: "agent",
+            text,
+            created_at: Date.now(),
+          };
+          target.comments = target.comments ?? [];
+          target.comments.push(comment);
+          target.updated_at = Date.now();
+          state.updated_at = Date.now();
+          await saveState(state_file, state);
+          return JSON.stringify({ ok: true, comment });
         },
       }),
     },
