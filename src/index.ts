@@ -73,6 +73,8 @@ type State = {
   round: number;
   findings: Finding[];
   draft?: Draft;
+  diff_base?: DiffBase;
+  previous_diff_base?: DiffBase;
   updated_at: number;
 };
 
@@ -104,6 +106,18 @@ type SourceFile = {
   deletions: number;
 };
 
+type DiffSource = "working" | "base";
+
+type DiffBase = {
+  type: "explicit" | "auto" | "working_only" | "empty";
+  from: string;
+  to: "HEAD" | "working";
+  resolved: string;
+  sources: DiffSource[];
+};
+
+type CollectedFile = SourceFile & { source: DiffSource };
+
 type Launch = {
   id: string;
   session_id: string;
@@ -125,6 +139,9 @@ type Launch = {
   auto_worktree_branch?: string;
   current_branch?: string;
   is_worktree?: boolean;
+  diff_base?: DiffBase;
+  previous_diff_base?: DiffBase;
+  range_changed_from_last_round?: boolean;
 };
 
 type Submit = {
@@ -749,7 +766,11 @@ async function worktreeAheadSummary(
   return undefined;
 }
 
-async function buildNoChangesDiagnostic(repoRoot: string, info: BranchInfo): Promise<string> {
+async function buildNoChangesDiagnostic(
+  repoRoot: string,
+  info: BranchInfo,
+  diffBase?: DiffBase,
+): Promise<string> {
   const lines = ["No git working-tree changes found."];
   lines.push("");
   lines.push(`Repository: ${repoRoot}`);
@@ -758,6 +779,15 @@ async function buildNoChangesDiagnostic(repoRoot: string, info: BranchInfo): Pro
     lines.push(`Upstream: ${info.upstream} (${info.ahead} ahead, ${info.behind} behind)`);
   } else {
     lines.push("Upstream: (not configured)");
+  }
+  if (diffBase) {
+    const sources = diffBase.sources.length > 0 ? diffBase.sources.join("+") : "(none)";
+    const resolved = diffBase.resolved ? diffBase.resolved.slice(0, 12) : "(unresolved)";
+    lines.push(
+      `Diff base: ${diffBase.type} ${diffBase.from} -> ${diffBase.to} [${sources}] (${resolved})`,
+    );
+  } else {
+    lines.push("Diff base: (unavailable)");
   }
   lines.push("");
 
@@ -1091,46 +1121,125 @@ async function collectCommits(root: string, base: string | undefined): Promise<C
 }
 
 type CollectResult = {
-  files: SourceFile[];
+  files: CollectedFile[];
+  diffBase: DiffBase;
   error?: string;
   autoBase?: string;
   autoWorktree?: string;
   autoWorktreeBranch?: string;
 };
 
-async function tryWorktreeRoot(wtRoot: string, dir: string): Promise<CollectResult> {
-  const working = await collectWorking(wtRoot, dir);
-  if (working.files.length > 0) return working;
-  if (working.error) return working;
-
-  const detected = await detectMeaningfulBase(wtRoot);
-  if (detected) {
-    const based = await collectBase(wtRoot, dir, detected);
-    if (based.files.length > 0) return { ...based, autoBase: detected };
-  }
-
-  return working;
+async function resolveRev(root: string, ref: string): Promise<string> {
+  if (!ref) return "";
+  const result = await run(root, ["git", "rev-parse", "--verify", ref]);
+  if (!result.ok) return "";
+  return result.stdout.trim();
 }
 
-async function collect(root: string, dir: string, base?: string): Promise<CollectResult> {
+async function collectMerged(root: string, dir: string, base?: string): Promise<CollectResult> {
+  const emptyBase: DiffBase = {
+    type: "empty",
+    from: base ?? "HEAD",
+    to: "HEAD",
+    resolved: "",
+    sources: [],
+  };
+
+  const working = await collectWorking(root, dir);
+  if (working.error) {
+    return {
+      files: [],
+      diffBase: emptyBase,
+      error: working.error,
+    };
+  }
+
+  // Resolve the effective base: explicit > auto-detect > none.
+  let effectiveBase: string | undefined = base;
+  let autoBase: string | undefined;
+  if (!effectiveBase) {
+    const detected = await detectMeaningfulBase(root);
+    if (detected) {
+      effectiveBase = detected;
+      autoBase = detected;
+    }
+  }
+
+  let based: { files: SourceFile[]; error?: string } = { files: [], error: undefined };
+  let resolved = "";
+  if (effectiveBase) {
+    resolved = await resolveRev(root, effectiveBase);
+    if (!resolved) {
+      // Could not resolve the base ref — keep only working tree changes.
+      based = { files: [], error: `Failed to resolve --base ${effectiveBase}` };
+    } else {
+      based = await collectBase(root, dir, effectiveBase);
+    }
+  }
+
+  const map = new Map<string, CollectedFile>();
+  // Insert base files first so working tree versions win on conflict.
+  for (const file of based.files) {
+    map.set(file.file, { ...file, source: "base" });
+  }
+  for (const file of working.files) {
+    map.set(file.file, { ...file, source: "working" });
+  }
+
+  const sources: DiffSource[] = [];
+  if (based.files.length > 0) sources.push("base");
+  if (working.files.length > 0) sources.push("working");
+
+  let type: DiffBase["type"];
+  if (effectiveBase) type = base ? "explicit" : "auto";
+  else if (working.files.length > 0) type = "working_only";
+  else type = "empty";
+
+  const diffBase: DiffBase = {
+    type,
+    from: effectiveBase ?? "HEAD",
+    to: "HEAD",
+    resolved,
+    sources,
+  };
+
+  return {
+    files: Array.from(map.values()),
+    diffBase,
+    autoBase,
+  };
+}
+
+async function collect(
+  root: string,
+  dir: string,
+  base?: string,
+  worktree?: string,
+): Promise<CollectResult> {
   if (!(await inside(root))) {
     return {
-      files: [] as SourceFile[],
+      files: [],
+      diffBase: {
+        type: "empty",
+        from: base ?? "HEAD",
+        to: "HEAD",
+        resolved: "",
+        sources: [],
+      },
       error: "Current directory is not a git repository.",
     };
   }
 
-  if (base) return collectBase(root, dir, base);
-
-  const current = await tryWorktreeRoot(root, dir);
-  if (current.files.length > 0) return current;
-  if (current.error) return current;
+  const wtRoot = worktree ?? root;
+  const merged = await collectMerged(wtRoot, dir, base);
+  if (merged.error) return merged;
+  if (merged.files.length > 0) return merged;
 
   // If we are inside a worktree, do not auto-pick another one — the
   // user explicitly ran the command here. The main-checkout branch
   // below is the only place auto-pick is allowed.
   if (await isWorktree(root)) {
-    return current;
+    return merged;
   }
   const worktrees = await listWorktrees(root);
   const others = worktrees.filter((wt) => wt.path !== root);
@@ -1145,7 +1254,7 @@ async function collect(root: string, dir: string, base?: string): Promise<Collec
     candidates.sort((a, b) => b.ahead - a.ahead);
     const [winner] = candidates;
     if (winner) {
-      const result = await tryWorktreeRoot(winner.path, dir);
+      const result = await collectMerged(winner.path, dir, base);
       if (result.files.length > 0) {
         return {
           ...result,
@@ -1156,7 +1265,7 @@ async function collect(root: string, dir: string, base?: string): Promise<Collec
     }
   }
 
-  return current;
+  return merged;
 }
 
 async function renderFiles(files: SourceFile[]) {
@@ -1317,6 +1426,22 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
             context.directory ||
             root.path;
 
+          const output_root = path.join(effective_scope, ".opencode", "reviews", context.sessionID);
+          const state_file = path.join(output_root, "state.json");
+          const state = await readState(state_file, context.sessionID);
+
+          const priorDiffBase = state.diff_base;
+          let range_changed_from_last_round = false;
+          if (priorDiffBase) {
+            const sameFrom = priorDiffBase.from === source.diffBase.from;
+            const sameSources =
+              priorDiffBase.sources.length === source.diffBase.sources.length &&
+              priorDiffBase.sources.every(
+                (value, index) => value === source.diffBase.sources[index],
+              );
+            if (!sameFrom || !sameSources) range_changed_from_last_round = true;
+          }
+
           const all = source.files;
           const scoped = parsed.files?.length
             ? all.filter(
@@ -1350,13 +1475,14 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                 `  /${command} --base <ref>`,
               ].join("\n");
             }
-            return await buildNoChangesDiagnostic(root.path, await branchInfo(root.path));
+            return await buildNoChangesDiagnostic(
+              root.path,
+              await branchInfo(root.path),
+              source.diffBase,
+            );
           }
 
           const files = await renderFiles(scoped);
-          const output_root = path.join(effective_scope, ".opencode", "reviews", context.sessionID);
-          const state_file = path.join(output_root, "state.json");
-          const state = await readState(state_file, context.sessionID);
           const merged = reconcile(files, state.findings);
           const existing = merged.filter((item) => item.status === "open");
           const base: State = {
@@ -1398,6 +1524,9 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
             auto_worktree_branch: source.autoWorktreeBranch,
             current_branch: info.current_branch,
             is_worktree: info.is_worktree,
+            diff_base: source.diffBase,
+            previous_diff_base: priorDiffBase,
+            range_changed_from_last_round,
           };
 
           const map = new Map(files.map((item) => [item.path, item]));
@@ -1667,6 +1796,8 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                   ...base,
                   round,
                   findings,
+                  previous_diff_base: base.diff_base,
+                  diff_base: data.diff_base,
                   draft: undefined,
                   updated_at: Date.now(),
                 };
