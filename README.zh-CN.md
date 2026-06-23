@@ -24,6 +24,20 @@
 
 ![Conversation](docs/screenshots/conversation.png)
 
+### Diff 范围（含未提交文件）
+
+![未提交文件灰显 + diff_base header + 跨轮 banner](docs/screenshots/uncommitted-files.png)
+
+## Diff 范围
+
+每一轮 `/diff-review-dashboard` 都会在响应和 UI header 中报告**实际的 diff 范围**：
+
+- **默认**：`HEAD vs origin/main + working tree`（合并两者）。未提交的文件在 sidebar 中以**灰色**显示，文件卡片头部有 **uncommitted** 徽章，便于和已提交改动区分。
+- **覆盖**：传入 `--base=<ref>`（如 `--base=HEAD~3`）可只查看 commit 范围，不包含工作区。
+- **跨轮 drift**：当 diff 范围在轮次之间变化时（例如 round 2 新增了 round 1 没有的 uncommitted 文件），UI 顶部出现**非阻塞的黄色 banner**，分别显示上一轮和当前的 diff 范围。审查不中断，可点击 × 关闭。
+
+此修复针对 [issue #4](https://github.com/weekbin/opencode-review-dashboard/issues/4)。之前如果存在 uncommitted 文件，工具会静默丢弃整个 commit 栈的 diff 并错误地返回 "no findings"，而实际是有内容需要审查。
+
 ---
 
 ## 功能

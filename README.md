@@ -24,6 +24,20 @@ The command is named `diff-review-dashboard` (tool name: `diff_review_dashboard`
 
 ![Conversation](docs/screenshots/conversation.png)
 
+### Diff range with uncommitted files
+
+![Uncommitted files shown in gray with diff_base header and range banner](docs/screenshots/uncommitted-files.png)
+
+## Diff range
+
+Each round of `/diff-review-dashboard` reports the **actual diff range** that was reviewed, and shows it in the UI header:
+
+- **Default**: `HEAD vs origin/main + working tree` (both merged). Uncommitted files appear in **gray** in the sidebar with an **uncommitted** badge on the file card so you can tell them apart from committed changes.
+- **Override**: pass `--base=<ref>` (e.g. `--base=HEAD~3`) to view a commit range only, with no working tree.
+- **Cross-round drift**: when the diff range changes between rounds (e.g. you add an uncommitted file in round 2 that wasn't in round 1), a non-blocking **yellow banner** appears at the top of the UI showing the previous range and the current range. The review continues; you can dismiss the banner with ×.
+
+This fixes [issue #4](https://github.com/weekbin/opencode-review-dashboard/issues/4). Previously an uncommitted file could cause the tool to silently drop the entire commit-stack diff and return "no findings" when there was real work to review.
+
 ---
 
 ## What it does
