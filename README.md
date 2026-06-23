@@ -6,6 +6,26 @@ An [OpenCode](https://opencode.ai) plugin that adds a `/diff-review-dashboard` s
 
 The command is named `diff-review-dashboard` (tool name: `diff_review_dashboard`).
 
+## Screenshots
+
+### Diff review with foldable unchanged regions
+
+![Files Changed / Diff view](docs/screenshots/diff.png)
+
+### Add a finding on a line or file
+
+![Adding a finding](docs/screenshots/finding.png)
+
+### Commits panel
+
+![Commits list](docs/screenshots/commits.png)
+
+### Conversation panel with comments
+
+![Conversation](docs/screenshots/conversation.png)
+
+---
+
 ## What it does
 
 When you run `/diff-review-dashboard` inside an OpenCode session, the plugin:

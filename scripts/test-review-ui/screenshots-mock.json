@@ -1,0 +1,121 @@
+{
+  "id": "screenshots",
+  "session_id": "screenshots-session",
+  "repo_root": "/tmp/fake/repo",
+  "scope_root": "/tmp/fake/repo",
+  "round": 2,
+  "files": [
+    {
+      "path": "src/auth.ts",
+      "status": "modified",
+      "additions": 12,
+      "deletions": 5,
+      "before": "import { verify } from './crypto';\n\nexport async function login(token: string) {\n  const user = await verify(token);\n  if (!user) {\n    throw new Error('invalid token');\n  }\n  // unchanged context line 1\n  // unchanged context line 2\n  // unchanged context line 3\n  // unchanged context line 4\n  // unchanged context line 5\n  // unchanged context line 6\n  // unchanged context line 7\n  // unchanged context line 8\n  // unchanged context line 9\n  // unchanged context line 10\n  // unchanged context line 11\n  // unchanged context line 12\n  // unchanged context line 13\n  // unchanged context line 14\n  // unchanged context line 15\n  // unchanged context line 16\n  // unchanged context line 17\n  // unchanged context line 18\n  // unchanged context line 19\n  // unchanged context line 20\n  return createSession(user);\n}\n\nfunction createSession(user: User) {\n  return { id: user.id, role: user.role };\n}\n",
+      "after": "import { verify } from './crypto';\nimport { auditLog } from './audit';\n\nexport async function login(token: string) {\n  const user = await verify(token);\n  if (!user) {\n    auditLog('login_failed', { token: token.slice(0, 4) });\n    throw new Error('invalid token');\n  }\n  // unchanged context line 1\n  // unchanged context line 2\n  // unchanged context line 3\n  // unchanged context line 4\n  // unchanged context line 5\n  // unchanged context line 6\n  // unchanged context line 7\n  // unchanged context line 8\n  // unchanged context line 9\n  // unchanged context line 10\n  // unchanged context line 11\n  // unchanged context line 12\n  // unchanged context line 13\n  // unchanged context line 14\n  // unchanged context line 15\n  // unchanged context line 16\n  // unchanged context line 17\n  // unchanged context line 18\n  // unchanged context line 19\n  // unchanged context line 20\n  auditLog('login_success', { userId: user.id });\n  return createSession(user);\n}\n\nfunction createSession(user: User) {\n  return { id: user.id, role: user.role, createdAt: Date.now() };\n}\n"
+    },
+    {
+      "path": "src/api.ts",
+      "status": "added",
+      "additions": 8,
+      "deletions": 0,
+      "before": "",
+      "after": "import { Router } from 'express';\nimport { login } from './auth';\n\nconst router = Router();\n\nrouter.post('/login', async (req, res) =\u003e {\n  const session = await login(req.body.token);\n  res.json(session);\n});\n\nexport { router };\n"
+    },
+    {
+      "path": "src/legacy.ts",
+      "status": "deleted",
+      "additions": 0,
+      "deletions": 4,
+      "before": "export function oldHelper(x: number) {\n  return x * 2;\n}\n\nexport const MAGIC = 42;\n",
+      "after": ""
+    }
+  ],
+  "existing_findings": [
+    {
+      "id": "fnd_001",
+      "file": "src/auth.ts",
+      "side": "additions",
+      "start_line": 7,
+      "end_line": 7,
+      "category": "recommend",
+      "severity": "medium",
+      "comment": "Consider rate-limiting failed logins to prevent brute force.",
+      "kind": "line",
+      "status": "open",
+      "round": 2,
+      "created_at": 1719200000000,
+      "comments": [
+        {
+          "id": "cm_001",
+          "author": "agent",
+          "text": "Good point. I'll add a simple in-memory rate limiter in the next commit.",
+          "created_at": 1719200100000
+        }
+      ],
+      "anchor": {
+        "selected": "auditLog('login_failed'"
+      }
+    },
+    {
+      "id": "fnd_002",
+      "file": "src/api.ts",
+      "side": "additions",
+      "start_line": 0,
+      "end_line": 0,
+      "category": "bug",
+      "severity": "high",
+      "comment": "New /login endpoint does not validate request body before passing token to auth layer.",
+      "kind": "file",
+      "status": "open",
+      "round": 2,
+      "created_at": 1719200200000,
+      "comments": []
+    },
+    {
+      "id": "fnd_003",
+      "file": "src/legacy.ts",
+      "side": "deletions",
+      "start_line": 1,
+      "end_line": 1,
+      "category": "question",
+      "severity": "low",
+      "comment": "Is oldHelper used anywhere else? If not, deletion is fine.",
+      "kind": "line",
+      "status": "resolved",
+      "round": 1,
+      "created_at": 1719100000000,
+      "comments": []
+    }
+  ],
+  "draft": {"notes": "", "new_findings": []},
+  "commits": [
+    {
+      "sha": "abc123def4567890abcdef1234567890abcdef12",
+      "short_sha": "abc123d",
+      "message": "feat: add audit logging to login flow",
+      "author": "Alice",
+      "date": "2024-06-20T10:00:00Z",
+      "files": ["src/auth.ts"]
+    },
+    {
+      "sha": "def789abc0123456abcdef1234567890abcdef34",
+      "short_sha": "def789a",
+      "message": "feat: add /login API route",
+      "author": "Bob",
+      "date": "2024-06-20T11:30:00Z",
+      "files": ["src/api.ts"]
+    },
+    {
+      "sha": "aabbccdd11223344556677889900aabbccddeeff",
+      "short_sha": "aabbccd",
+      "message": "chore: remove unused legacy helpers",
+      "author": "Alice",
+      "date": "2024-06-19T16:45:00Z",
+      "files": ["src/legacy.ts"]
+    }
+  ],
+  "taxonomy": {
+    "categories": ["recommend", "bug", "style", "perf", "question"],
+    "severities": ["medium", "high", "low"]
+  }
+}

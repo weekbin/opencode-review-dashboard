@@ -6,6 +6,26 @@
 
 命令名：`diff-review-dashboard`（工具名：`diff_review_dashboard`）。
 
+## 截图
+
+### Diff 审查（未改动区域可折叠展开）
+
+![Files Changed / Diff view](docs/screenshots/diff.png)
+
+### 添加 finding（行级或文件级）
+
+![Adding a finding](docs/screenshots/finding.png)
+
+### Commits 面板
+
+![Commits list](docs/screenshots/commits.png)
+
+### Conversation 面板（支持评论）
+
+![Conversation](docs/screenshots/conversation.png)
+
+---
+
 ## 功能
 
 在 OpenCode 会话中运行 `/diff-review-dashboard` 后，插件会：
