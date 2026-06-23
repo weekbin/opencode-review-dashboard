@@ -1,4 +1,6 @@
-# opencode-review-dashboard
+# @weekbin/opencode-review-dashboard
+
+English | [中文](README.zh-CN.md)
 
 An [OpenCode](https://opencode.ai) plugin that adds a `/diff-review-dashboard` slash command for browser-based code review, powered by [@pierre/diffs](https://diffs.com).
 
@@ -55,33 +57,17 @@ Drafts are auto-saved as you work, so you can close the browser and reopen witho
 
 ## Installation
 
-### From npm (recommended)
+Add the plugin to your `opencode.json` (global or per-project `.opencode/opencode.json`):
 
 ```json
 {
-  "plugin": ["opencode-review-dashboard"]
+  "plugin": ["@weekbin/opencode-review-dashboard"]
 }
 ```
 
-Add this to your `opencode.json` or per-project `.opencode/opencode.json`, then restart OpenCode.
+Restart OpenCode. The `/diff-review-dashboard` slash command will be registered.
 
-### From GitHub
-
-```json
-{
-  "plugin": ["github:weekbin/opencode-review-dashboard"]
-}
-```
-
-### From a local clone
-
-```json
-{
-  "plugin": ["file:~/Projects/opencode-review-dashboard"]
-}
-```
-
-Useful for hacking on the plugin itself. Rebuild with `bun run build` and restart OpenCode to see changes.
+For development (local clone), use `file:/path/to/this/repo` instead.
 
 ---
 

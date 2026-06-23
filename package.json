@@ -1,5 +1,5 @@
 {
-  "name": "opencode-review-dashboard",
+  "name": "@weekbin/opencode-review-dashboard",
   "version": "0.1.0",
   "description": "Diff review plugin for OpenCode — browser-based code review with @pierre/diffs",
   "type": "module",
