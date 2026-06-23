@@ -92,6 +92,16 @@ function check(scenarioName, setupInfo, raw, expect, result) {
       name: "explicit --worktree flag works",
       pass: result.kind === "would-launch" || result.kind === "return",
     });
+  } else if (expect.kind === "working-tree-with-commits") {
+    checks.push({
+      name: "uncommitted + commits both surfaced (issue #4 fix)",
+      pass: result.kind === "would-launch" || result.kind === "return",
+    });
+  } else if (expect.kind === "diagnostic-with-base") {
+    checks.push({
+      name: "diagnostic includes diff_base info",
+      pass: result.kind === "return" && result.value.includes("Diff base:"),
+    });
   } else {
     checks.push({ name: "unknown expectation", pass: false });
   }

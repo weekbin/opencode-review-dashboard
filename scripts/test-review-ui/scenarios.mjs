@@ -180,6 +180,52 @@ export async function setupEmptyRepo(dir) {
   return { branch: "(detached?)", worktrees: [] };
 }
 
+/**
+ * Scenario 11: 9 commits ahead of main + 1 uncommitted file.
+ * Reproduces issue #4 round 2 (working-tree-first short circuit).
+ * Expected: plugin launches, both committed and uncommitted files included.
+ */
+export async function setupUncommittedWithCommits(dir) {
+  await emptyRepo(dir);
+  for (let i = 1; i <= 9; i++) {
+    await sh(`echo "feature ${i}" >> feature.ts`, dir);
+    await git(["add", "feature.ts"], dir);
+    await git(["commit", "-q", "-m", `feat ${i}`], dir);
+  }
+  // Add an uncommitted lockfile change (round 2 of issue #4)
+  await sh(`echo "lockfileVersion: '6.0'" > pnpm-lock.yaml`, dir);
+  return { branch: "main", worktrees: [] };
+}
+
+/**
+ * Scenario 12: round 1 clean, then "round 2" adds uncommitted file.
+ * Since e2e is single-shot per scenario, simulate by adding the uncommitted
+ * file up-front; the framework calls plugin once and expects launch.
+ * The actual cross-round range-change behavior is verified manually.
+ */
+export async function setupRangeChangedBanner(dir) {
+  await emptyRepo(dir);
+  await sh(`echo "v1" >> app.ts && echo "v2" >> app.ts`, dir);
+  await git(["add", "app.ts"], dir);
+  await git(["commit", "-q", "-m", "first"], dir);
+  // Simulate "round 2" state: working tree dirty
+  await sh(`echo "uncommitted" >> app.ts`, dir);
+  return { branch: "main", worktrees: [] };
+}
+
+/**
+ * Scenario 13: empty repo (no commits, no branches, no origin).
+ * Should produce diagnostic with "Diff base:" text.
+ * Expected kind: "diagnostic-with-base".
+ */
+export async function setupDefaultBaseOnMain(dir) {
+  await git(["init", "-q", "-b", "main"], dir);
+  await git(["config", "user.email", "t@t"], dir);
+  await git(["config", "user.name", "t"], dir);
+  // No commits at all
+  return { branch: "main", worktrees: [] };
+}
+
 export const SCENARIOS = {
   "no-worktree-clean": { setup: setupNoWorktreeClean, expect: { kind: "diagnostic" } },
   "has-worktree-unpushed": { setup: setupHasWorktreeUnpushed, expect: { kind: "auto-worktree" } },
@@ -191,4 +237,7 @@ export const SCENARIOS = {
   "files-filter": { setup: setupFilesFilter, expect: { kind: "files", files: ["a.ts", "b.ts"] } },
   "worktree-flag-override": { setup: setupWorktreeFlagOverride, expect: { kind: "worktree-override" } },
   "empty-repo": { setup: setupEmptyRepo, expect: { kind: "diagnostic" } },
+  "uncommitted-with-commits": { setup: setupUncommittedWithCommits, expect: { kind: "working-tree-with-commits" } },
+  "range-changed-banner": { setup: setupRangeChangedBanner, expect: { kind: "working-tree" } },
+  "default-base-on-main": { setup: setupDefaultBaseOnMain, expect: { kind: "diagnostic-with-base" } },
 };
