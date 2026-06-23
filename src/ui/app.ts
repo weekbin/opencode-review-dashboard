@@ -39,6 +39,15 @@ type FileEntry = {
   deletions: number;
   before: string;
   after: string;
+  source?: "working" | "base";
+};
+
+type DiffBase = {
+  type: "explicit" | "auto" | "working_only" | "empty";
+  from: string;
+  to: "HEAD" | "working";
+  resolved: string;
+  sources: ("working" | "base")[];
 };
 
 type CommitInfo = {
@@ -72,6 +81,9 @@ type Launch = {
   auto_worktree_branch?: string;
   current_branch?: string;
   is_worktree?: boolean;
+  diff_base?: DiffBase;
+  previous_diff_base?: DiffBase;
+  range_changed_from_last_round?: boolean;
 };
 
 type Meta = {
@@ -979,6 +991,7 @@ function makeSidebarItem(file: FileEntry, index: number, extraClass = ""): HTMLB
   item.type = "button";
   item.className = `sidebar-item ${extraClass}`.trim();
   if (state.read.has(file.path)) item.setAttribute("data-read", "");
+  if (file.source) item.setAttribute("data-source", file.source);
 
   const dot = document.createElement("span");
   dot.className = `sidebar-dot ${file.status}`;
@@ -1364,6 +1377,50 @@ function escapeHtml(input: string): string {
     .replace(/'/g, "&#39;");
 }
 
+function formatDiffBase(db?: DiffBase): string {
+  if (!db) return "(none)";
+  if (db.type === "empty") return "empty";
+  const hasBase = db.sources.includes("base");
+  const hasWorking = db.sources.includes("working");
+  if (hasBase && hasWorking) return `${db.from} + working`;
+  if (hasWorking) return "working tree only";
+  return db.from;
+}
+
+function renderDiffBaseHeader(db?: DiffBase): string {
+  if (!db || db.type === "empty") return "";
+  const fromSafe = escapeHtml(db.from);
+  const hasBase = db.sources.includes("base");
+  const hasWorking = db.sources.includes("working");
+  if (hasBase && hasWorking) {
+    return `[base: <span class="from">${fromSafe}</span><span class="working-tag"> + working</span>]`;
+  }
+  if (hasWorking) return `[working tree only]`;
+  return `[base: <span class="from">${fromSafe}</span>]`;
+}
+
+function renderRangeBanner(): void {
+  const banner = document.querySelector("#range-banner") as HTMLElement | null;
+  if (!banner) return;
+  const data = state.data;
+  if (!data || !data.range_changed_from_last_round || !data.previous_diff_base) {
+    banner.hidden = true;
+    banner.innerHTML = "";
+    return;
+  }
+  const cur = formatDiffBase(data.diff_base);
+  const prev = formatDiffBase(data.previous_diff_base);
+  banner.innerHTML = `
+    <span class="icon">⚠️</span>
+    <span class="text">Round ${data.round} diff range changed: was ${escapeHtml(prev)}, now ${escapeHtml(cur)}. Findings may shift.</span>
+    <button class="close" aria-label="Dismiss" type="button">×</button>
+  `;
+  banner.hidden = false;
+  banner.querySelector(".close")?.addEventListener("click", () => {
+    banner.hidden = true;
+  });
+}
+
 type ConversationEntry = {
   id: string;
   round: number;
@@ -1669,6 +1726,13 @@ function renderDiffPanel() {
     filename.className = "card-filename";
     filename.textContent = file.path;
 
+    const uncommittedBadge = document.createElement("span");
+    if (file.source === "working") {
+      uncommittedBadge.className = "file-badge-uncommitted";
+      uncommittedBadge.textContent = "uncommitted";
+      uncommittedBadge.title = "Working-tree only (not in diff base)";
+    }
+
     const cardReviewed = document.createElement("span");
     cardReviewed.className = "card-reviewed";
     cardReviewed.textContent = "✓ reviewed";
@@ -1730,6 +1794,7 @@ function renderDiffPanel() {
     header.appendChild(chevron);
     header.appendChild(icon);
     header.appendChild(filename);
+    if (file.source === "working") header.appendChild(uncommittedBadge);
     header.appendChild(cardReviewed);
     header.appendChild(meta);
     header.appendChild(actions);
@@ -2270,6 +2335,13 @@ async function init() {
         ? `[main: ${state.data.current_branch}]`
         : "";
   scopeRoot.textContent = `${scope}${diff}${scopeLabel ? ` · ${scopeLabel}` : ""}`;
+
+  const diffBaseEl = document.querySelector("#diff-base") as HTMLElement | null;
+  if (diffBaseEl) {
+    diffBaseEl.innerHTML = renderDiffBaseHeader(state.data.diff_base);
+  }
+
+  renderRangeBanner();
 
   fillOptions();
   renderActivePane();
