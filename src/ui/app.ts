@@ -209,7 +209,7 @@ const state = {
   cards: new Map<string, HTMLElement>(),
   sidebarItems: new Map<string, HTMLButtonElement>(),
   views: new Map<string, View>(),
-  themeMode: readStored<ThemeMode>(THEME_KEY, ["light", "dark", "auto"], "dark"),
+  themeMode: readStored<ThemeMode>(THEME_KEY, ["light", "dark", "auto"], "light"),
   diffLayout: readStored<DiffLayout>(LAYOUT_KEY, ["unified", "split"], "split"),
   sidebarMode: readStored<SidebarMode>(SIDEBAR_KEY, ["tree", "flat"], "tree"),
   activeTab: readStored<"files" | "commits" | "conversation">(
