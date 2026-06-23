@@ -131,45 +131,184 @@ function writeStored(key: string, value: string) {
   }
 }
 
+// ── File-type icon table ──
+//
+// The icon table is a curated subset of vscode-material-icon-theme (Apache-2.0),
+// simplified to single-color SVGs that respect `currentColor` so callers can
+// re-color per theme or per language via CSS. Every entry corresponds to either
+// an exact filename match (Dockerfile, LICENSE, .gitignore, …) or a file
+// extension. `fileExt()` returns the matched key so the sidebar can set
+// `data-ext` on the icon element and CSS rules can color it per-language.
+//
+// Sources of inspiration for the SVG paths:
+//   - vscode-material-icon-theme (https://github.com/PKief/vscode-material-icon-theme)
+//   - vscode-icons (https://github.com/vscode-icons/vscode-icons)
+//   - phosphor-icons (https://phosphoricons.com/) — for the line/folder icons
+//
+// All SVGs use the same 14×14 viewBox so the existing layout keeps working.
+
 const FOLDER_ICON_SVG = `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 3.5A1.5 1.5 0 0 1 3 2h3.5a1.5 1.5 0 0 1 1.06.44L8.69 3.5H13a1.5 1.5 0 0 1 1.5 1.5v7.5A1.5 1.5 0 0 1 13 14H3a1.5 1.5 0 0 1-1.5-1.5z"/></svg>`;
+const FOLDER_OPEN_ICON_SVG = `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 3.5A1.5 1.5 0 0 1 3 2h3.5a1.5 1.5 0 0 1 1.06.44L8.69 3.5H13a1.5 1.5 0 0 1 1.5 1.5H2A1.5 1.5 0 0 0 .5 6.5v-3zm0 4H14l-1.3 5.2A1.5 1.5 0 0 1 11.24 14H3a1.5 1.5 0 0 1-1.5-1.5z"/></svg>`;
 const FILE_DEFAULT_ICON_SVG = `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 1A1.5 1.5 0 0 0 2 2.5v11A1.5 1.5 0 0 0 3.5 15h9a1.5 1.5 0 0 0 1.5-1.5V6.06a1.5 1.5 0 0 0-.44-1.06L10.5 1.94A1.5 1.5 0 0 0 9.44 1.5z"/></svg>`;
 
+// Special filename entries (matched case-insensitively against the basename).
+// Listed before extension overrides so e.g. "Dockerfile.dockerignore" can be
+// resolved by the dotfile rule when present.
+const FILENAME_ICON_OVERRIDES: Record<string, string> = {
+  dockerfile: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 4h2v2H2zm3 0h2v2H5zm3 0h2v2H8zm3 0h2v2h-2zM2 7h2v2H2zm3 0h2v2H5zm3 0h2v2H8zm3 0h2v2h-2zm-6 3h2v2H5zm3 0h2v2H8zm3 0h2v2h-2zM1 12h1.5v.5l1 1.5h9l1-1.5V12H15v1l-1.5 2h-11L1 13z"/></svg>`,
+  containerfile: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 4h2v2H2zm3 0h2v2H5zm3 0h2v2H8zm3 0h2v2h-2zM2 7h2v2H2zm3 0h2v2H5zm3 0h2v2H8zm3 0h2v2h-2zm-6 3h2v2H5zm3 0h2v2H8zm3 0h2v2h-2zM1 12h1.5v.5l1 1.5h9l1-1.5V12H15v1l-1.5 2h-11L1 13z"/></svg>`,
+  makefile: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 1h10v2H3zm0 3h10v2H3zm0 3h10v2H3zm0 3h7v2H3zm0 3h10v2H3z"/></svg>`,
+  rakefile: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2zm2 2v8h8V4zm1.5 1.5h2v2h-2zm3 0h2v2h-2zm-3 3h2v2h-2zm3 0h2v2h-2z"/></svg>`,
+  license: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 7 7h-2a5 5 0 1 1-5-5V1zM2 4h2v3h3V4h2v8H7V9H4v3H2zm9 4h2v-1h-1V6h1V5h-2z"/></svg>`,
+  licence: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 7 7h-2a5 5 0 1 1-5-5V1zM2 4h2v3h3V4h2v8H7V9H4v3H2zm9 4h2v-1h-1V6h1V5h-2z"/></svg>`,
+  readme: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M14 14V2H2v12zM3 3h10v10H3zm2 8h1V6.5l1 2.5L8 6.5V11h1V5H7.5L7 7.5 6.5 5H5z"/></svg>`,
+  changelog: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 1h10v2H3zm0 3h10v2H3zm0 3h7v2H3zm0 3h10v2H3zm0 3h10v1H3z"/></svg>`,
+  contributing: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v10H2zm1.5 1.5V7h3V4.5zm0 4h3v3h-3zm4.5-4V7h3V4.5zm0 4h3v3h-3z"/></svg>`,
+  ".gitignore": `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v2H2zm0 3h6v2H2zm0 3h12v2H2zm0 3h6v2H2z"/></svg>`,
+  ".gitattributes": `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v2H2zm0 3h6v2H2zm0 3h12v2H2zm0 3h6v2H2z"/></svg>`,
+  ".editorconfig": `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2zm1.5 1.5v9h9v-9zm1.5 1.5h6v1.5H5zm0 3h6v1.5H5zm0 3h4v1.5H5z"/></svg>`,
+  ".env": `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1l5 2v5c0 3-2 5.5-5 7-3-1.5-5-4-5-7V3zm-2 5l1 1 3-3-1-1-2 2-1-1z"/></svg>`,
+  ".npmrc": `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2zm2 3v6h2V8h1l2 3h2L9 8l2-3H9L7 8H6V5z"/></svg>`,
+  ".nvmrc": `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2zm2 3v6h2V8h1l2 3h2L9 8l2-3H9L7 8H6V5z"/></svg>`,
+  ".prettierrc": `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 3h10v10H3zm2 2v6h6V5zm1 1h4v1H6zm0 2h4v1H6zm0 2h2v1H6z"/></svg>`,
+  ".eslintrc": `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2zm2 3l1 4 1.5-3 1.5 3 1-4h-1l-.5 2L7 5H6L5 7l-.5-2zm5 0v6h5v-1h-4V8h3V7h-3V6h4V5z"/></svg>`,
+  ".dockerignore": `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 4h2v2H2zm3 0h2v2H5zm3 0h2v2H8zm3 0h2v2h-2zM2 7h2v2H2zm3 0h2v2H5zm3 0h2v2H8zm3 0h2v2h-2zm-6 3h2v2H5zm3 0h2v2H8zm3 0h2v2h-2zM1 12h1.5v.5l1 1.5h9l1-1.5V12H15v1l-1.5 2h-11L1 13z"/></svg>`,
+  ".babelrc": `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2zm2 3l1 4 1.5-3 1.5 3 1-4h-1l-.5 2L7 5H6L5 7l-.5-2zm5 0v6h5v-1h-4V8h3V7h-3V6h4V5z"/></svg>`,
+  ".gitmodules": `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v2H2zm0 3h6v2H2zm0 3h12v2H2zm0 3h6v2H2z"/></svg>`,
+  "package.json": `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2zm1.5 1.5v9h9v-9zm1.5 1.5h6v1.5H5zm0 3h6v1.5H5zm0 3h4v1.5H5z"/></svg>`,
+  "package-lock.json": `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2zm1.5 1.5v9h9v-9zm1.5 1.5h6v1.5H5zm0 3h6v1.5H5zm0 3h4v1.5H5z"/></svg>`,
+  "tsconfig.json": `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M0 1.5A1.5 1.5 0 0 1 1.5 0h13A1.5 1.5 0 0 1 16 1.5v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 0 14.5zM2 2v12h12V2zM3.75 11h1.5V8.5h2V11h1.5V5h-1.5v2h-2V5h-1.5zm6.5 0h1.5V9.5L13 11h1.75L13 8.75 14.75 6.5H13l-1.25 1.5V5h-1.5z"/></svg>`,
+  "bun.lock": `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 7V5a4 4 0 0 1 8 0v2h1v8H3V7zM6 5v2h4V5a2 2 0 1 0-4 0z"/></svg>`,
+  "bun.lockb": `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 7V5a4 4 0 0 1 8 0v2h1v8H3V7zM6 5v2h4V5a2 2 0 1 0-4 0z"/></svg>`,
+  "yarn.lock": `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 7V5a4 4 0 0 1 8 0v2h1v8H3V7zM6 5v2h4V5a2 2 0 1 0-4 0z"/></svg>`,
+  "pnpm-lock.yaml": `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 7V5a4 4 0 0 1 8 0v2h1v8H3V7zM6 5v2h4V5a2 2 0 1 0-4 0z"/></svg>`,
+  "pnpm-workspace.yaml": `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 7V5a4 4 0 0 1 8 0v2h1v8H3V7zM6 5v2h4V5a2 2 0 1 0-4 0z"/></svg>`,
+  "cargo.toml": `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h5v2H4v2h2a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2H2V9h4v1H3v2h3v2H2zm7 0h5v2h-3v1h3v2h-3v1h3v2H9z"/></svg>`,
+  "go.mod": `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h5v2H4v2h3v2H4v2h3v2H2zm7 0h5v2h-3v1h3v2h-3v1h3v2H9z"/></svg>`,
+  "go.sum": `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h5v2H4v2h3v2H4v2h3v2H2zm7 0h5v2h-3v1h3v2h-3v1h3v2H9z"/></svg>`,
+};
+
+// Extension entries. Keys are lowercased file extensions (no leading dot).
+// SVG paths are kept short to keep the bundle small.
 const EXTENSION_ICON_OVERRIDES: Record<string, string> = {
+  // Web / JS / TS
   ts: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M0 1.5A1.5 1.5 0 0 1 1.5 0h13A1.5 1.5 0 0 1 16 1.5v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 0 14.5zM2 2v12h12V2zM3.75 11h1.5V8.5h2V11h1.5V5h-1.5v2h-2V5h-1.5zm6.5 0h1.5V9.5L13 11h1.75L13 8.75 14.75 6.5H13l-1.25 1.5V5h-1.5z"/></svg>`,
   tsx: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M0 1.5A1.5 1.5 0 0 1 1.5 0h13A1.5 1.5 0 0 1 16 1.5v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 0 14.5zM2 2v12h12V2zM3 11h1.5V8.5H6V11h1.5V5H6v2H4.5V5H3zm5 0h1.5V9.5L11 11h1.75L11 8.75 12.75 6.5H11l-1.5 1.5V5H8z"/></svg>`,
   js: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 1h12v14H2zm1.5 1.5V13.5h9V2.5zM4.5 11c0 .8.5 1.5 1.5 1.5s1.5-.5 1.5-1.5V6H6v5c0 .3-.2.5-.5.5s-.5-.2-.5-.5H4c0 .3 0 0 0 0zm5.5 0c0 .8.5 1.5 1.5 1.5s1.5-.5 1.5-1.5c0-.7-.4-1.1-1.2-1.3l-.4-.1c-.4-.1-.4-.2-.4-.3 0-.2.1-.3.4-.3.3 0 .5.2.5.5h1c0-.8-.5-1.4-1.5-1.4S9.5 7.7 9.5 8.5c0 .7.4 1 1.2 1.2l.4.1c.3.1.4.2.4.3 0 .2-.2.3-.4.3-.3 0-.5-.2-.5-.5z"/></svg>`,
-  jsx: FILE_DEFAULT_ICON_SVG,
+  jsx: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M0 1.5A1.5 1.5 0 0 1 1.5 0h13A1.5 1.5 0 0 1 16 1.5v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 0 14.5zM2 2v12h12V2zM3 11h1.5V8.5H6V11h1.5V5H6v2H4.5V5H3zm5 0h1.5V9.5L11 11h1.75L11 8.75 12.75 6.5H11l-1.5 1.5V5H8z"/></svg>`,
+  mjs: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 1h12v14H2zm1.5 1.5V13.5h9V2.5zM4.5 11c0 .8.5 1.5 1.5 1.5s1.5-.5 1.5-1.5V6H6v5c0 .3-.2.5-.5.5s-.5-.2-.5-.5H4c0 .3 0 0 0 0zm5.5 0c0 .8.5 1.5 1.5 1.5s1.5-.5 1.5-1.5c0-.7-.4-1.1-1.2-1.3l-.4-.1c-.4-.1-.4-.2-.4-.3 0-.2.1-.3.4-.3.3 0 .5.2.5.5h1c0-.8-.5-1.4-1.5-1.4S9.5 7.7 9.5 8.5c0 .7.4 1 1.2 1.2l.4.1c.3.1.4.2.4.3 0 .2-.2.3-.4.3-.3 0-.5-.2-.5-.5z"/></svg>`,
+  cjs: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 1h12v14H2zm1.5 1.5V13.5h9V2.5zM4.5 11c0 .8.5 1.5 1.5 1.5s1.5-.5 1.5-1.5V6H6v5c0 .3-.2.5-.5.5s-.5-.2-.5-.5H4c0 .3 0 0 0 0zm5.5 0c0 .8.5 1.5 1.5 1.5s1.5-.5 1.5-1.5c0-.7-.4-1.1-1.2-1.3l-.4-.1c-.4-.1-.4-.2-.4-.3 0-.2.1-.3.4-.3.3 0 .5.2.5.5h1c0-.8-.5-1.4-1.5-1.4S9.5 7.7 9.5 8.5c0 .7.4 1 1.2 1.2l.4.1c.3.1.4.2.4.3 0 .2-.2.3-.4.3-.3 0-.5-.2-.5-.5z"/></svg>`,
+  vue: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M0 1.5L8 15l8-13.5h-3L8 9 3 1.5zm6 0l2 3.5L10 1.5H8.5L8 2.5 7.5 1.5z"/></svg>`,
+  svelte: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2zm3 2.5h2v.5L6 5v3.5l1.5 2v.5H5v-.5L6.5 8V4.5zm3 0h2v.5L9 5v3.5l1.5 2v.5H8v-.5L9.5 8V4.5z"/></svg>`,
+  astro: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1l6 13H2zm0 2L4 12h8z"/></svg>`,
+  html: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 1h10l-.8 12.2L7.5 14.5l-4.7-1.3zM4.5 2.5l.6 9.4 2.4.7 2.4-.7.6-9.4zm1.5 2h4l-.1 1.5H7.5L7.4 8h2.6L9.9 9.5 7.5 10.2 5.1 9.5 5 7.5h1.5l.1.7.9.3.9-.3.1-.7H6z"/></svg>`,
+  htm: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 1h10l-.8 12.2L7.5 14.5l-4.7-1.3zM4.5 2.5l.6 9.4 2.4.7 2.4-.7.6-9.4zm1.5 2h4l-.1 1.5H7.5L7.4 8h2.6L9.9 9.5 7.5 10.2 5.1 9.5 5 7.5h1.5l.1.7.9.3.9-.3.1-.7H6z"/></svg>`,
+  css: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 1h10l-.8 12.2L7.5 14.5l-4.7-1.3zM4.5 2.5l.6 9.4 2.4.7 2.4-.7.6-9.4zm.5 2h6l-.1 1H8.5L8.4 7H10l-.1 1H7.9L7.8 9.2l1.7.4 1.7-.4.1-1.2h-1l-.1.7-.7.2-.7-.2-.1-1.2h2.3L11 5.5H6z"/></svg>`,
+  scss: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 1h10l-.8 12.2L7.5 14.5l-4.7-1.3zM4.5 2.5l.6 9.4 2.4.7 2.4-.7.6-9.4zm.5 2h6l-.1 1H8.5L8.4 7H10l-.1 1H7.9L7.8 9.2l1.7.4 1.7-.4.1-1.2h-1l-.1.7-.7.2-.7-.2-.1-1.2h2.3L11 5.5H6z"/></svg>`,
+  sass: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 1h10l-.8 12.2L7.5 14.5l-4.7-1.3zM4.5 2.5l.6 9.4 2.4.7 2.4-.7.6-9.4zm.5 2h6l-.1 1H8.5L8.4 7H10l-.1 1H7.9L7.8 9.2l1.7.4 1.7-.4.1-1.2h-1l-.1.7-.7.2-.7-.2-.1-1.2h2.3L11 5.5H6z"/></svg>`,
+  less: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 1h10l-.8 12.2L7.5 14.5l-4.7-1.3zM4.5 2.5l.6 9.4 2.4.7 2.4-.7.6-9.4zm.5 2h6l-.1 1H8.5L8.4 7H10l-.1 1H7.9L7.8 9.2l1.7.4 1.7-.4.1-1.2h-1l-.1.7-.7.2-.7-.2-.1-1.2h2.3L11 5.5H6z"/></svg>`,
+  styl: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 1h10l-.8 12.2L7.5 14.5l-4.7-1.3zM4.5 2.5l.6 9.4 2.4.7 2.4-.7.6-9.4zm.5 2h6l-.1 1H8.5L8.4 7H10l-.1 1H7.9L7.8 9.2l1.7.4 1.7-.4.1-1.2h-1l-.1.7-.7.2-.7-.2-.1-1.2h2.3L11 5.5H6z"/></svg>`,
+
+  // Python
   py: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M7.5 1h1a2.5 2.5 0 0 1 2.5 2.5V5H7.5A1.5 1.5 0 0 1 6 3.5 1.5 1.5 0 0 1 7.5 2zM4 4.5A2.5 2.5 0 0 1 6.5 2H8v.5A1.5 1.5 0 0 1 6.5 4H4.5zM2 6.5A2.5 2.5 0 0 1 4.5 4H8v-.5h.5A1.5 1.5 0 0 1 10 5v.5H6.5A2.5 2.5 0 0 1 4 8v.5h-.5A1.5 1.5 0 0 1 2 7zM12 9.5A2.5 2.5 0 0 1 9.5 12H8v.5A1.5 1.5 0 0 1 6.5 14h-.5A2.5 2.5 0 0 1 4 11.5V11h5.5A2.5 2.5 0 0 0 12 8.5V8h.5A1.5 1.5 0 0 1 14 9.5zM8 13a1.5 1.5 0 0 1-1.5 1.5H6.5z"/></svg>`,
+  pyi: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M7.5 1h1a2.5 2.5 0 0 1 2.5 2.5V5H7.5A1.5 1.5 0 0 1 6 3.5 1.5 1.5 0 0 1 7.5 2zM4 4.5A2.5 2.5 0 0 1 6.5 2H8v.5A1.5 1.5 0 0 1 6.5 4H4.5zM2 6.5A2.5 2.5 0 0 1 4.5 4H8v-.5h.5A1.5 1.5 0 0 1 10 5v.5H6.5A2.5 2.5 0 0 1 4 8v.5h-.5A1.5 1.5 0 0 1 2 7zM12 9.5A2.5 2.5 0 0 1 9.5 12H8v.5A1.5 1.5 0 0 1 6.5 14h-.5A2.5 2.5 0 0 1 4 11.5V11h5.5A2.5 2.5 0 0 0 12 8.5V8h.5A1.5 1.5 0 0 1 14 9.5zM8 13a1.5 1.5 0 0 1-1.5 1.5H6.5z"/></svg>`,
+  pyc: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M7.5 1h1a2.5 2.5 0 0 1 2.5 2.5V5H7.5A1.5 1.5 0 0 1 6 3.5 1.5 1.5 0 0 1 7.5 2zM4 4.5A2.5 2.5 0 0 1 6.5 2H8v.5A1.5 1.5 0 0 1 6.5 4H4.5zM2 6.5A2.5 2.5 0 0 1 4.5 4H8v-.5h.5A1.5 1.5 0 0 1 10 5v.5H6.5A2.5 2.5 0 0 1 4 8v.5h-.5A1.5 1.5 0 0 1 2 7zM12 9.5A2.5 2.5 0 0 1 9.5 12H8v.5A1.5 1.5 0 0 1 6.5 14h-.5A2.5 2.5 0 0 1 4 11.5V11h5.5A2.5 2.5 0 0 0 12 8.5V8h.5A1.5 1.5 0 0 1 14 9.5zM8 13a1.5 1.5 0 0 1-1.5 1.5H6.5z"/></svg>`,
+  pyd: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M7.5 1h1a2.5 2.5 0 0 1 2.5 2.5V5H7.5A1.5 1.5 0 0 1 6 3.5 1.5 1.5 0 0 1 7.5 2zM4 4.5A2.5 2.5 0 0 1 6.5 2H8v.5A1.5 1.5 0 0 1 6.5 4H4.5zM2 6.5A2.5 2.5 0 0 1 4.5 4H8v-.5h.5A1.5 1.5 0 0 1 10 5v.5H6.5A2.5 2.5 0 0 1 4 8v.5h-.5A1.5 1.5 0 0 1 2 7zM12 9.5A2.5 2.5 0 0 1 9.5 12H8v.5A1.5 1.5 0 0 1 6.5 14h-.5A2.5 2.5 0 0 1 4 11.5V11h5.5A2.5 2.5 0 0 0 12 8.5V8h.5A1.5 1.5 0 0 1 14 9.5zM8 13a1.5 1.5 0 0 1-1.5 1.5H6.5z"/></svg>`,
+  ipynb: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2zm1.5 1.5v9h9v-9zm2 1.5h5v1.5h-5zm0 3h5v1.5h-5zm0 3h3v1.5h-3z"/></svg>`,
+
+  // C-family
   c: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 7 7h-2a5 5 0 1 1-5-5V1zM9 4l5 4-5 4z"/></svg>`,
   h: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 7 7h-2a5 5 0 1 1-5-5V1zM2 4h2v3h3V4h2v8H7V9H4v3H2zm9 4h2v-1h-1V6h1V5h-2z"/></svg>`,
   cpp: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 7 7h-2a5 5 0 1 1-5-5V1zM3 6h2v1h1V6h1v4H6V9H5v1H3zm6 0h2v1h1V6h1v4h-1V9h-1v1H9z"/></svg>`,
-  hpp: FILE_DEFAULT_ICON_SVG,
+  hpp: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 7 7h-2a5 5 0 1 1-5-5V1zM3 6h2v1h1V6h1v4H6V9H5v1H3zm6 0h2v1h1V6h1v4h-1V9h-1v1H9z"/></svg>`,
+  cc: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 7 7h-2a5 5 0 1 1-5-5V1zM3 6h2v1h1V6h1v4H6V9H5v1H3z"/></svg>`,
+  m: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 7 7h-2a5 5 0 1 1-5-5V1zM9 4l5 4-5 4z"/></svg>`,
+  mm: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 7 7h-2a5 5 0 1 1-5-5V1zM9 4l5 4-5 4z"/></svg>`,
+
+  // Systems
   go: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h5v2H4v2h3v2H4v2h3v2H2zm7 0h5v2h-3v1h3v2h-3v1h3v2H9z"/></svg>`,
   rs: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h5v2H4v2h2a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2H2V9h4v1H3v2h3v2H2zm7 0h5v2h-3v1h3v2h-3v1h3v2H9z"/></svg>`,
-  java: FILE_DEFAULT_ICON_SVG,
-  rb: FILE_DEFAULT_ICON_SVG,
+  java: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5 13c0-1 .8-2 2-3 1 0 1 0 1 1s-1 2-1 3c0 1 1 1 2 1 2 0 4-1 4-3 0-1-1-1-1-2 0-2 1-3 0-5C12 3 11 1 9 1 7 1 5 2 5 4c0 1 1 2 1 2 0 1-1 1-1 2 0 2 1 2 1 2 0 1-1 1-1 3zm4 0c0-1 1-1 1-2 1 0 1 1 1 2z"/></svg>`,
+  kt: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h5v2H4v2h2a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2H2V9h4v1H3v2h3v2H2zm7 0h5v2h-3v1h3v2h-3v1h3v2H9z"/></svg>`,
+  kts: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h5v2H4v2h2a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2H2V9h4v1H3v2h3v2H2zm7 0h5v2h-3v1h3v2h-3v1h3v2H9z"/></svg>`,
+  swift: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 13l4-4 4 1-3 3zm5-5l5-5 2 1-4 5z"/></svg>`,
+  dart: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 13L8 1l3 6-5 6zm6-1l3-5 2 4-3 4z"/></svg>`,
+  php: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v10H2zm2 2v6h2V8h1l2 3h2L9 8l2-3H9L7 8H6V5z"/></svg>`,
+  rb: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zM5 5h4l-1 2H5zm-1 4h5l-1 2H4z"/></svg>`,
+  scala: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2zm2 2v8h8V4zm2 2h4v1H6zm0 2h4v1H6zm0 2h2v1H6z"/></svg>`,
+  clj: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2h10v2H3zm0 3h6v2H3zm0 3h10v2H3zm0 3h6v2H3zm0 3h10v1H3z"/></svg>`,
+  cljs: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2h10v2H3zm0 3h6v2H3zm0 3h10v2H3zm0 3h6v2H3zm0 3h10v1H3z"/></svg>`,
+  ex: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2zm2 2v8h8V4zm2 1h4v1H6zm0 2h4v1H6zm0 2h2v1H6z"/></svg>`,
+  exs: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2zm2 2v8h8V4zm2 1h4v1H6zm0 2h4v1H6zm0 2h2v1H6z"/></svg>`,
+  lua: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v2H2zm0 3h12v2H2zm0 3h12v2H2zm0 3h6v2H2z"/></svg>`,
+  zig: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12l-2 4-3-1-2 4-3-1 1 3-3 3z"/></svg>`,
+  nim: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 7 7h-2a5 5 0 1 1-5-5V1zM2 4h2v3h3V4h2v8H7V9H4v3H2z"/></svg>`,
+  v: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1L2 14h2l4-9 4 9h2z"/></svg>`,
+
+  // Shell / scripts
   sh: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 7 7h-2a5 5 0 1 1-5-5 5 5 0 0 1 3.5 1.5L9 6h4V2l-1.5 1.5A7 7 0 0 0 8 1zM5 6l3 2-3 2z"/></svg>`,
+  bash: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 7 7h-2a5 5 0 1 1-5-5 5 5 0 0 1 3.5 1.5L9 6h4V2l-1.5 1.5A7 7 0 0 0 8 1zM5 6l3 2-3 2z"/></svg>`,
+  zsh: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 7 7h-2a5 5 0 1 1-5-5 5 5 0 0 1 3.5 1.5L9 6h4V2l-1.5 1.5A7 7 0 0 0 8 1zM5 6l3 2-3 2z"/></svg>`,
+  fish: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 7 7h-2a5 5 0 1 1-5-5 5 5 0 0 1 3.5 1.5L9 6h4V2l-1.5 1.5A7 7 0 0 0 8 1zM5 6l3 2-3 2z"/></svg>`,
+  ps1: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 7 7h-2a5 5 0 1 1-5-5 5 5 0 0 1 3.5 1.5L9 6h4V2l-1.5 1.5A7 7 0 0 0 8 1zM5 6l3 2-3 2z"/></svg>`,
+
+  // Data / config
   json: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h7.5zM3 1.5A.5.5 0 0 0 2.5 2v12a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V5H10a2 2 0 0 1-2-2V1.5zm6.5 4v.5c0 .8.7 1.5 1.5 1.5H11v.5h-1V7h1.5A1.5 1.5 0 0 0 13 5.5V5h-1.5a.5.5 0 0 1-.5-.5V4h-1v.5h1V6h-.5a.5.5 0 0 1-.5-.5z"/></svg>`,
-  md: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M14 14V2H2v12zM3 3h10v10H3zm2 8h1V6.5l1 2.5L8 6.5V11h1V5H7.5L7 7.5 6.5 5H5zm5 0h2v-1h-1V6h1V5h-2z"/></svg>`,
-  html: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 1h10l-.8 12.2L7.5 14.5l-4.7-1.3zM4.5 2.5l.6 9.4 2.4.7 2.4-.7.6-9.4zm1.5 2h4l-.1 1.5H7.5L7.4 8h2.6L9.9 9.5 7.5 10.2 5.1 9.5 5 7.5h1.5l.1.7.9.3.9-.3.1-.7H6z"/></svg>`,
-  css: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 1h10l-.8 12.2L7.5 14.5l-4.7-1.3zM4.5 2.5l.6 9.4 2.4.7 2.4-.7.6-9.4zm.5 2h6l-.1 1H8.5L8.4 7H10l-.1 1H7.9L7.8 9.2l1.7.4 1.7-.4.1-1.2h-1l-.1.7-.7.2-.7-.2-.1-1.2h2.3L11 5.5H6z"/></svg>`,
-  toml: FILE_DEFAULT_ICON_SVG,
-  yaml: FILE_DEFAULT_ICON_SVG,
-  yml: FILE_DEFAULT_ICON_SVG,
+  json5: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h7.5zM3 1.5A.5.5 0 0 0 2.5 2v12a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V5H10a2 2 0 0 1-2-2V1.5zm6.5 4v.5c0 .8.7 1.5 1.5 1.5H11v.5h-1V7h1.5A1.5 1.5 0 0 0 13 5.5V5h-1.5a.5.5 0 0 1-.5-.5V4h-1v.5h1V6h-.5a.5.5 0 0 1-.5-.5z"/></svg>`,
+  jsonc: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h7.5zM3 1.5A.5.5 0 0 0 2.5 2v12a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V5H10a2 2 0 0 1-2-2V1.5zm6.5 4v.5c0 .8.7 1.5 1.5 1.5H11v.5h-1V7h1.5A1.5 1.5 0 0 0 13 5.5V5h-1.5a.5.5 0 0 1-.5-.5V4h-1v.5h1V6h-.5a.5.5 0 0 1-.5-.5z"/></svg>`,
+  yaml: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2zm2 3v6h2V8h1l2 3h2L9 8l2-3H9L7 8H6V5z"/></svg>`,
+  yml: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2zm2 3v6h2V8h1l2 3h2L9 8l2-3H9L7 8H6V5z"/></svg>`,
+  toml: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2zm2 3v6h2V8h1l2 3h2L9 8l2-3H9L7 8H6V5z"/></svg>`,
+  xml: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2zm2 3v6h2V8h1l2 3h2L9 8l2-3H9L7 8H6V5z"/></svg>`,
+  ini: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2zm2 3v6h2V8h1l2 3h2L9 8l2-3H9L7 8H6V5z"/></svg>`,
+  env: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1l5 2v5c0 3-2 5.5-5 7-3-1.5-5-4-5-7V3zm-2 5l1 1 3-3-1-1-2 2-1-1z"/></svg>`,
+  properties: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2zm2 3v6h2V8h1l2 3h2L9 8l2-3H9L7 8H6V5z"/></svg>`,
+  conf: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2zm2 3v6h2V8h1l2 3h2L9 8l2-3H9L7 8H6V5z"/></svg>`,
+  cfg: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2zm2 3v6h2V8h1l2 3h2L9 8l2-3H9L7 8H6V5z"/></svg>`,
   lock: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 7V5a4 4 0 0 1 8 0v2h1v8H3V7zM6 5v2h4V5a2 2 0 1 0-4 0z"/></svg>`,
-  log: FILE_DEFAULT_ICON_SVG,
-  txt: FILE_DEFAULT_ICON_SVG,
+
+  // Documentation
+  md: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M14 14V2H2v12zM3 3h10v10H3zm2 8h1V6.5l1 2.5L8 6.5V11h1V5H7.5L7 7.5 6.5 5H5zm5 0h2v-1h-1V6h1V5h-2z"/></svg>`,
+  mdx: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M14 14V2H2v12zM3 3h10v10H3zm2 8h1V6.5l1 2.5L8 6.5V11h1V5H7.5L7 7.5 6.5 5H5zm5 0h2v-1h-1V6h1V5h-2z"/></svg>`,
+  txt: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2h10v12H3zm1.5 1.5v9h7v-9zM5 5h6v1.5H5zm0 3h6v1.5H5zm0 3h4v1.5H5z"/></svg>`,
+  rst: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2h10v12H3zm1.5 1.5v9h7v-9zM5 5h6v1.5H5zm0 3h6v1.5H5zm0 3h4v1.5H5z"/></svg>`,
+  log: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2h10v12H3zm1.5 1.5v9h7v-9zM5 5h6v1.5H5zm0 3h6v1.5H5zm0 3h4v1.5H5z"/></svg>`,
+
+  // SQL / DB
+  sql: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 4h12v8H2zm1.5 1.5v5h9v-5zm1.5 1.5h6v1.5H5z"/></svg>`,
+  prisma: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 13L8 1l3 6-5 6zm6-1l3-5 2 4-3 4z"/></svg>`,
+  graphql: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1l6 4v6l-6 4-6-4V5zm0 2L4 6v4l4 3 4-3V6z"/></svg>`,
+  gql: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1l6 4v6l-6 4-6-4V5zm0 2L4 6v4l4 3 4-3V6z"/></svg>`,
+
+  // Infra / devops
+  tf: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1l6 4v6l-6 4-6-4V5zm0 2L4 6v4l4 3 4-3V6z"/></svg>`,
+  hcl: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2zm2 3v6h2V8h1l2 3h2L9 8l2-3H9L7 8H6V5z"/></svg>`,
+  proto: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2zm2 3v6h2V8h1l2 3h2L9 8l2-3H9L7 8H6V5z"/></svg>`,
+  graphqls: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1l6 4v6l-6 4-6-4V5zm0 2L4 6v4l4 3 4-3V6z"/></svg>`,
+
+  // Other
+  wasm: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2zm2 2v8h8V4zm1.5 1.5h5v1H5.5zm0 2.5h5v1H5.5zm0 2.5h3v1h-3z"/></svg>`,
+  asm: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2zm2 3v6h2V8h1l2 3h2L9 8l2-3H9L7 8H6V5z"/></svg>`,
+  vim: `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12v12H2zm2 3v6h2V8h1l2 3h2L9 8l2-3H9L7 8H6V5z"/></svg>`,
 };
 
-function fileIcon(filename: string): string {
+// Returns the language key that should be exposed as `data-ext` on the icon
+// element. Mirrors `fileIcon()`'s lookup order so the CSS selector always
+// matches the icon actually rendered. Falls back to the lowercased extension
+// (or empty string for files without an extension) so callers can still
+// attribute a color even when the icon is the generic file.
+function fileExt(filename: string): string {
   const base = filename.split("/").pop() ?? filename;
   const lower = base.toLowerCase();
-  if (EXTENSION_ICON_OVERRIDES[lower]) {
-    return EXTENSION_ICON_OVERRIDES[lower]!;
-  }
+  if (FILENAME_ICON_OVERRIDES[lower]) return lower;
   const dot = base.lastIndexOf(".");
-  const ext = dot >= 0 ? base.slice(dot + 1).toLowerCase() : "";
-  return EXTENSION_ICON_OVERRIDES[ext] ?? FILE_DEFAULT_ICON_SVG;
+  if (dot < 0) return lower.startsWith(".") ? lower : "";
+  return base.slice(dot + 1).toLowerCase();
+}
+
+function fileIcon(filename: string): string {
+  const ext = fileExt(filename);
+  return EXTENSION_ICON_OVERRIDES[ext] ?? FILENAME_ICON_OVERRIDES[ext] ?? FILE_DEFAULT_ICON_SVG;
 }
 
 const params = new URLSearchParams(location.search);
@@ -998,6 +1137,8 @@ function makeSidebarItem(file: FileEntry, index: number, extraClass = ""): HTMLB
 
   const typeIcon = document.createElement("span");
   typeIcon.className = "sidebar-type-icon";
+  const ext = fileExt(file.path);
+  if (ext) typeIcon.dataset.ext = ext;
   typeIcon.innerHTML = fileIcon(file.path);
   typeIcon.setAttribute("aria-hidden", "true");
 
@@ -1066,7 +1207,7 @@ function renderTreeSidebar(root: TreeNode) {
       chevron.className = "folder-chevron";
       const folderIcon = document.createElement("span");
       folderIcon.className = "folder-icon";
-      folderIcon.innerHTML = FOLDER_ICON_SVG;
+      folderIcon.innerHTML = collapsed ? FOLDER_OPEN_ICON_SVG : FOLDER_ICON_SVG;
       const folderName = document.createElement("span");
       folderName.className = "folder-name";
       folderName.textContent = child.name;
@@ -1091,9 +1232,11 @@ function renderTreeSidebar(root: TreeNode) {
         if (isCollapsed) {
           folder.removeAttribute("data-collapsed");
           state.collapsedFolders.delete(child.path);
+          folderIcon.innerHTML = FOLDER_ICON_SVG;
         } else {
           folder.setAttribute("data-collapsed", "");
           state.collapsedFolders.add(child.path);
+          folderIcon.innerHTML = FOLDER_OPEN_ICON_SVG;
         }
         if (childrenContainer) childrenContainer.style.display = isCollapsed ? "" : "none";
       });
