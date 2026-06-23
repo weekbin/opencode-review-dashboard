@@ -14,6 +14,19 @@ import { setTimeout as sleep } from "node:timers/promises";
 
 import { SCENARIOS } from "./scenarios.mjs";
 
+const run = (cmd, args, cwd) =>
+  new Promise((resolve) => {
+    const p = spawn(cmd, args, {
+      cwd,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let out = "",
+      err = "";
+    p.stdout.on("data", (d) => (out += d.toString()));
+    p.stderr.on("data", (d) => (err += d.toString()));
+    p.on("close", (code) => resolve({ ok: code === 0, stdout: out.trim(), stderr: err.trim() }));
+  });
+
 const PLUGIN_PATH = join(import.meta.dir, "..", "..", "dist", "plugin", "index.mjs");
 const onlyFlag = process.argv.find((a) => a === "--only");
 const onlyName = onlyFlag ? process.argv[process.argv.indexOf(onlyFlag) + 1] : null;
@@ -104,10 +117,22 @@ async function runScenario(name, def) {
   }
 
   // Cleanup worktrees and the test dir
-  for (const wt of setupInfo.worktrees || []) {
-    await spawn("git", ["worktree", "remove", "--force", wt.path], { cwd: dir });
+  try {
+    for (const wt of setupInfo.worktrees || []) {
+      const res = await run("git", ["worktree", "remove", "--force", wt.path], dir);
+      if (!res.ok) {
+        console.error(`  warn: failed to remove worktree ${wt.path}: ${res.stderr}`);
+      }
+      rmSync(wt.path, { recursive: true, force: true });
+    }
+  } catch (e) {
+    console.error(`  warn: worktree cleanup error: ${e.message || String(e)}`);
   }
-  rmSync(dir, { recursive: true, force: true });
+  try {
+    rmSync(dir, { recursive: true, force: true });
+  } catch (e) {
+    console.error(`  warn: failed to remove temp dir ${dir}: ${e.message || String(e)}`);
+  }
 
   const checks = check(name, setupInfo, raw, def.expect, result);
   const allPass = checks.every((c) => c.pass);
