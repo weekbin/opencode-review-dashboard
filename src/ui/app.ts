@@ -1431,12 +1431,14 @@ function renderConversationPanel(root: HTMLElement) {
   }
 
   const filtered =
-    state.conversationFilter === "open" ? entries.filter((e) => e.status === "open") : entries;
+    state.conversationFilter === "open"
+      ? entries.filter((e) => e.status === "open" || e.status === "closed_auto")
+      : entries;
   if (filtered.length === 0) {
     const empty = document.createElement("div");
     empty.className = "conversation-empty";
     empty.textContent =
-      state.conversationFilter === "open" ? "No unresolved findings." : "No findings yet.";
+      state.conversationFilter === "open" ? "No unresolved findings." : "No findings found.";
     root.appendChild(empty);
     return;
   }
@@ -1484,7 +1486,6 @@ function renderConversationPanel(root: HTMLElement) {
     headLeft.appendChild(statusBadge);
 
     head.appendChild(headLeft);
-    item.appendChild(head);
 
     const actions = document.createElement("div");
     actions.className = "conversation-actions";
@@ -1537,26 +1538,30 @@ function renderConversationPanel(root: HTMLElement) {
       });
     });
     actions.appendChild(jumpBtn);
-    item.appendChild(actions);
+    head.appendChild(actions);
+    item.appendChild(head);
 
     const subhead = document.createElement("div");
     subhead.className = "conversation-subhead";
+
+    const subheadLeft = document.createElement("div");
+    subheadLeft.className = "conversation-subhead-left";
     if (entry.origin === "new") {
       const newBadge = document.createElement("span");
       newBadge.className = "badge-new";
       newBadge.textContent = "new";
-      subhead.appendChild(newBadge);
+      subheadLeft.appendChild(newBadge);
     } else {
       const round = document.createElement("span");
       round.textContent = `Round ${entry.round}`;
-      subhead.appendChild(round);
+      subheadLeft.appendChild(round);
     }
     if (entry.created_at) {
       const time = document.createElement("span");
       time.textContent = `· ${formatRelativeTime(entry.created_at)}`;
-      subhead.appendChild(time);
+      subheadLeft.appendChild(time);
     }
-    item.appendChild(subhead);
+    subhead.appendChild(subheadLeft);
 
     const badgesRow = document.createElement("div");
     badgesRow.className = "finding-badges";
@@ -1565,7 +1570,8 @@ function renderConversationPanel(root: HTMLElement) {
       `<span class="badge">${escapeHtml(entry.category)}</span>`,
       `<span class="badge">${escapeHtml(entry.kind ?? "line")}</span>`,
     ].join("");
-    item.appendChild(badgesRow);
+    subhead.appendChild(badgesRow);
+    item.appendChild(subhead);
 
     const body = document.createElement("div");
     body.className = "conversation-body";

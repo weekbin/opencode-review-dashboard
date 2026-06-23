@@ -529,10 +529,17 @@
       }
       .conversation-subhead {
         display: flex;
-        gap: 8px;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
         font-size: 14px;
         color: light-dark(#888, #666);
+      }
+      .conversation-subhead-left {
+        display: flex;
         align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
       }
       .conversation-subhead .badge-new {
         background: light-dark(#4a90e2, #4a90e2);
@@ -610,8 +617,7 @@
       .conversation-actions {
         display: flex;
         gap: 6px;
-        padding-top: 4px;
-        border-top: 1px solid light-dark(#f0f0f0, #1e1e1e);
+        align-items: center;
       }
       .conversation-actions button {
         all: unset;
