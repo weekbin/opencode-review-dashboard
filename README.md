@@ -181,7 +181,8 @@ The browser UI has three main areas:
   - **Commits** — per-file commit list with short SHA and message.
   - **Conversation** — all findings with status badges (open/resolved/stale), plus inline comments per finding. Resolve, Remove, Reopen, or Jump-to-file actions per finding.
 - **Diff cards** (center) — syntax-highlighted diffs. Click line numbers to select a range. Click the file card **+** button to add a file-level finding. Large unchanged regions are folded; click expand buttons to reveal 20 lines at a time.
-- **Review drawer** (overlay) — pick category (`bug`, `style`, `perf`, `question`, `recommend`) and severity (`high`, `medium`, `low`), write a comment, and click "Add Finding". A notes field holds general observations.
+- **Review drawer** (overlay) — pick category (`bug`, `style`, `perf`, `question`, `recommend`) and severity (`high`, `medium`, `low`), write a comment, and click "Add Finding". A notes field holds general observations about this round.
+- **Header actions** (top-right) — `Submit Review` is always visible in the page header so the final action is never behind a panel toggle. Layout (unified / split) and theme (light / auto / dark) controls sit alongside it. The "Review" toggle button shows a live count of findings.
 
 Light/dark mode follows your system preference, or you can toggle it manually.
 
