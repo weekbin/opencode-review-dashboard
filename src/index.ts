@@ -1365,7 +1365,9 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
             "   - Read all affected files associated with the diff once.",
             "   - Design a **unified fix plan** that addresses all actionable `notes` and `findings` together. Do NOT handle items one at a time (per-finding fixes lose context and produce inconsistent patches — the plan must cover all findings as a coherent change).",
             "   - **Honor prior-round context**: if a previous round's finding was resolved and the user's notes this round align with it, your plan should make sure the prior resolution still holds. If the user rejected a previous fix, do not re-apply the same pattern.",
-            "3. **Fix Application**: Apply the entire unified plan in a single batch via Edit calls.",
+            "3. **Fix Application**:",
+            "   - Apply the entire unified plan in a single batch via Edit calls.",
+            '   - **Post-Apply Trace (mandatory)**: After each Edit, call `add_review_comment` once per addressed finding id with a short description of what changed at that location (file:line range, what was changed, why). If one edit fixed multiple findings, comment on each. Keep each comment under 500 characters. Example: `"Fixed in src/foo.ts:120-125 — replaced X with Y, added null check"`. These comments persist in `state.json` even after the user resolves the finding, so they can read what was done and continue the discussion with their own follow-up comments.',
             "4. **Validation**: After all fixes are applied, re-run the tool to confirm resolution of all actionable items.",
             "5. **Closing Rule**: Only respond with `Round N: no actionable items, closing out.` if BOTH:",
             "   - `notes` is empty or whitespace, AND",
@@ -1484,7 +1486,7 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
 
           const files = await renderFiles(scoped);
           const merged = reconcile(files, state.findings);
-          const existing = merged.filter((item) => item.status === "open");
+          const existing = merged;
           const base: State = {
             ...state,
             findings: merged,
@@ -1642,9 +1644,9 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                 target.closed_at = Date.now();
                 base.updated_at = Date.now();
                 await saveState(state_file, base);
-                // Also update the existing_findings in the launch data so UI stays in sync
                 const idx = data.existing_findings.findIndex((item) => item.id === finding_id);
-                if (idx !== -1) data.existing_findings.splice(idx, 1);
+                if (idx !== -1) data.existing_findings[idx] = { ...target };
+                else data.existing_findings.push({ ...target });
                 return new Response(JSON.stringify({ ok: true }), {
                   headers: { "content-type": "application/json" },
                 });

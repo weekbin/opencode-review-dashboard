@@ -368,7 +368,11 @@ const state = {
     ["files", "commits", "conversation"],
     "files",
   ),
-  conversationFilter: readStored<"open" | "all">(CONV_FILTER_KEY, ["open", "all"], "open"),
+  conversationFilter: readStored<"open" | "resolved" | "all">(
+    CONV_FILTER_KEY,
+    ["open", "resolved", "all"],
+    "open",
+  ),
   drawerOpen: false,
   pendingFileFinding: null as string | null,
 };
@@ -490,7 +494,7 @@ navbarTabs.addEventListener("click", (event) => {
   if (tab) setActiveTab(tab);
 });
 
-function setConversationFilter(filter: "open" | "all") {
+function setConversationFilter(filter: "open" | "resolved" | "all") {
   if (state.conversationFilter === filter) return;
   state.conversationFilter = filter;
   writeStored(CONV_FILTER_KEY, filter);
@@ -515,7 +519,7 @@ if (conversationFilter) {
   conversationFilter.addEventListener("click", (event) => {
     const btn = (event.target as HTMLElement).closest("button");
     if (!btn) return;
-    const filter = btn.dataset.filter as "open" | "all" | undefined;
+    const filter = btn.dataset.filter as "open" | "resolved" | "all" | undefined;
     if (filter) setConversationFilter(filter);
   });
 }
@@ -1633,12 +1637,18 @@ function renderConversationPanel(root: HTMLElement) {
   const filtered =
     state.conversationFilter === "open"
       ? entries.filter((e) => e.status === "open" || e.status === "closed_auto")
-      : entries;
+      : state.conversationFilter === "resolved"
+        ? entries.filter((e) => e.status === "resolved")
+        : entries;
   if (filtered.length === 0) {
     const empty = document.createElement("div");
     empty.className = "conversation-empty";
     empty.textContent =
-      state.conversationFilter === "open" ? "No unresolved findings." : "No findings found.";
+      state.conversationFilter === "open"
+        ? "No unresolved findings."
+        : state.conversationFilter === "resolved"
+          ? "No resolved findings."
+          : "No findings found.";
     root.appendChild(empty);
     return;
   }
@@ -1984,7 +1994,8 @@ async function resolveFinding(id: string) {
     return;
   }
 
-  state.existing = state.existing.filter((item) => item.id !== id);
+  const item = state.existing.find((f) => f.id === id);
+  if (item) item.status = "resolved";
   renderFindings();
   renderConversationPane();
   syncAll();
