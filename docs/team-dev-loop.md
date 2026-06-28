@@ -1,641 +1,483 @@
-  # Team Dev Loop
+# Team Dev Loop (v2 — 2026-06-28 redesign)
 
-  The 8-phase development loop for **this repo** (`@weekbin/opencode-review-dashboard`).
+The 8-phase development loop for **this repo** (`@weekbin/opencode-review-dashboard`).
 
-  ## Agent architecture (CRITICAL — read first)
+This is the **v2** design. v1 (earlier 2026-06-28) used `team_create` + `team_send_message` to orchestrate 7 chat sessions per round. **v2 eliminates the team_* lifecycle** and runs the same 7 roles as sequential `task()` calls, with the 5 review-work lenses running in parallel via `Promise.all([5 run_in_background=true])`. See `.omo/round-2-plan.md` for the full redesign rationale and `.omo/round-1/` for v1 evidence (Round 1 ran successfully with v1).
 
-`team_*` tools (team_create, team_send_input, team_task_create, team_delete, etc.) are only registered to the **primary `sisyphus` agent** when `team_mode.enabled=true`. Subagents (`sisyphus-junior`, `prometheus`, etc.) do NOT get these tools.
+## Table of contents
 
-**This means**: the dev loop MUST be driven from your primary chat session (the one with sisyphus as default agent). Subagents can only be role-specific workers AFTER the team is created.
-
-If you are a subagent (e.g., `prometheus`) and want to drive a round, you **cannot**. Write a clear `blocker.md` and tell the user to invoke the loop from their primary chat.
+1. [What it is](#what-it-is)
+2. [Why 7 roles (anti-bias)](#why-7-roles-anti-bias)
+3. [v1 vs v2 — what changed](#v1-vs-v2--what-changed)
+4. [The 8 phases (flow diagram)](#the-8-phases-flow-diagram)
+5. [The 7 roles (detailed)](#the-7-roles-detailed)
+6. [Backlog priority](#backlog-priority)
+7. [Loop control](#loop-control)
+8. [Lead inline takeover protocol](#lead-inline-takeover-protocol)
+9. [Trivial mode](#trivial-mode)
+10. [Round artifacts (file structure)](#round-artifacts-file-structure)
+11. [Per-phase details](#per-phase-details)
+12. [Cost analysis: v1 vs v2](#cost-analysis-v1-vs-v2)
+13. [Anti-patterns (things v1 got wrong)](#anti-patterns-things-v1-got-wrong)
+14. [Migration from v1](#migration-from-v1)
+15. [How to install](#how-to-install)
+16. [How to invoke](#how-to-invoke)
+17. [See also](#see-also)
+18. [License](#license)
 
 ## What it is
 
-  A self-driving loop for picking the next thing to build, proposing it, gating it, designing it, building it, validating it, documenting it, and looping — without any single agent (or you) being biased toward "looks done." Each round is:
+A self-driving loop for picking the next thing to build, proposing it, gating it, designing it, building it, validating it, documenting it, and looping — without any single agent (or you) being biased toward "looks done."
 
-  ```
-  PM (propose + self-critique)  →  PM Manager (gate on pseudo-requirements)
-                                    ↓
-  Architect (plan)  →  Dev (execute + inline self-check)  →  Tester (5-agent + diff-review + Playwright)
-                                                                                         ↓
-                                                                            PM Doc Writer (Playwright + README)
-                                                                                         ↓
-                                                                            Decision (continue / stop)
-  ```
+```
+PM (propose + self-critique in same file)
+    ↓
+PM Manager (gate on pseudo-requirements)
+    ↓
+USER PICK CANDIDATE (hard gate — lead asks)
+    ↓
+Architect (plan, via ulw-plan)
+    ↓
+Dev (execute + inline AC trace, returns to lead)
+    ↓
+Tester Review (5 parallel lenses in 1 subagent)
+    ├─ Lens #1 Goal
+    ├─ Lens #2 QA
+    ├─ Lens #3 Code
+    ├─ Lens #4 Security
+    └─ Lens #5 Context
+    ↓
+Tester Diff (uses /diff-review-dashboard)
+    ↓
+Tester Playwright (real browser walkthrough)
+    ↓
+PM Doc Writer (Playwright + README update)
+    ↓
+Decision (lead writes directly)
+    ↓
+git add + commit + push origin main
+```
 
-  ## Why 7 roles (anti-bias)
+**Key v2 change**: Only the Tester Review phase has internal parallelism (5 lenses via `run_in_background=true`). All other phases are sequential `task()` calls. No `team_create`, no chat session lifecycle, no shutdown ceremony.
 
-  Each phase is a SEPARATE subagent with fresh context. This prevents:
+## Why 7 roles (anti-bias)
 
-  | Risk | Mitigation |
-  |---|---|
-  | PM proposes a fake demand | PM self-critique + PM Manager meta-review |
-  | Orchestrator hallucinates requirements | PM is spawned, not the orchestrator's own judgment |
-  | Dev self-confirms "done" without matching brief | Dev does inline brief-vs-code self-check at end of Phase 2 (writes dev-self-check.md); PM Manager also guards upstream |
-  | Code passes tests but UI doesn't work | Playwright tester clicks through every button — empirical |
-  | Feature ships without docs | PM Doc Writer updates README with screenshot + usage after every ship |
+Each phase is a SEPARATE subagent with fresh context. This prevents:
 
-  ## The 8 roles
+| Risk | Mitigation |
+|---|---|
+| PM proposes a fake demand | PM ## Self-Critique section in brief.md + PM Manager meta-review (gate) |
+| Orchestrator hallucinates requirements | PM is a spawned subagent, not the orchestrator's own judgment |
+| Dev self-confirms "done" without matching brief | Dev returns inline AC trace (ac_trace array in return value) which lead copies into decision.md; PM Manager also guards upstream |
+| Code passes tests but UI doesn't work | 5 review-work lenses (incl. Playwright hands-on) catch what unit tests miss |
+| Feature ships without docs | PM Doc Writer updates README with screenshot + usage after every ship |
+| One round's tests don't generalize to next round's risk | Tester Context lens (Lens #5) explicitly maps changes against follow-up candidates |
 
-  | Role | What | Implementation |
-  |---|---|---|
-  | **PM** | Pick next item: `gh issue list` + `.omo/backlog.md` + user prompt + agent self-investigation. Output: brief + self-critique | Spawned subagent (Phase 0) |
-  | **PM Manager** | Validate PM's proposal for pseudo-requirements (DUPLICATE / SPECULATION / CONTRADICTION / INFLATED / OBSCURE) | Spawned subagent (Phase 0.5) |
-  | **Architect** | Decision-complete plan | Reuses `/shared/ulw-plan` (Phase 1) |
-  | **Dev** | Implement + failing-first tests + commit | Reuses `/shared/start-work` (Phase 2) |
-  | ~~Verifier~~ | *(merged into Dev — Dev does inline brief-vs-code self-check)* | inline in Dev |
-  | **Tester** | Code review + dogfooded diff + Playwright UI click-through | Reuses `/shared/review-work` + `/diff-review-dashboard` + Playwright MCP (Phase 3) |
-  | **PM Doc Writer** | Run feature via Playwright, capture screenshots, update README with feature catalog entry | Spawned subagent (Phase 3.5) |
-  | **Decision** | Loop control based on all prior outputs | Inline (Phase 4) |
+**v2 reinforces anti-bias** by removing the team_* message-passing layer that v1 had — each role is now a single-shot `task()` with no chance for cross-contamination of context.
 
-  **~85% reuse** — only PM, PM Manager, PM Doc Writer are new roles (Verifier merged into Dev). Architect / Dev / Tester wrap existing skills.
+## v1 vs v2 — what changed
 
-  ## Backlog priority
-
-  1. **User override** (your current chat prompt) — highest
-  2. **GitHub issues** with `bug` label
-  3. **GitHub issues** with `enhancement` label
-  4. **`.omo/backlog.md`** (manually curated, optional)
-  5. **Agent self-investigation** (only when 1-4 are empty)
-
-  ## Loop control
-
-  | Condition | Action |
-  |---|---|
-  | You say "stop" | Exit immediately |
-  | Backlog empty | Exit with summary |
-  | 3 consecutive no-progress rounds | Suggest stop (you decide) |
-  | PM Manager REJECT / CLARIFY | Ask you before proceeding |
-  | Dev self-check FAIL | Loop back to Dev (iterates) |
-  | Tester FAIL (especially Playwright) | Loop back to Phase 2 (Dev fixes) |
-  | Doc Writer FAIL | Loop back to Phase 3.5 only (code already shipped) |
-  | All clean + backlog has more | Ask you "next round?" |
-
-  ## Trivial mode
-
-  For trivial work (single-file, <30 lines, no architectural decision):
-  - SKIP Phase 0.5 (PM Manager)
-  - (Verifier merged into Dev — no separate role to skip)
-  - STILL mandatory: PM (brief), Architect (1-paragraph plan), Dev, Tester (with Playwright), PM Doc Writer
-
-  ## Round artifacts
-
-  Each round writes to `.omo/team/<round>/` (gitignored):
-
-  ```
-  .omo/team/round-1/
-  ├── brief.md                    # PM's proposal
-  ├── brief-quality-report.md     # PM's self-critique
-  ├── pm-manager-review.md        # PM Manager's gate verdict
-  ├── plan.md                     # Architect's plan
-  ├── dev-self-check.md          # Dev's inline brief-vs-code self-verification
-  ├── test-report.md              # review-work verdict
-  ├── diff-report.md              # /diff-review-dashboard verdict
-  ├── playwright-report.md        # Playwright UI walkthrough
-  ├── doc-update-report.md        # PM Doc Writer's README update
-  └── decision.md                 # Phase 4 output
-  ```
-
-  Plus a persistent audit trail:
-  ```
-  .omo/team/proposals.jsonl       # one JSON line per round, append-only
-  ```
-
-  ## Team mode + tmux
-
-  ### team_* tools (preferred)
-
-  When available (oh-my-openagent installed), use:
-  - `team_spawn_agent` — spawn role subagent
-  - `team_send_input` — inter-agent messaging
-  - `team_wait_agent` — synchronized waiting
-  - `team_close_agent` — cleanup
-
-  Fallback to `task(...)` if team_* unreachable.
-
-  ### tmux per round
-
-  Each round gets a tmux session for shared visibility:
-
-  ```bash
-  # At round start
-  which tmux || brew install tmux
-  tmux new-session -d -s "team-dev-loop-round-N" -c <worktree>
-
-  # Inter-agent messaging
-  tmux send-keys -t "team-dev-loop-round-N:0.0" "PM done" C-m
-
-  # At round end (optional)
-  tmux kill-session -t "team-dev-loop-round-N"
-  ```
-
-  ## How to install (you only do this once)
-
-  The skill is gitignored. To install:
-
-  1. Create `.opencode/skills/team-dev-loop/references/`.
-  2. Copy each fenced code block below into the corresponding file.
-  3. Restart OpenCode.
-
-  ## How to invoke
-
-  In OpenCode chat:
-
-  > "Run the team dev loop for 5 rounds."
-  >
-  > "Do one round of the team dev loop on issue #4."
-  >
-  > "Continue the dev loop for 3 more rounds."
-  >
-  > "Run dev loop."
-
-  You can also let `/ulw-loop` host it for full continuation mechanics.
-
-  ---
-
-  ## File: SKILL.md (copy verbatim to `.opencode/skills/team-dev-loop/SKILL.md`)
-
-  ~~~markdown
-  ---
-  name: team-dev-loop
-  description: "Multi-role development loop for this repo. One round = PM proposes (with self-critique) → PM Manager validates (anti-pseudo-requirement gate) → Architect plans (via /shared/ulw-plan) → Dev executes (via /shared/start-work, with inline brief-vs-code self-check) → Tester validates (review-work + /diff-review-dashboard + Playwright UI) → PM Doc Writer updates README with screenshots via Playwright → Decision (continue/stop). 7-role pipeline; every role a fresh subagent (anti-bias). Persistent audit trail at .omo/team/proposals.jsonl. Reuses /shared/ulw-plan, /shared/start-work, /shared/review-work. tmux provides shared visibility. team_* preferred, task_* fallback. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round'."
-  ---
-
-  # team-dev-loop
-
-  The 7-role development loop for THIS REPO (originally 8-phase; Verifier merged into Dev to respect omo's `team_mode.max_members: 8` schema limit). It exists so the dev team (you + me) can pick the next thing to work on, propose it, gate it, design it, build it, validate it, document it, and loop — without any single agent (or you) being biased toward "looks done."
-
-  ## Why 7 roles (anti-bias)
-
-  Each phase is a SEPARATE subagent with fresh context. This prevents:
-
-  | Risk | Mitigation |
-  |---|---|
-  | PM proposes a fake demand | **PM self-critique** (`brief-quality-report.md`) + **PM Manager** meta-review (`pm-manager-review.md`) |
-  | Orchestrator hallucinates requirements | PM is a spawned subagent, not the orchestrator's own judgment |
-  | Dev self-confirms "done" without matching brief | **Dev does inline brief-vs-code self-check** at end of Phase 2 (writes `dev-self-check.md`); PM Manager also guards upstream |
-  | Code passes tests but UI doesn't work | **Playwright** tester clicks through every button — empirical, not subjective |
-  | Feature ships without docs | **PM Doc Writer** updates README with screenshot + usage after every ship |
-
-  ## Roles
-
-  | Role | When | Output |
-  |---|---|---|
-  | **PM** (Phase 0) | Start | `brief.md`, `brief-quality-report.md` |
-  | **PM Manager** (Phase 0.5) | After PM | `pm-manager-review.md` (APPROVE / REJECT / CLARIFY) |
-  | **Architect** (Phase 1) | After PM Manager approves | Delegates to `/shared/ulw-plan` → `plan.md` |
-  | **Dev** (Phase 2) | After plan approved | Delegates to `/shared/start-work` → code commits |
-  | **Tester** (Phase 3) | After Dev self-check passes | `test-report.md` + `diff-report.md` + `playwright-report.md` |
-  | **PM Doc Writer** (Phase 3.5) | After Tester passes | `doc-update-report.md` + README + screenshot(s) |
-  | **Decision** (Phase 4) | After Doc Writer | `decision.md` (continue / stop / loop-back) |
-
-## Agent architecture (CRITICAL)
-
-| Layer | Agent | Why |
+| Aspect | v1 (Round 1) | v2 (Round 2+) |
 |---|---|---|
-| **Orchestrator (creates team)** | **`sisyphus` (primary chat)** | omo `team_mode` only registers `team_*` tools to the primary `sisyphus` agent. Subagents (`sisyphus-junior`, `prometheus`, etc.) do NOT get `team_create` / `team_send_input` / `team_task_create` tools — they only get `call_omo_agent` (explore/librarian only). So `team_create` MUST be called from the primary chat. |
-| **Members (spawn per role)** | `team_spawn_agent` (preferred) or `task(category="unspecified-high", subagent_type="sisyphus-junior")` (fallback) | Once team is created, each member is a fresh sisyphus-junior subagent. Anti-bias preserved. |
+| **Orchestration** | `team_create` (teamRunId) + `team_send_message` × 7 | Sequential `task(category="unspecified-high", prompt=...)` × 7-8 |
+| **Member lifecycle** | 7 chat sessions opened/closed per round | No sessions — subagents are ephemeral |
+| **Communication** | `team_send_message` (wakeup message to member) | Direct return value from `task()` |
+| **Completion detection** | `team_task_list` polling (~12 polls per round) | Implicit — `task()` is synchronous, returns = done |
+| **Multi-turn resumability** | Available (v1 used 0 times) | Not available (single-shot) |
+| **5 review-work lens parallelism** | Inside `tester-review` member | Inside `tester-review` task — `Promise.all([5 run_in_background=true])` |
+| **Lead inline takeover rate (Round 1 evidence)** | 43% (3 of 7 members) | Expected similar — refactored as design feature with explicit protocol |
+| **`.omo/` storage** | `.omo/team/<runId>/` (gitignored, ephemeral) + `.omo/team/round-1/` | `.omo/round-N/` (tracked, project-level design library) |
+| **`brief-quality-report.md`** | Separate file (18 lines) | Merged into `brief.md` `## Self-Critique` section |
+| **`dev-self-check.md`** | Separate file (144 lines) | Merged into `decision.md` `## Dev Self-Check (AC1-ACN trace)` section |
+| **Meta-artifacts (`proposals.jsonl`)** | `.omo/team/proposals.jsonl` (gitignored) | `.omo/proposals.jsonl` (tracked) |
+| **Push strategy** | PR workflow | Direct commit to main (user reviews commits on main) |
+| **Round number naming** | `.omo/team/round-1/` (with `team/` parent dir) | `.omo/round-1/` (no parent dir) |
+| **Skill package status** | Partially gitignored | Fully tracked (`.opencode/skills/team-dev-loop/`) |
 
-### Hand-off pattern
+**Cost savings (estimated from Round 1 telemetry)**:
+
+| Metric | v1 | v2 | Saving |
+|---|---|---|---|
+| `team_send_message` calls | ~7 | 0 | -7 wakeups |
+| `team_task_list` polls | ~12 | 0 | -12 polling turns |
+| `team_shutdown_request`/`team_approve_shutdown` | ~14 | 0 | -14 ceremony turns |
+| `team_delete` | 1 | 0 | -1 cleanup turn |
+| Meta-artifact writes (file -> read-back) | 2 files × 2 round-trips | 0 files | -4 file ops |
+| Lead chat-turns spent on plumbing | ~34 | ~7 (the actual `task()` calls) | **-27 turns (~80%)** |
+
+**Cost preserved (same in v2)**:
+- Per-role subagent context overhead (~5-15k tokens per subagent prompt + response)
+- Artifact disk footprint (~150KB per round)
+- Main context consumption (lead reads all 5 review-*.md + test-report.md + diff-report.md + playwright-report.md)
+
+## The 8 phases (flow diagram)
 
 ```
-Primary chat (sisyphus, has team_* tools)
-  ↓ team_create({teamName: "team-dev-loop"})
-  ↓ team_send_message(member="pm", prompt="<pm-triage-prompt>")
-  ↓ team_task_create(subject="pm-round-1", description=...)
-  ↓ team_send_message(member="pm-manager", prompt="<pm-manager-prompt>")
-  ↓ ...
-  ↓ team_shutdown_request(member="pm") / team_approve_shutdown
-  ↓ team_shutdown_request(member="pm-manager") / team_approve_shutdown
-  ↓ ...
-  ↓ team_delete(teamRunId)
+PHASE 0: PM TRIAGE ──────────→ .omo/round-N/brief.md
+                                  │
+PHASE 0.5: PM MANAGER (gate) ──→ .omo/round-N/pm-manager-review.md
+                                  │
+   ┌─ if REJECT: ask user ──────┤
+   └─ if APPROVE: continue ─────┤
+                                  │
+USER PICK CANDIDATE (hard gate)  │
+                                  │
+PHASE 1: ARCHITECT ─────────────→ .omo/round-N/plan.md
+                                  │
+PHASE 2: DEV (creates worktree) → (worktree + commits + return value)
+                                  │
+PHASE 3a: TESTER REVIEW ────────→ .omo/round-N/review-{goal,qa,code,security,context}.md
+   (5 parallel lenses)               + .omo/round-N/test-report.md
+                                  │
+PHASE 3b: TESTER DIFF ─────────→ .omo/round-N/diff-report.md
+                                  │
+PHASE 3c: TESTER PLAYWRIGHT ───→ .omo/round-N/playwright-report.md
+                                  │
+PHASE 3.5: PM DOC WRITER ───────→ .omo/round-N/doc-update-report.md
+                                  │   (side effects: README + screenshots)
+PHASE 4: DECISION (lead) ──────→ .omo/round-N/decision.md
+                                  │
+APPEND: AUDIT LOG (lead) ───────→ .omo/proposals.jsonl (1 line appended)
+                                  │
+GIT: add + commit + push ───────→ origin/main (no PR)
 ```
 
-If you are a subagent (e.g., `prometheus`) and want to drive a round, you cannot. Write a clear `blocker.md` and tell the user to invoke the loop from their primary chat.
+**Total: 8 distinct phases, 5 internal parallel lenses, 1 commit per round.**
 
-### Hard rule: orchestrator = primary chat
+## The 7 roles (detailed)
 
-DO NOT attempt to run `team_create` from a subagent. It is structurally impossible. The PRIMARY chat session is the orchestrator; subagents are only the role-specific workers.
+| # | Role | When | Output | Implementation |
+|---|---|---|---|---|
+| 1 | **PM** | Phase 0 (start) | `brief.md` (incl. `## Self-Critique`) | Spawned `task()` subagent |
+| 2 | **PM Manager** | Phase 0.5 (after PM) | `pm-manager-review.md` (APPROVE/REJECT/CLARIFY) | Spawned `task()` subagent (independent of PM) |
+| 3 | **Architect** | Phase 1 (after user pick) | `plan.md` (decision-complete plan) | Spawned `task()` subagent (wraps `/shared/ulw-plan`) |
+| 4 | **Dev** | Phase 2 (after plan approved) | (worktree + commits + AC trace in return value) | Spawned `task()` subagent (wraps `/shared/start-work`) |
+| 5 | **Tester** | Phase 3a/3b/3c (3 lanes) | `test-report.md` + `diff-report.md` + `playwright-report.md` (5 lenses inside 3a) | 3 spawned `task()` subagents (3a orchestrates 5 internal lenses) |
+| 6 | **PM Doc Writer** | Phase 3.5 (after Tester) | `doc-update-report.md` + README + screenshots | Spawned `task()` subagent |
+| 7 | **Decision** | Phase 4 (after Doc Writer) | `decision.md` + `proposals.jsonl` append | Lead writes directly (no subagent) |
 
-  ## Loop control
+**7 roles, 8 phases** (Phase 4 + the audit log append are written by lead, so they're not separate "roles"). **5 internal parallel lenses** (inside Phase 3a Tester Review).
 
-  | Condition | Action |
-  |---|---|
-  | User said "stop" / "exit" / Ctrl+C | Exit immediately |
-  | Backlog empty + no user override + no agent suggestion | Exit with summary |
-  | 3 consecutive rounds with no-progress | Suggest stop to user (do NOT auto-stop) |
-  | PM Manager REJECT / CLARIFY | Ask user for confirmation before proceeding |
-  | Tester FAIL | Loop back to Phase 2 (Dev fixes) with tester feedback |
-  | Doc Update FAIL | Loop back to Phase 3.5 (Doc Writer retries) — code already shipped, just docs |
-  | All clean + backlog has more | Ask user "next round?" — if user says continue, go to Phase 0 |
+## Backlog priority
 
-  ## Trivial mode
+1. **User override** (your current chat prompt) — highest
+2. **GitHub issues** with `bug` label (oldest first)
+3. **GitHub issues** with `enhancement` label (oldest first)
+4. **`.omo/backlog.md`** (manually curated, optional)
+5. **Previous round's `follow_up_candidates`** in `.omo/proposals.jsonl` (Round 2+)
+6. **Agent self-investigation** (only when 1-5 are empty)
 
-  For trivial work (single-file, <30 lines, no architectural decision):
-  - SKIP Phase 0.5 (PM Manager)
-  - STILL mandatory: PM (with brief), Architect (1-paragraph plan), Dev (with inline self-check), Tester (with Playwright), PM Doc Writer
+## Loop control
 
-  ## Round artifacts
+| Condition | Action |
+|---|---|
+| User says "stop" / "exit" / Ctrl+C | **Hard stop** — exit immediately |
+| Backlog empty + no user override + no agent suggestion | **Hard stop** — exit with summary |
+| PM Manager REJECT | Ask user: "PM Manager flagged this as pseudo-requirement. Override or skip?" |
+| PM Manager CLARIFY | Ask user: "PM Manager needs clarification. Provide it?" |
+| User pick candidate | Ask user (HARD GATE — never auto-pick) |
+| Dev returns FAIL or PARTIAL verdict | Loop back to Phase 2 (Dev iterates) |
+| Tester (any of 3a/3b/3c) FAIL | Loop back to Phase 2 (Dev fixes) with tester report as feedback |
+| PM Doc Writer FAIL | Loop back to Phase 3.5 only (code is shipped, just docs) |
+| All clean + backlog has more | Ask user "next round?" — if continue, go to Phase 0 |
+| 3 consecutive no-progress rounds | **Soft stop** — suggest stop to user (do NOT auto-stop) |
+| Quality regression: Tester FAILs increase over last 3 rounds | **Soft stop** — ask user |
+| Main context compaction triggered (>50KB test outputs) | **Soft stop** — consider Plan B (revert to v1) |
 
-  Each round writes to `.omo/team/<round>/` (gitignored):
+**See `references/loop-decision.md` for the full stop-condition matrix.**
 
-  ```
-  .omo/team/round-1/
-  ├── brief.md                    # PM's proposal
-  ├── brief-quality-report.md     # PM's self-critique
-  ├── pm-manager-review.md        # PM Manager's gate
-  ├── plan.md                     # Architect's plan (or symlink to .omo/plans/...)
-  ├── dev-self-check.md          # Dev's inline brief-vs-code self-verification
-  ├── test-report.md              # review-work verdict
-  ├── diff-report.md              # /diff-review-dashboard verdict
-  ├── playwright-report.md        # Playwright UI walkthrough verdict
-  ├── doc-update-report.md        # PM Doc Writer's README update summary
-  └── decision.md                 # Phase 4 output
-  ```
+## Lead inline takeover protocol
 
-  Plus a persistent log:
-  ```
-  .omo/team/proposals.jsonl       # one JSON line per round (audit trail)
-  ```
+**This is a DESIGN FEATURE in v2, not a rescue.** Round 1 evidence: 3 of 7 members (43%) needed lead takeover. v1 called this "rescue" and treated it as a failure mode. v2 reframes it.
 
-  ## Phase 0: PM Triage (spawned subagent)
+**When lead takes over** (any of these triggers):
+- Subagent returns empty result (e.g. tester-diff generated 0 bytes of SVG)
+- Subagent returns "BLOCKED" / dead-end (e.g. tool-invocation failure)
+- Subagent exceeds context budget
+- Subagent returns explicit `verdict: FAIL`
 
-  Spawn PM via `team_spawn_agent` (preferred) or `task(category="unspecified-high", subagent_type="explore")` (fallback). See `references/phase-prompts.md` for the exact prompt.
+**Lead's 5-step protocol**:
+1. Write `.omo/round-N/lead-takeover-<role>.md` (5-10 lines: timestamp, original subagent return value, reason)
+2. Write the deliverable directly (e.g. `diff-report.md`) — do NOT retry the subagent (Round 1: 0% retry success)
+3. Continue the next phase (Doc Writer does NOT wait for lead takeover)
+4. List lead takeovers in `decision.md` end section
+5. Count lead takeovers in `proposals.jsonl` `lead_takeovers` field
 
-  - Inputs (in priority): user override, `gh issue list`, `.omo/backlog.md`, agent self-investigation
-  - Outputs: `brief.md` + `brief-quality-report.md`
-  - `brief-quality-report.md` includes: clarity score (HIGH/MEDIUM/LOW), hidden ambiguities, risks, suggested clarifications
+**Lead takeover rate is a tracked metric**. If it exceeds 50% in a single round, lead should pause and ask user — this signals systematic subagent failure (consider Plan B: revert to v1 team_create with more chat sessions).
 
-  If 4 input sources all empty → exit loop with `backlog empty, stopping`.
+## Trivial mode
 
-  ## Phase 0.5: PM Manager (spawned subagent — gate)
+For trivial work (single file, <30 lines, no architectural decision):
+- SKIP Phase 0.5 (PM Manager) — gate adds no value for trivial work
+- STILL mandatory: PM (brief), Architect (1-paragraph plan), Dev, Tester (with 5 lens + Playwright), PM Doc Writer
+- Reduce 5 lens to 3 lens (drop Goal and Context) for trivial bug fixes
+- SKIP Phase 3.5 (PM Doc Writer) ONLY if change is internal-only (no user-visible behavior) — note this in decision.md
 
-  Spawn PM Manager. The PM Manager is INDEPENDENT of the PM (different agent instance, fresh context). They MUST NOT share context.
+## Round artifacts (file structure)
 
-  - Input: `brief.md` + `brief-quality-report.md` + git log + existing README/code
-  - Verdict: APPROVE / REJECT / CLARIFY
-  - Looks for PSEUDO-REQUIREMENT markers:
-    - **DUPLICATE** — same feature already exists (cite file:line)
-    - **SPECULATION** — based on hypothetical need without evidence
-    - **CONTRADICTION** — conflicts with in-flight item or recent commit
-    - **INFLATED** — scope larger than the bug/feature warrants
-    - **OBSCURE** — solving for an imaginary persona when actual users differ
-  - Output: `pm-manager-review.md`
+Every round produces a directory `.omo/round-N/` with these 13 files (all **tracked** in v2):
 
-  If REJECT or CLARIFY → orchestrator asks user before proceeding.
+```
+.omo/round-N/
+├── brief.md                    # PM's proposal + ranked candidates + ## Self-Critique
+├── pm-manager-review.md        # PM Manager gate verdict (APPROVE / REJECT / CLARIFY)
+├── plan.md                     # Architect's decision-complete plan
+├── review-goal.md              # Lens #1: Goal/AC verifier
+├── review-qa.md                # Lens #2: QA hands-on tester
+├── review-code.md              # Lens #3: Code quality reviewer
+├── review-security.md          # Lens #4: Security/privacy/integrity
+├── review-context.md           # Lens #5: Repo-fit/honesty/creep auditor
+├── test-report.md              # Synthesis of 5 lenses (PASS/FAIL per lens)
+├── diff-report.md              # /diff-review-dashboard output (or lead-takeover note)
+├── playwright-report.md        # Playwright UI walkthrough
+├── doc-update-report.md        # PM Doc Writer verdict (README + screenshots)
+└── decision.md                 # Lead's Phase 4 verdict (PASS/FAIL/CONTINUE/STOP)
 
-  ## Phase 1: Architect Plan (delegated)
+# Plus cross-round (top-level .omo/):
+.omo/proposals.jsonl            # append-only, 1 line per round (machine-readable summary)
+```
 
-  **Delegate to `/shared/ulw-plan`**:
-  - Pass brief.md as planning input
-  - Architect reviews brief-quality-report.md + pm-manager-review.md to know what PM and PM Manager flagged
-  - ulw-plan produces `.omo/plans/<slug>.md` after approval
-  - Symlink/copy to `.omo/team/<round>/plan.md`
+**Removed from v1** (saved ~162 lines/file):
+- ~~`brief-quality-report.md`~~ — merged into `brief.md` end section
+- ~~`dev-self-check.md`~~ — merged into `decision.md` end section
 
-  Skip if trivial — write 1-paragraph plan directly.
+**v1 preserved for retro reference**: `.omo/round-1/` (13 files, all Round 1 artifacts) is tracked for post-hoc review.
 
-  ## Phase 2: Dev Execute (delegated)
+**`.gitignore` policy** (v2):
+- `.omo/round-N/*.md` → **TRACKED** (project-level design library, browsable on GitHub)
+- `.omo/proposals.jsonl` → **TRACKED** (cross-round decision log)
+- `.opencode/{reviews,logs,cache,state.json,magic-context}/` → **gitignored** (per-machine runtime state)
+- `.opencode/skills/team-dev-loop/` → **TRACKED** (skill package, project asset)
+- `.playwright-mcp/` → **gitignored** (Playwright temp)
 
-  **Delegate to `/shared/start-work`**:
-  - Pass plan + brief + PM Manager review (so Dev knows what was approved and what PM/PM Manager flagged)
-  - start-work handles: Boulder, worktree per memory 372, sub-agent spawning per todo, Sisyphus verification, ultraqa classes, evidence ledger
-  - Dev phase ends when `.omo/start-work/ledger.jsonl` shows all checkboxes done
+**Why tracked**: v1 gitignored `.omo/` and called it "audit trail" — but PR reviewers couldn't see it, cross-machine replay was impossible, after a few weeks the local files were lost. v2 treats `.omo/round-N/` as **canonical project documentation** that lives alongside the code.
 
-  ## Phase 2: Dev Execute — with inline self-check (delegated, includes spec verification)
+## Per-phase details
 
-After Dev finishes coding, the Dev does an inline brief-vs-code self-check (replaces the standalone Verifier role to respect omo `max_members: 8` schema). Output `.omo/team/<round>/dev-self-check.md` with traceability matrix + deviations + hidden gaps + PASS/FAIL/PARTIAL verdict. If FAIL or PARTIAL → Dev iterates before Phase 3.
+### Phase 0: PM Triage
 
-## Phase 3: Tester Validate (3 parallel validations)
+Spawned subagent. **Output**: `brief.md` (incl. ## Self-Critique).
 
-  ### 3a. Code review (delegated)
+- Inputs (priority order): user override, `gh issue list`, `.omo/backlog.md`, previous rounds' follow-up candidates, agent self-investigation
+- Brief sections: ## Title, ## Source, ## Goal, ## Acceptance criteria (testable, max 7), ## Candidates ranked (3-5 candidates), ## Self-Critique (clarity + hidden ambiguities + risks)
+- See `references/phase-prompts.md` § 1 for exact prompt
 
-  **Delegate to `/shared/review-work`**:
-  - 5 parallel agents (Goal / QA / Code / Security / Context)
-  - Outputs: `test-report.md`
+### Phase 0.5: PM Manager (gate)
 
-  ### 3b. Dogfooded diff review
+Spawned subagent (independent of PM — fresh context). **Output**: `pm-manager-review.md`.
 
-  - Run `/diff-review-dashboard --base=origin/main` on the worktree
-  - Capture URL + state.json
-  - Output: `diff-report.md`
+- Looks for pseudo-requirement markers: DUPLICATE, SPECULATION, CONTRADICTION, INFLATED, OBSCURE
+- Returns `{ verdict: "APPROVE" | "REJECT" | "CLARIFY", reason, suggested_rewrite? }`
+- If REJECT or CLARIFY → lead asks user before proceeding. Subagent does NOT auto-override.
+- See `references/phase-prompts.md` § 2 for exact prompt
 
-  ### 3c. Playwright UI run (spawned subagent)
+### Phase 1: Architect Plan
 
-  Spawn Playwright tester. The tester ACTUALLY RUNS THE UI as a real user.
+Spawned subagent (wraps `/shared/ulw-plan`). **Output**: `plan.md` (decision-complete plan).
 
-  - Setup: install plugin (if not done), start OpenCode test session
-  - Test scenarios via Playwright MCP (load skill: playwright)
-  - For this project specifically, ALWAYS test:
-    - File tree expand/collapse
-    - Line click → finding drawer opens
-    - File `+` button → file-level finding drawer opens
-    - Category dropdown (bug/style/perf/question/recommend)
-    - Severity dropdown (high/medium/low)
-    - Comment textarea captures text
-    - "Add Finding" button adds to Conversation panel
-    - "Submit Review" button submits and shows JSON response
-    - Conversation panel: Resolve / Remove / Reopen / Jump-to-file
-    - Cross-round drift: re-launch, verify previous findings carry over
-    - Yellow range banner shows when diff range changes
-  - Capture screenshots at each step
-  - Output: `playwright-report.md` with per-scenario PASS/FAIL + screenshot paths
+- Plan sections: ## Goal, ## Acceptance Criteria (AC1-ACn), ## File changes, ## Implementation steps, ## Test plan, ## Risk register, ## Worker hand-off checklist
+- Skip if trivial (single file, <30 lines, no architectural decision) — write 1-paragraph plan directly
+- See `references/phase-prompts.md` § 3 for exact prompt
 
-  **Combined verdict**: PASS only if 3a AND 3b AND 3c pass.
+### Phase 2: Dev Execute
 
-  If FAIL → loop back to Phase 2 with all 3 reports as feedback. Playwright FAIL is the strongest signal — fix that first.
+Spawned subagent (wraps `/shared/start-work`). **Output**: (worktree + commits + return value).
 
-  ## Phase 3.5: PM Doc Writer (spawned subagent — Playwright + README)
-
-  PM wears a SECOND hat: documentation updater. Spawn PM Doc Writer with Playwright harness.
-
-  - Inputs: brief.md, test-report.md, playwright-report.md, current README.md
-  - Steps:
-    1. Run the feature via Playwright MCP one more time
-    2. Capture screenshots at key steps → save to `docs/screenshots/<feature-slug>.png`
-    3. Update README.md:
-       - Find or create a "Features" section (alphabetical or by ship date)
-       - For THIS shipped feature, add a sub-section:
-         - One-line description
-         - `![screenshot](docs/screenshots/<feature-slug>.png)`
-         - Usage example (CLI command, code snippet, or workflow)
-    4. Optionally: update README.zh-CN.md (Chinese translation)
-    5. Verify the README is now a complete product catalog: "what can this product do?" is fully answered
-    6. Commit the README/docs changes (single atomic commit with the feature)
-  - Output: `doc-update-report.md`
-
-  If FAIL → loop back to Phase 3.5 (not Phase 2 — code is already shipped, just docs).
-
-  ## Phase 4: Decision (loop control)
-
-  Apply the loop control matrix above. Write `.omo/team/<round>/decision.md`.
-
-  **Append to `.omo/team/proposals.jsonl`** (one line per round):
-
-  ```json
+- MUST create worktree at `/Users/yangweibin/.worktrees/team-dev-loop-round-<N>` before any src/ edits (per project memory 372)
+- Branch: `team-dev-loop-round-<N>-<short-slug>`
+- Runs `bun run check` (format + lint + typecheck) + `bun run build` + unit tests + e2e tests
+- Returns inline AC trace in return value (replaces v1's dev-self-check.md):
+  ```typescript
   {
-    "round": 1,
-    "timestamp": "2026-06-28T12:00:00Z",
-    "pm_source": "issue#4",
-    "brief_excerpt": "first 200 chars of brief",
-    "brief_quality": "HIGH",
-    "pm_manager_verdict": "APPROVE",
-    "dev_self_check": "PASS",
-    "tester_verdict": "PASS",
-    "doc_update_verdict": "PASS",
-    "final_outcome": "PASS",
-    "decision": "continue"
+    brief_match_percent: 85,
+    ac_trace: [
+      { ac: "AC1", description: "...", status: "PASS", evidence: "src/state-store.ts:42" },
+      ...
+    ],
+    deviations: [...],
+    hidden_gaps: [...],
+    test_summary: { unit: "10/10 pass", e2e: "13/13 pass", ... },
+    verdict: "PASS | FAIL | PARTIAL",
+    branch: "...",
+    commit_sha: "..."
   }
   ```
+- Lead copies `ac_trace` into `decision.md` ## Dev Self-Check section
+- See `references/phase-prompts.md` § 4 for exact prompt
 
-  ## Team mode (preferred) + tmux
+### Phase 3a: Tester Review (5 parallel lenses)
 
-  ### team_* tools
+Spawned subagent that internally fires 5 parallel `run_in_background=true` lens subagents. **Outputs**: `review-{goal,qa,code,security,context}.md` + `test-report.md`.
 
-  When available (oh-my-openagent installed), use:
-  - `team_spawn_agent` — spawn role subagent with role-specific harness
-  - `team_send_input` — inter-agent messaging (e.g., PM Doc Writer asks PM what to document)
-  - `team_wait_agent` — synchronized waiting
-  - `team_close_agent` — cleanup
+| Lens | Output | Focus |
+|---|---|---|
+| #1 Goal | `review-goal.md` | Verifies each AC1-ACn is implemented (file:line evidence) |
+| #2 QA | `review-qa.md` | Runs gates (`bun run check`, build, unit, e2e) + ad-hoc smoke test |
+| #3 Code | `review-code.md` | Static review: style, complexity, error handling, naming, test quality, plan-design fidelity |
+| #4 Security | `review-security.md` | Threat model: input validation, path traversal, command injection, secrets, race conditions |
+| #5 Context | `review-context.md` | Repo-fit: scope creep, commit honesty, README alignment, future-round impact |
 
-  Fallback to `task(category=..., subagent_type=...)` if team_* unreachable.
+After 5 lenses complete, orchestrator subagent synthesizes `test-report.md` with PASS/FAIL per lens + combined verdict.
 
-  ### tmux per round
+See `references/phase-prompts.md` § 5 + § 5a-5e for exact prompts.
+
+### Phase 3b: Tester Diff
+
+Spawned subagent. **Output**: `diff-report.md`.
+
+- Uses the project's own `/diff-review-dashboard` tool against the branch
+- Captures findings + URL + JSON response
+- See `references/phase-prompts.md` § 6 for exact prompt
 
-  ```bash
-  # At round start
-  tmux new-session -d -s "team-dev-loop-round-<N>" -c <worktree> -x 200 -y 50
+### Phase 3c: Tester Playwright
 
-  # Optional: split into panes for shared visibility
-  tmux split-window -h -t "team-dev-loop-round-<N>"
-  tmux split-window -v -t "team-dev-loop-round-<N>"
+Spawned subagent. **Output**: `playwright-report.md`.
+
+- Loads `/shared/playwright` skill
+- Runs the plugin's UI in a real browser
+- For this project specifically, ALWAYS tests: file tree, line click, file `+`, category/severity dropdowns, comment textarea, Add Finding, Submit Review, Conversation panel actions, cross-round drift, yellow range banner
+- Captures screenshot at each step
+- See `references/phase-prompts.md` § 7 for exact prompt
 
-  # Inter-agent messaging via tmux send-keys
-  tmux send-keys -t "team-dev-loop-round-<N>:0.0" "PM done, brief ready" C-m
+### Phase 3.5: PM Doc Writer
 
-  # At round end (optional cleanup)
-  tmux kill-session -t "team-dev-loop-round-<N>"
-  ```
+Spawned subagent. **Output**: `doc-update-report.md` (+ side effects: README + screenshots).
 
-  If tmux not installed:
-  ```bash
-  which tmux || brew install tmux
-  ```
+- Runs feature via Playwright one more time
+- Captures screenshots at key steps → `docs/screenshots/<feature-slug>-<N>.png`
+- Updates README.md (and optionally README.zh-CN.md) with new feature entry
+- Commits the docs changes in worktree
+- See `references/phase-prompts.md` § 8 for exact prompt
 
-  ## How to invoke
+### Phase 4: Decision (lead writes directly)
 
-  In OpenCode chat:
+No subagent — lead writes `decision.md` directly using the template in `references/loop-decision.md` § Decision template.
 
-  > "Run the team dev loop for 5 rounds."
-  > "Do one round of the team dev loop on issue #4."
-  > "Continue the dev loop for 3 more rounds."
-  > "Run dev loop."
+**Decision template fields**:
+- ## Verdict (PASS / FAIL / CONTINUE / STOP)
+- ## Per-phase verdicts (table)
+- ## Dev Self-Check (AC1-ACN trace — copied from Dev's return value)
+- ## Test summary (unit/e2e/build/lint/typecheck/format)
+- ## Lead takeovers this round (or "None")
+- ## Final outcome
+- ## Audit trail (links to all .omo/round-N/*.md files)
 
-  Or hosted by `/ulw-loop`.
+Lead also appends one line to `.omo/proposals.jsonl` (schema in `references/loop-decision.md` § Decision log).
 
-  ## Installation
+### Phase 5: Commit + push
 
-  Skill is gitignored. To install:
-  1. Read `docs/team-dev-loop.md` (committed).
-  2. Copy SKILL.md + references/ from the fenced code blocks.
-  3. Restart OpenCode.
+Lead does:
+```bash
+git add .omo/round-N/ README.md README.zh-CN.md docs/screenshots/ src/ scripts/
+git commit -m "Round <N>: <one-line summary>
 
-  ## See also
+Co-Authored-By: ..."
+git push origin main   # no PR — user reviews commits on main directly
+```
 
-  - `/shared/ulw-plan` — Architect
-  - `/shared/start-work` — Dev (Boulder, ledger, ultraqa)
-  - `/shared/review-work` — Tester (5-agent parallel)
-  - `/shared/hyperplan` — Adversarial sub-loop (optional)
-  - `/diff-review-dashboard` — This project's own review tool (used in Phase 3b)
-  - `team_*` tools — omo plugin agent lifecycle
-  - `tmux` — shared visibility per round
-  ~~~
+## Cost analysis: v1 vs v2
+
+### Round 1 actuals (v1)
 
-  ---
+| Metric | Value |
+|---|---|
+| Team members created | 7 |
+| Chat sessions opened | 7 |
+| `team_send_message` calls | ~7 |
+| `team_task_list` polls | ~12 |
+| `team_shutdown_request`/`team_approve_shutdown` | ~14 |
+| `team_delete` | 1 |
+| Lead inline takeovers | 3 (tester-diff, tester-playwright, tester-doc-writer — 43% rescue rate) |
+| Per-role subagent context | ~5-15k tokens |
+| Round artifacts (disk) | 156,665 bytes across 15 files |
+| Meta-artifacts (brief-quality, pm-manager-review, dev-self-check, decision, proposals.jsonl) | 23,188 bytes (15% of total) |
+| Code change (lines) | 585 insertions / 29 deletions across 6 files |
+| Artifacts : code ratio | ~268× |
 
-  ## File: references/phase-prompts.md (copy verbatim to `.opencode/skills/team-dev-loop/references/phase-prompts.md`)
+### Round 2 expected (v2)
 
-  ~~~markdown
-  # Phase Sub-Prompts
-
-  Exact prompts for each sub-agent. Copy-paste from here.
-
-  ## PM Triage prompt (Phase 0)
-
-  ```
-  You are the PM (Product Manager) for @weekbin/opencode-review-dashboard. You are a fresh subagent — the orchestrator does NOT share context with you.
-
-  TASK: Pick the next item to work on AND self-critique the brief.
-
-  Inputs (read in priority order):
-  1. The user's current chat prompt — if it overrides with a specific task, use it directly.
-  2. `gh issue list --state open --limit 30 --json number,title,labels,createdAt`
-     - Sort: bug > enhancement > others; oldest first within label.
-  3. `.omo/backlog.md` (if exists)
-  4. Recent git log (`git log --oneline -20`)
-
-  Outputs:
-  - `.omo/team/<round>/brief.md`:
-    - ## Title
-    - ## Source (issue #N / backlog / user / agent-suggested + rationale)
-    - ## Goal (1-3 sentences)
-    - ## Acceptance criteria (testable bullets)
-  - `.omo/team/<round>/brief-quality-report.md`:
-    - ## Clarity (HIGH / MEDIUM / LOW)
-    - ## Hidden ambiguities (list)
-    - ## Risks (list)
-    - ## Suggested clarifications (list)
-
-  If all four input sources empty → exit the loop with "backlog empty, stopping".
-  ```
-
-  ## PM Manager prompt (Phase 0.5)
-
-  ```
-  You are the PM MANAGER for @weekbin/opencode-review-dashboard. You review PM's proposals for pseudo-requirements. You are a FRESH subagent — you did NOT see PM's reasoning, you only see PM's outputs.
-
-  TASK: Validate that PM's proposed brief is a real, worthwhile demand — NOT a pseudo-requirement.
-
-  Inputs:
-  - `.omo/team/<round>/brief.md` (PM's proposal)
-  - `.omo/team/<round>/brief-quality-report.md` (PM's self-critique)
-  - Recent git log (`git log --oneline -50 --all`)
-  - Existing README.md
-  - Existing code under `src/`
-
-  Pseudo-requirement markers (look for AT LEAST ONE to REJECT):
-  - **DUPLICATE** — same feature already exists (cite file:line)
-  - **SPECULATION** — based on hypothetical need without evidence (no issue, no user request)
-  - **CONTRADICTION** — conflicts with in-flight item or recent commit
-  - **INFLATED** — scope larger than the bug/feature warrants
-  - **OBSCURE** — solving for an imaginary persona when actual users differ
-
-  Output `.omo/team/<round>/pm-manager-review.md`:
-  - ## Verdict: APPROVE / REJECT / CLARIFY
-  - ## Pseudo-requirement markers found (list with evidence: file:line, commit hash, etc.)
-  - ## Suggested rewrites (if any)
-  - ## Rationale (1-2 sentences)
-
-  If REJECT or CLARIFY → orchestrator asks user before proceeding. You do NOT auto-override.
-  ```
-
-  ## Architect delegation prompt (Phase 1)
-
-  ```
-  TASK: Plan this work using the ulw-plan skill.
-
-  BRIEF:
-  <full content of .omo/team/<round>/brief.md>
-
-  PM NOTES:
-  <full content of .omo/team/<round>/brief-quality-report.md>
-
-  PM MANAGER REVIEW:
-  <full content of .omo/team/<round>/pm-manager-review.md>
-
-  OUTPUT: .omo/plans/<slug>.md (after approval). Symlink to .omo/team/<round>/plan.md.
-
-  You are the Architect role of the team-dev-loop. Skip if trivial (single file, <30 lines, no architectural decision) — write 1 paragraph to plan.md directly.
-  ```
-
-  ## Dev delegation prompt (Phase 2)
-
-  ```
-  TASK: Execute this plan using the start-work skill.
-
-  PLAN: <path to .omo/plans/<slug>.md>
-  ROUND: <round number>
-  WORKTREE: per project memory 372 — create one if needed
-
-  CONTEXT:
-  <full content of .omo/team/<round>/brief.md>
-  <full content of .omo/team/<round>/pm-manager-review.md>
-
-  You are the Dev role. Spawn sub-agents per todo. Verify each with Sisyphus DoneClaim + AdversarialVerify. End when all checkboxes done and ledger.jsonl is complete.
-  ```
-
-  ~~~
-
-  ---
-
-  ## File: references/loop-decision.md (copy verbatim to `.opencode/skills/team-dev-loop/references/loop-decision.md`)
-
-  ~~~markdown
-  # Loop Decision Matrix
-
-  Detailed heuristics for Phase 4.
-
-  ## Stop conditions
-
-  ### Hard stop (exit immediately)
-  - User signal: chat contains "stop" / "exit" / "停" / Ctrl+C detected
-  - Backlog truly empty: no GitHub issues (open OR closed-today), no `.omo/backlog.md`, no user prompt override, agent self-investigation also empty
-  - Catastrophic failure: unhandled exception in any phase that can't be auto-recovered
-
-  ### Soft stop (suggest to user, do NOT auto-stop)
-  - 3 consecutive no-progress rounds: same blockers recur across 3 Phase 2-3 loops within one round, OR 3 different items all returned with no code changes
-  - Stagnation: PM keeps picking same item because nothing else has higher priority
-  - Quality regression: Tester FAILs increase in frequency over last 3 rounds
-  - Doc Writer FAILs recur (suggesting features are too complex to document clearly)
-
-  When soft stop triggers, ASK user: "I've seen no progress for 3 rounds / picked same item twice / etc. Want to continue, change direction, or stop?"
-
-  ## Per-phase fail handling
-
-  | Phase | If FAIL | Action |
-  |---|---|---|
-  | PM (Phase 0) | Cannot pick item (backlog empty) | Hard stop |
-  | PM Manager (Phase 0.5) | REJECT | Ask user: "PM Manager flagged this as pseudo-requirement. Override or skip?" |
-  | PM Manager (Phase 0.5) | CLARIFY | Ask user: "PM Manager needs clarification. Provide it?" |
-  | Architect (Phase 1) | Plan too vague | Loop back to Phase 1 with feedback (Architect retries) |
-  | Dev (Phase 2) | Implementation FAIL | Loop back to Phase 2 with verifier/tester feedback |
-  
-  
-  | Tester (Phase 3) | 3a (review-work) FAIL | Loop back to Phase 2 with review report |
-  | Tester (Phase 3) | 3b (diff-review-dashboard) FAIL | Loop back to Phase 2 with diff report |
-  | Tester (Phase 3) | 3c (Playwright) FAIL | Loop back to Phase 2 with Playwright report (HIGHEST PRIORITY — empirical) |
-  | Doc Writer (Phase 3.5) | FAIL | Loop back to Phase 3.5 only (code already shipped, just docs) |
-
-  ## Self-judgment (agent's discretion)
-
-  The agent MAY decide to:
-  - Skip Phase 0.5 (PM Manager) for trivial work (single file, <30 lines)
-  - Add `/shared/hyperplan` adversarial sub-loop if plan has architectural ambiguity
-  - Spawn `explore` subagent for tech-debt investigation when backlog is empty
-
-  The agent MUST NOT:
-  - Stop the loop without user confirmation (unless hard stop)
-  - Skip Phase 3c (Playwright) — always run, even for trivial changes
-  - Skip Phase 3.5 (PM Doc Writer) — every shipped feature needs README entry
-  - Skip worktree creation in Phase 2 (per project memory 372)
-  - Modify production code outside a worktree
-  - Use the same agent instance for both PM (Phase 0) and PM Manager (Phase 0.5) — must be independent
-
-  ## Decision log (persistent audit trail)
-
-  Append one JSON line per round to `.omo/team/proposals.jsonl`:
-
-  ```json
-  {
-    "round": 1,
-    "timestamp": "2026-06-28T12:00:00Z",
-    "pm_source": "issue#4",
-    "brief_excerpt": "first 200 chars",
-    "brief_quality": "HIGH",
-    "pm_manager_verdict": "APPROVE",
-    "dev_self_check": "PASS",
-    "tester_verdict": "PASS",
-    "doc_update_verdict": "PASS",
-    "final_outcome": "PASS",
-    "decision": "continue"
-  }
-  ```
-
-  This is the audit trail. Grep-able, queryable, persistent across rounds.
-  ~~~
-
-  ---
-
-  ## License
-
-  This workflow is part of the @weekbin/opencode-review-dashboard project (MIT).
+| Metric | Expected value |
+|---|---|
+| Team members created | 0 (no team_create) |
+| Chat sessions opened | 0 |
+| `task()` calls | 7-8 (one per phase) |
+| `run_in_background=true` (inside Phase 3a) | 5 (parallel lenses) |
+| Lead inline takeovers | ~3 (similar rate, refactored as design feature) |
+| Per-role subagent context | ~5-15k tokens (same as v1) |
+| Round artifacts (disk) | ~133,000 bytes across 13 files (saved 2 meta-artifacts) |
+| Meta-artifacts | ~5,000 bytes (3.7% — only pm-manager-review + decision's AC trace section) |
+| Artifacts : code ratio | similar (depends on round scope) |
+
+**Net cost saving (v2 vs v1)**: ~80% reduction in orchestration plumbing turns, ~15% reduction in artifact disk, **0% reduction in actual subagent work** (that's intentional — same 7 roles).
+
+## Anti-patterns (things v1 got wrong)
+
+| v1 anti-pattern | v2 fix | Cost of v1 anti-pattern |
+|---|---|---|
+| `team_create` spawns 7 chat sessions even if only 4 are needed | Each role is a single `task()` call — no session overhead | ~7 chat session opens/closes + ~150kB runtime state |
+| `team_send_message` is "multi-turn capable" but Round 1 used 0 resumes and triggered 3 stuck-states | Single-shot subagents — no stuck state to recover from | 3 lead inline takeovers in Round 1 |
+| `.omo/team/<runId>/` ephemeral + gitignored | `.omo/round-N/` tracked + browsable on GitHub | Invisible to PR review, lost across machines |
+| `brief-quality-report.md` separate file (18 lines) | Merged into `brief.md` end section | Extra file I/O + read-back |
+| `dev-self-check.md` separate file (144 lines) | Merged into `decision.md` end section | Extra file I/O + read-back + duplication risk |
+| Lead inline takeovers treated as "rescue" failures | Reframed as design feature with explicit protocol | Ambiguous "did we succeed or fail" boundary |
+| `team_shutdown_request` + `team_approve_shutdown` ceremony per member | No ceremony — subagents are ephemeral by default | ~14 ceremony turns per round |
+| Lead asks "what does team_task_list say?" 12 times per round | Lead reads return value of `task()` directly | ~12 polling turns of lead context |
+
+## Migration from v1
+
+v1 ran Round 1 successfully. **No re-run of Round 1 needed or wanted** — the artifacts are preserved in `.omo/round-1/` for retroactive review.
+
+To migrate future rounds:
+1. Use `task(category="unspecified-high", prompt=<one of 12 prompts in phase-prompts.md>)` instead of `team_send_message`
+2. Use `Promise.all([5 run_in_background=true])` inside Phase 3a subagent for parallel lenses
+3. Write outputs to `.omo/round-N/*.md` (NOT `.omo/team/<runId>/*.md`)
+4. Lead writes `decision.md` and appends to `.omo/proposals.jsonl` directly (no subagent for these)
+5. `git push origin main` (no PR)
+
+If you need to reproduce v1 (e.g., to verify v2 equivalence on a known round), see `git show fcdf498` for the v1 SKILL.md / phase-prompts.md / loop-decision.md / docs/team-dev-loop.md.
+
+## How to install
+
+The skill is **tracked** (no install needed for project contributors — just `git pull`).
+
+For external use (copying to another repo):
+1. Copy `.opencode/skills/team-dev-loop/SKILL.md` + `references/` to your target repo
+2. Copy `docs/team-dev-loop.md` to your target repo
+3. Update `.omo/` paths in the skill to match your project
+4. Restart OpenCode
+
+## How to invoke
+
+In OpenCode chat (primary sisyphus session):
+
+> "Run the team dev loop for 5 rounds."
+>
+> "Do one round of the team dev loop on issue #4."
+>
+> "Continue the dev loop for 3 more rounds."
+>
+> "Run dev loop."
+>
+> "Pick next issue."
+
+Or hosted by `/shared/ulw-loop` for full continuation mechanics.
+
+**Important**: The dev loop MUST be driven from your primary chat session (the one with `sisyphus` as default agent). If you are a subagent and want to drive a round, you cannot — write a clear blocker and tell the user to invoke from primary chat. (Unlike v1, v2 doesn't have a `team_*` exception — the rule is the same: primary chat only.)
+
+## See also
+
+- `.opencode/skills/team-dev-loop/SKILL.md` — thin orchestrator stub with execution pattern (241 lines)
+- `.opencode/skills/team-dev-loop/references/phase-prompts.md` — 12 exact prompts (7 sequential + 5 parallel lens) (716 lines)
+- `.opencode/skills/team-dev-loop/references/loop-decision.md` — fail-mode matrix + decision template + proposals.jsonl schema (237 lines)
+- `.omo/round-2-plan.md` — this redesign's plan (372 lines, tracked)
+- `.omo/round-1/` — Round 1 artifacts (13 files, tracked, retroactive reference for v1)
+- `/shared/ulw-plan` — Architect (Phase 1)
+- `/shared/start-work` — Dev (Phase 2)
+- `/shared/review-work` — Tester 5 lens (Phase 3a)
+- `/shared/hyperplan` — Adversarial sub-loop (optional, for plan ambiguity)
+- `/shared/playwright` — Tester Playwright (Phase 3c)
+- `/diff-review-dashboard` — This project's own review tool (Phase 3b)
+
+## License
+
+This workflow is part of the @weekbin/opencode-review-dashboard project (MIT).

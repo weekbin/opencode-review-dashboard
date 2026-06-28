@@ -8,7 +8,16 @@ dist/
 .opencode/magic-context/
 .playwright-mcp/
 *.tmp
-.omo/
+# .omo/ project-level design library IS tracked (.omo/round-N/, .omo/proposals.jsonl,
+# .omo/round-2-plan.md, etc.). Runtime/ephemeral subdirs from other skills stay ignored:
+.omo/boulder.json
+.omo/drafts/
+.omo/evidence/
+# .omo/plans/ is the ulw-plan intermediate output — canonical plan lives at .omo/round-N/plan.md
+.omo/plans/
+.omo/run-continuation/
+.omo/start-work/
+.omo/state/
 # Test artifacts and screenshots are ephemeral; regenerate via e2e tests
 scripts/test-review-ui/*.png
 scripts/test-review-ui/*-mock.json
