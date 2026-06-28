@@ -39,6 +39,7 @@
     "format:check": "oxfmt src/",
     "typecheck": "tsc --noEmit",
     "check": "bun run format:check && bun run lint && bun run typecheck",
+    "test:unit": "bun test src/",
     "prepublishOnly": "bun run check && bun run build",
     "test:ui": "bun run scripts/test-review-ui/e2e.mjs"
   },

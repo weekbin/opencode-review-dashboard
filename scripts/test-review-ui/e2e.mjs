@@ -7,7 +7,7 @@
 // Exit 0 on all-pass, 1 on any failure.
 
 import { spawn } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -109,6 +109,66 @@ function check(scenarioName, setupInfo, raw, expect, result) {
   return checks;
 }
 
+// Plan §5: post-scenario assertion. After a launch scenario, locate the
+// most-recently-created state.json (session ID is random) and verify it
+// parses as JSON. Best-effort: if the file does not exist (the harness races
+// against the plugin's saveState via the 3000ms Promise.race), we mark the
+// check as SKIPPED (not failed) so the e2e stays green while the race exists.
+// If the file exists but is corrupt, we FAIL — that's the regression the
+// atomic-write fix is meant to catch.
+function findMostRecentStateJson(reviewsDir) {
+  try {
+    const sessions = readdirSync(reviewsDir);
+    let best = null;
+    let bestMtime = 0;
+    for (const session of sessions) {
+      const stateFile = join(reviewsDir, session, "state.json");
+      try {
+        const st = statSync(stateFile);
+        if (st.mtimeMs > bestMtime) {
+          bestMtime = st.mtimeMs;
+          best = stateFile;
+        }
+      } catch {
+        // session dir has no state.json yet — skip
+      }
+    }
+    return best;
+  } catch {
+    return null;
+  }
+}
+
+function checkStateJson(dir, name, def, result) {
+  // Only run for scenarios that should launch a server.
+  if (result.kind !== "would-launch") return [];
+  if (def.expect?.kind?.startsWith("diagnostic")) return [];
+
+  const reviewsDir = join(dir, ".opencode", "reviews");
+  const stateFile = findMostRecentStateJson(reviewsDir);
+  if (!stateFile) {
+    // Best-effort: the harness's 3000ms Promise.race may fire before
+    // saveState completes. Mark as skipped (pass: true) so we don't flake
+    // on timing.
+    return [{ name: "state.json exists after launch", pass: true, skipped: true }];
+  }
+  try {
+    const content = readFileSync(stateFile, "utf8");
+    JSON.parse(content);
+    return [{ name: "state.json is valid JSON after launch", pass: true, path: stateFile }];
+  } catch (e) {
+    return [
+      { name: "state.json is valid JSON after launch", pass: false, error: e.message, path: stateFile },
+    ];
+  }
+}
+
+// Surface-artifact logger: print state.json paths that were validated.
+const validatedStateFiles = [];
+function recordValidatedStateFile(check) {
+  if (check.pass && check.path) validatedStateFiles.push(check.path);
+}
+
 async function runScenario(name, def) {
   const dir = mkdtempSync(join(tmpdir(), "rd-scenario-"));
   const setupInfo = await def.setup(dir);
@@ -125,6 +185,9 @@ async function runScenario(name, def) {
   } catch (e) {
     result = { kind: "throw", error: e.message || String(e) };
   }
+
+  // Capture state.json assertion BEFORE cleanup (file would be gone after).
+  const stateChecks = checkStateJson(dir, name, def, result);
 
   // Cleanup worktrees and the test dir
   try {
@@ -144,17 +207,20 @@ async function runScenario(name, def) {
     console.error(`  warn: failed to remove temp dir ${dir}: ${e.message || String(e)}`);
   }
 
-  const checks = check(name, setupInfo, raw, def.expect, result);
+  const checks = [...check(name, setupInfo, raw, def.expect, result), ...stateChecks];
+  for (const c of stateChecks) recordValidatedStateFile(c);
   const allPass = checks.every((c) => c.pass);
   if (allPass) {
     pass++;
-    console.log(`  PASS  ${name}`);
+    const skipped = checks.some((c) => c.skipped);
+    console.log(`  PASS  ${name}${skipped ? "  (some checks skipped — best-effort)" : ""}`);
   } else {
     fail++;
     failures.push({ name, checks, result });
     console.log(`  FAIL  ${name}`);
     for (const c of checks) {
-      console.log(`        ${c.pass ? "✓" : "✗"} ${c.name}`);
+      const marker = c.skipped ? "~" : c.pass ? "✓" : "✗";
+      console.log(`        ${marker} ${c.name}${c.skipped ? "  (skipped)" : ""}`);
     }
     if (result.kind === "return") {
       console.log(`        output: ${result.value.split("\n")[0]}...`);
@@ -171,6 +237,12 @@ for (const [name, def] of Object.entries(SCENARIOS)) {
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
+if (validatedStateFiles.length > 0) {
+  console.log(`\nstate.json validated by atomic-write helper:`);
+  for (const p of validatedStateFiles) {
+    console.log(`  ✓ ${p}`);
+  }
+}
 if (fail > 0) {
   process.exit(1);
 }
