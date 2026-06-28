@@ -158,6 +158,49 @@ GIT: add + commit + push ───────→ origin/main (no PR)
 
 **7 roles, 8 phases** (Phase 4 + the audit log append are written by lead, so they're not separate "roles"). **5 internal parallel lenses** (inside Phase 3a Tester Review).
 
+## PM role: user-story advocate (not developer)
+
+**Critical**: PM is the **user's representative** in the loop, NOT a developer who happens to ask "what's broken." The PM's job is to articulate **what the user needs** and **why it matters to them** — never to estimate code metrics.
+
+### What PM thinks about
+
+- **WHO** needs the change (specific user persona, not "user")
+- **WHAT** capability relieves their pain (concrete, observable)
+- **WHY** it matters to them (user value, not code benefit)
+- **HOW BIG** the user-visible impact is (small/medium/large in user-visible files)
+
+### What PM does NOT think about
+
+- Lines of code to change (PM doesn't have ground truth — lead verifies via `git diff`)
+- File counts to modify (same — lead verifies)
+- Whether the change is a "bug" or a "feature" (that's a Dev-side frame)
+- Architectural impact (that's lead's job after PM emits user-impact signals)
+
+### Output: User-story format (mandatory)
+
+Each candidate in `brief.md` MUST use this format:
+
+> **As a** [specific user persona, NOT "user"]
+> **I want** [concrete capability — what they do / what they see]
+> **So that** [user pain relieved, value created — NOT a code benefit]
+
+### Why this matters (anti-pattern evidence)
+
+Round 1 and Round 2 of this loop ran with PM Triage prompt that had `Sort: bug > enhancement > others` and asked for candidates "each with severity/effort/risk." Both rounds produced bugfix outputs — not because the work was always bug-shaped, but because PM was framed as a developer triaging issues, not as a user advocate.
+
+When PM emits user-stories instead, candidates are framed in user terms:
+
+- ❌ Dev frame: "Fix the auto-pickaround bug in --worktree"
+- ✅ User frame: "As a developer switching between worktrees, I want my explicit --worktree flag to always win, so I don't silently review the wrong branch"
+- ✅ User frame: "As a reviewer doing long sessions across crashes, I want my review history to survive power loss, so I don't lose findings to a corrupted state.json"
+- ✅ User frame: "As a reviewer iterating across rounds, I want stale findings to close when their anchor changes, so the conversation panel reflects current code"
+
+Same work, but the second framing tells the developer **WHY** the user needs it — not just **WHAT** is broken.
+
+### PM ↔ lead signal separation (v3)
+
+PM emits `U_*` fields (user-impact). Lead converts to numeric `S_*` scores and applies auto-classification rules. This keeps PM in user-land and lead in scope-land — no scope creep between roles. See "Round profile auto-classification" below for the full conversion table.
+
 ## Per-role category (sub-model) selection
 
 Each role's `task(category="...")` call uses a different sub-model. Each sub-model is optimized for that role's work shape — picking the right one per role gives better quality per token than a one-size-fits-all `unspecified-high`. This was added 2026-06-28 in response to user feedback ("建议按照子模型分类特色选用不同的").
@@ -236,45 +279,63 @@ Each role's `task(category="...")` call uses a different sub-model. Each sub-mod
 
 ## Round profile auto-classification (run before Phase 0)
 
-Each round is **auto-classified** into 1 of 3 profiles based on **7 quantitative signals** — NOT lead judgment. The profile gates which phases run, so a single bug fix doesn't pay the cost of an architecture-review pipeline. This was added 2026-06-28 in response to user feedback ("如果是单纯的 bug 修复，用这个 loop 流程做就有点复杂了，建议给每个阶段是否需要进入执行，增加判断").
+Each round is **auto-classified** into 1 of 3 profiles based on **8 quantitative user-impact signals** — NOT lead judgment. The profile gates which phases run, so a single bug fix doesn't pay the cost of an architecture-review pipeline. This was added 2026-06-28 in response to user feedback ("如果是单纯的 bug 修复，用这个 loop 流程做就有点复杂了，建议给每个阶段是否需要进入执行，增加判断") and refined to **user-impact framing** 2026-06-28 in response to "PM 的角色应该是提需求，而什么总是提 BUG FIX 呢？" — separating PM's user-side signals (`U_*`) from lead's scope-side signals (`S_*`).
 
-### The 3 profiles
+### The 3 profiles (reframed in user terms)
 
-| Profile | What | Example |
+| Profile | What the user sees | Example |
 |---|---|---|
-| **bugfix** | Single-bug fix: 1-2 files, <50 lines, no architectural decision | Round 1: atomic state.json writes (2 new files, 614 net lines, but no new API surface) |
-| **feature** | New user-visible feature: 3-6 files, 50-500 lines, may add new module/file | Adding "Resolved filter" button to conversation panel (2-3 files, ~100 lines) |
-| **architecture** | Schema/state/API change, new dependency, new module boundary, >500 lines, >7 files | Refactoring state.json schema + adding round exports |
+| **bugfix** | User's existing behavior was wrong/unreliable; we made it correct. No new capability. | Round 1: user lost review history to a power-loss race → we made state.json atomic |
+| **feature** | User gets a brand-new capability they didn't have before. | Adding a "Resolved filter" button to conversation panel |
+| **architecture** | User's data shape changes (e.g., existing state.json becomes incompatible), or a structural shift with install/dep impact. | Refactoring state.json schema; adding a new dependency |
 
-### 7 quantitative signals (each scored 0-3)
+### PM ↔ lead signal separation (v3)
 
-Lead reads these from PM Triage's `brief.md` `## Profile signals` section (machine-readable frontmatter). Score is deterministic — same inputs always produce the same profile.
+**Two distinct stages**, with the user/developer split made explicit:
 
-| Signal | Source | 0 | 1 | 2 | 3 |
-|---|---|---|---|---|---|
-| `S_size` | `lines_changed` (from `git diff --stat <base>..<branch>`) | 0-49 | 50-199 | 200-499 | 500+ |
-| `S_files` | `files_changed` (count from `git diff --stat`) | 1 | 2-3 | 4-6 | 7+ |
-| `S_new_module` | `new_files_count > 0` | no | — | yes | — |
-| `S_architecture` | PM brief `## Architectural decisions` section (boolean) | no | — | — | yes |
-| `S_user_visible` | PM brief `## User-visible changes` section (boolean) | no | — | yes | — |
-| `S_persistence_breaking` | diff changes `state.json` schema / API response shape | no | — | yes | — |
-| `S_persistence_cosmetic` | diff changes only write mechanism (atomicity, ordering, retry) | no | yes | — | — |
-| `S_dependencies` | diff adds/updates `package.json` deps | no | — | yes | — |
+1. **PM Triage (Phase 0)** — emits `user_impact_profile` with `U_*` fields. PM thinks about WHO needs WHAT and WHY, not lines of code.
+2. **Lead (Phase 4 prep, before any `task()` calls)** — converts PM's `U_*` to numeric `S_*` scores (yes → 2, no → 0). Lead applies the auto-classification rules.
+
+This keeps PM in user-land (no code metrics) and lead in scope-land (no user-story interpretation). PM doesn't estimate lines of code; lead verifies via `git diff`.
+
+### PM-side signals (`U_*`, user-impact)
+
+PM Triage outputs these in `brief.md` `## User-impact profile` section. Lead reads them.
+
+| Signal | User-impact meaning | no → score | yes → score |
+|---|---|---|---|
+| `U_size` | User-visible scope (PM's estimate, NOT lines of code) | small (1-2) → 0 | medium (3-6) → 1 / large (7+) → 2 |
+| `U_files` | User-visible surface area | narrow (1) → 0 | small (2-3) → 1 / medium (4-6) → 2 / wide (7+) → 3 |
+| `U_new_capability` | User gets a brand-new feature? | no → 0 | yes → 2 |
+| `U_behavior_shift` | User-visible behavior fundamentally changes? (not just "fixes wrong") | no → 0 | yes → 3 |
+| `U_user_visible` | User notices the change at all (README/docs/UI)? | no → 0 | yes → 2 |
+| `U_data_shape_breaking` | User's existing data files become incompatible? | no → 0 | yes → 2 |
+| `U_data_safety` | User's data becomes safer (atomic write, recovery, no data loss)? | no → 0 | yes → 1 |
+| `U_installs_new_dep` | User's `npm install` adds new packages? | no → 0 | yes → 2 |
+
+### Lead-side signals (`S_*`, derived from PM's `U_*`)
+
+Lead applies the conversion above. Total = sum of all 8 signals (range 0-16, typical 0-8).
 
 ### Auto-classification rules (deterministic — first match wins)
 
 ```
-1. IF S_architecture==3 OR S_persistence_breaking==2 OR S_dependencies==2 OR total >= 8
+1. IF U_behavior_shift==yes OR U_data_shape_breaking==yes OR U_installs_new_dep==yes OR total >= 8
    → profile = "architecture"
-2. ELSE IF S_user_visible==2 AND total >= 3
+   (Rationale: fundamental behavior change OR data-shape break OR new dep OR high total = structural work)
+
+2. ELSE IF U_user_visible==yes AND total >= 3
    → profile = "feature"
+   (Rationale: user-visible change + non-trivial scope = new feature work)
+
 3. ELSE
    → profile = "bugfix"
+   (Rationale: existing behavior corrected, no architectural signals, no new capability = bugfix)
 ```
 
 **Override rule**: lead MAY override auto-classification if user chat explicitly states scope (e.g. "treat as architecture review"). Document the override in `decision.md` ## Round profile section.
 
-**Reclassification mid-round**: if work scope expands (e.g. bugfix touches persistence), lead MAY reclassify. Document in `decision.md`.
+**Reclassification mid-round**: if work scope expands (e.g. a bugfix touches persistence), lead MAY reclassify mid-round. Document the reclassification in `decision.md`.
 
 ### Phase gating per profile
 
@@ -295,42 +356,41 @@ Lead reads these from PM Triage's `brief.md` `## Profile signals` section (machi
 
 **Phase 2, 3b, 3.5, 4, audit log are ALWAYS run** — these are the spine of the loop (worktree + empirical diff + documentation + decision + audit). Profile only skips optional lenses (Phase 3a) and gates pre-work (PM / PM Manager / user pick / full Architect plan).
 
-### Round 1 retroactive scoring (validates the rules)
+### Round 1 retroactive scoring (validates v3 user-impact framing)
 
-| Signal | Round 1 value | Score |
+Round 1 (atomic state.json writes) re-framed as a user-story:
+
+> **As a** reviewer doing long review sessions,
+> **I want** my review history to survive power loss / editor crash / OOM-kill,
+> **So that** I don't lose all my findings to a corrupted `state.json`.
+
+| PM signal | Round 1 value | Lead → `S_*` |
 |---|---|---|
-| `S_size` | 614 (insertion 585 + deletion 29) | **3** |
-| `S_files` | 6 | **1** |
-| `S_new_module` | 2 new files (`state-store.ts` + `state-store.test.ts`) | **2** |
-| `S_architecture` | None (used existing patterns) | **0** |
-| `S_user_visible` | No (internal state file) | **0** |
-| `S_persistence_breaking` | No (state.json schema unchanged, only write mechanism) | **0** |
-| `S_persistence_cosmetic` | Yes (atomic write instead of direct write) | **1** |
-| `S_dependencies` | No | **0** |
-| **Total** | | **7** |
+| `U_size` | "small (1-2)" | 0 |
+| `U_files` | "small (2-3)" | 1 |
+| `U_new_capability` | no | 0 |
+| `U_behavior_shift` | no | 0 |
+| `U_user_visible` | no (internal state file format) | 0 |
+| `U_data_shape_breaking` | no (state.json SCHEMA unchanged; only write mechanism) | 0 |
+| `U_data_safety` | **yes** (atomic write instead of direct write, corrupt-file recovery) | 1 |
+| `U_installs_new_dep` | no | 0 |
+| **Total** | | **2** |
 
-**Rule 1** (architecture): `S_architecture==3`? NO. `S_persistence_breaking==2`? NO. `S_dependencies==2`? NO. `total >= 8`? NO (7).
-**Rule 2** (feature): `S_user_visible==2`? NO. → skip.
+**Rule 1** (architecture): `U_behavior_shift==yes`? NO. `U_data_shape_breaking==yes`? NO. `U_installs_new_dep==yes`? NO. `total >= 8`? NO. → skip.
+**Rule 2** (feature): `U_user_visible==yes`? NO. → skip.
 **Rule 3** (bugfix): default → **`bugfix`**.
 
-Under the new rules, Round 1 would have been auto-classified as **bugfix**, skipping:
-- Phase 0 PM Triage
-- Phase 0.5 PM Manager (gate)
-- User pick candidate
-- 3a-3 Lens Code
-- 3a-5 Lens Context
-- Phase 3c Playwright (no UI change)
-
-That's **6 of 8 main phases** → ~50-60% reduction in lead overhead. Same quality gate, less bureaucracy.
+Under v3 rules, Round 1 would auto-classify as **bugfix**. The `U_data_safety` signal properly captures the user value ("review history survives crashes") without forcing the profile up. Same conclusion as v2 (after splitting persistence into breaking vs cosmetic) but cleaner: PM thinks in user terms, lead translates to numeric score, no ambiguity about whether atomicity is "cosmetic" or "breaking" — it's a user-facing safety improvement, full stop.
 
 ### Why this works
 
-- **Deterministic**: same inputs always produce the same profile. No "well, it depends".
-- **Auditable**: the 7 signals come from `git diff --stat` + PM brief checkboxes. Lead records them in `decision.md` for retroactive verification.
-- **Self-correcting**: the reclassification rule handles cases where the bugfix scope expands mid-round (e.g. discovered it needs to touch persistence).
+- **Deterministic**: same PM `U_*` inputs always produce the same lead `S_*` outputs → same profile.
+- **Auditable**: PM's user-stories + `U_*` signals are visible in `brief.md` for retroactive verification. Lead's `S_*` conversion + total + rule applied are recorded in `decision.md`.
+- **PM stays user-focused**: PM is **explicitly** not asked to estimate code metrics. The `U_*` field labels all reference user impact (user-visible scope, user-visible behavior, user-noticeable change, etc.).
+- **Self-correcting**: the reclassification rule handles cases where the work scope expands mid-round (e.g. discovered it needs to touch persistence).
 - **Bounded**: profile can only SKIP phases, never ADD phases. Architecture profile is the max-iteration ceiling.
 
-See `references/loop-decision.md` § "Round profile auto-classification" for the full section including Round 1 retroactive scoring rationale (why I initially classified it as `architecture` and then split `S_persistence` into breaking vs cosmetic to land on `bugfix`).
+See `references/loop-decision.md` § "Round profile auto-classification" for the full PM↔lead signal conversion table + Round 1 retroactive scoring rationale.
 
 ## Round artifacts (file structure)
 

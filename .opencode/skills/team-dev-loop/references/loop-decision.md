@@ -87,51 +87,83 @@ Each role's `task(category="...")` call uses a different sub-model — each sub-
 
 ## Round profile auto-classification (bugfix / feature / architecture)
 
-Each round auto-classifies into 1 of 3 profiles based on **quantitative signals**, not lead judgment. This was added 2026-06-28 in response to user feedback ("如果是单纯的 bug 修复，用这个 loop 流程做就有点复杂了，建议给每个阶段是否需要进入执行，增加判断"). The classification runs **once per round, before Phase 0 PM Triage** — lead reads the signals and picks a profile; this profile gates which phases run.
+Each round auto-classifies into 1 of 3 profiles based on **quantitative user-impact signals**, not lead judgment. This was added 2026-06-28 in response to user feedback ("如果是单纯的 bug 修复，用这个 loop 流程做就有点复杂了，建议给每个阶段是否需要进入执行，增加判断") and refined 2026-06-28 to **user-impact framing** in response to "PM 的角色应该是提需求，而什么总是提 BUG FIX 呢？" — separating PM's user-side signals (`U_*`) from lead's scope-side signals (`S_*`).
 
-### 3 profiles
+### PM ↔ lead signal separation
 
-| Profile | What | Example |
+**Two distinct stages**:
+
+1. **PM Triage (Phase 0)** — emits `user_impact_profile` with `U_*` fields (user-side). PM thinks about WHO needs WHAT and WHY, not lines of code.
+2. **Lead (Phase 4 prep, before any `task()` calls)** — converts PM's `U_*` to numeric `S_*` scores (0/2 per field, where yes=2, no=0). Lead applies the auto-classification rules below.
+
+The conversion keeps PM in user-land (no code metrics) and lead in scope-land (no user story interpretation).
+
+### 3 profiles (now reframed in user terms)
+
+| Profile | What the user sees | Example |
 |---|---|---|
-| **bugfix** | Single-bug fix: 1-2 files, <50 lines, no architectural decision | Round 1: atomic state.json writes (1 file 156 lines + 1 test file 338 lines, but no new API surface) |
-| **feature** | New user-visible feature: 3-6 files, 50-500 lines, may add new module/file | Adding "Resolved filter" button to conversation panel (2-3 files, ~100 lines) |
-| **architecture** | Schema/state/API change, new dependency, new module boundary, >500 lines, >7 files | Refactoring state.json schema + adding round exports (Round 1 follow-up) |
+| **bugfix** | User's existing behavior was wrong/unreliable; we made it correct. No new capability. | Round 1: user lost review history to a power-loss race → we made state.json atomic |
+| **feature** | User gets a brand-new capability they didn't have before. | Adding a "Resolved filter" button to conversation panel |
+| **architecture** | User's data shape changes (e.g., existing state.json becomes incompatible), or a structural shift with install/dep impact. | Refactoring state.json schema; adding a new dependency |
 
-### Quantitative signals (7 inputs, each scored 0-3)
+### PM-side signals (`U_*`, user-impact)
 
-Lead reads these from PM Triage's output (`brief.md` `## Profile signals` section, machine-readable). Score is deterministic — same inputs → same profile.
+PM Triage outputs these in `brief.md` `## User-impact profile` section. Lead reads them.
 
-| Signal | Source | 0 | 1 | 2 | 3 |
-|---|---|---|---|---|---|
-| `S_size` | `lines_changed` (from `git diff --stat <base>..<branch>`) | 0-49 | 50-199 | 200-499 | 500+ |
-| `S_files` | `files_changed` (count from `git diff --stat`) | 1 | 2-3 | 4-6 | 7+ |
-| `S_new_module` | `new_files_count > 0` | no | — | yes | — |
-| `S_architecture` | PM brief "## Architectural decisions" section (boolean) | no | — | — | yes |
-| `S_user_visible` | PM brief "## User-visible changes" section (boolean) | no | — | yes | — |
-| `S_persistence` | diff touches `state.json` / schema / API response shape | no | — | yes | — |
-| `S_dependencies` | diff adds/updates `package.json` deps | no | — | yes | — |
+| Signal | User-impact meaning | no → 0 | yes → 2 |
+|---|---|---|---|
+| `U_size` | User-visible scope (PM's estimate, NOT lines of code) | small (1-2 user-visible files) | yes if medium/large |
+| `U_files` | User-visible surface area | narrow (1 file) | yes if wider |
+| `U_new_capability` | User gets a brand-new feature? | no = existing capability only | yes |
+| `U_behavior_shift` | User-visible behavior fundamentally changes? (not just "fixes wrong") | no | yes |
+| `U_user_visible` | User notices the change at all (README/docs/UI)? | no (internal refactor) | yes |
+| `U_data_shape_breaking` | User's existing data files become incompatible? | no | yes |
+| `U_data_safety` | User's data becomes safer (atomic write, recovery, no data loss)? | no | yes |
+| `U_installs_new_dep` | User's `npm install` adds new packages? | no | yes |
 
-**Total score** = sum of all 7 signals (range 0-15, but typical 0-8).
+### Lead-side signals (`S_*`, derived from PM's `U_*`)
 
-### Auto-classification rules (deterministic)
+Lead applies a deterministic conversion: **yes → 2, no → 0** (binary scoring). Total = sum of all 8 signals (range 0-16, typical 0-8).
 
-The classification runs in this order — first match wins:
+| `U_*` signal | `S_*` score |
+|---|---|
+| `U_size == "small (1-2)"` | 0 |
+| `U_size == "medium (3-6)"` | 1 |
+| `U_size == "large (7+)"` | 2 |
+| `U_files == "narrow"` | 0 |
+| `U_files == "small"` | 1 |
+| `U_files == "medium"` | 2 |
+| `U_files == "wide"` | 3 |
+| `U_new_capability == yes` | 2 |
+| `U_behavior_shift == yes` | 3 |
+| `U_user_visible == yes` | 2 |
+| `U_data_shape_breaking == yes` | 2 |
+| `U_data_safety == yes` | 1 |
+| `U_installs_new_dep == yes` | 2 |
+
+(Note: `S_behavior_shift` has score 3 — the strongest "architecture" trigger — because a fundamental user-visible behavior change requires structural rework. `S_data_safety` has score 1 — it bumps total without forcing a specific profile.)
+
+### Auto-classification rules (deterministic, lead applies after PM emits `U_*`)
 
 ```
-1. IF S_architecture==3 OR S_persistence==2 OR S_dependencies==2 OR total >= 6
+1. IF U_behavior_shift==yes OR U_data_shape_breaking==yes OR U_installs_new_dep==yes OR total >= 8
    → profile = "architecture"
-   (Rationale: any "yes" on architecture-decision / persistence / deps = structural change; high total also = complex enough)
+   (Rationale: fundamental behavior change OR data-shape break OR new dep OR high total = structural work)
 
-2. ELSE IF S_user_visible==2 AND total >= 3
+2. ELSE IF U_user_visible==yes AND total >= 3
    → profile = "feature"
-   (Rationale: user-visible change + non-trivial scope = feature work)
+   (Rationale: user-visible change + non-trivial scope = new feature work)
 
 3. ELSE
    → profile = "bugfix"
-   (Rationale: small diff, no architectural signals, no user-visible change = bug fix)
+   (Rationale: existing behavior corrected, no architectural signals, no new capability = bugfix)
 ```
 
 **Override rule**: lead MAY override auto-classification if user chat explicitly states scope (e.g. "do this as architecture review" or "treat as trivial"). Document the override in `decision.md` ## Round profile section.
+
+### Reclassification mid-round
+
+If the work scope expands during the round (e.g. a bugfix touches persistence), lead MAY reclassify mid-round. Document the reclassification in `decision.md`.
 
 ### Phase gating per profile
 
@@ -152,66 +184,39 @@ Each profile runs a different subset of phases. **Skip a phase = lead does NOT c
 
 **Phase skip reason must be recorded** in `decision.md` `## Skipped phases` section (e.g. "Phase 0.5 PM Manager skipped: profile=bugfix, see loop-decision.md 'Round profile auto-classification'"). This is auditable.
 
-### Quantitative evidence for the auto-classification
+### Quantitative evidence — Round 1 retroactive reclassification under v3 (user-impact framing)
 
-Round 1 (atomic state.json) reclassified under these rules:
+Round 1 (atomic state.json writes) re-framed in user terms:
 
-| Signal | Round 1 value | Score |
+> **As a** reviewer doing long review sessions,
+> **I want** my review history to survive power loss / editor crash / OOM-kill,
+> **So that** I don't lose all my findings to a corrupted `state.json`.
+
+That's the user story. Now the `U_*` signals PM would have emitted:
+
+| PM signal | Round 1 value | Lead converts to `S_*` |
 |---|---|---|
-| `lines_changed` | 585 (insertion 585 / deletion 29, sum 614) | S_size = 3 |
-| `files_changed` | 6 | S_files = 1 |
-| `new_files_count` | 2 (`src/state-store.ts` + `src/state-store.test.ts`) | S_new_module = 2 |
-| Architectural decisions | None (used existing patterns) | S_architecture = 0 |
-| User-visible | No (internal state file format) | S_user_visible = 0 |
-| Persistence | **Yes** (changes `state.json` write semantics) | S_persistence = 2 |
-| Dependencies | No | S_dependencies = 0 |
-| **Total** | | **8** |
+| `U_size` | "small (1-2)" | S_size = 0 |
+| `U_files` | "small (2-3)" | S_files = 1 |
+| `U_new_capability` | no | S_new_capability = 0 |
+| `U_behavior_shift` | no | S_behavior_shift = 0 |
+| `U_user_visible` | no (internal state file format) | S_user_visible = 0 |
+| `U_data_shape_breaking` | no (state.json SCHEMA unchanged; only write mechanism) | S_data_shape_breaking = 0 |
+| `U_data_safety` | **yes** (atomic write instead of direct write, corrupt-file recovery) | S_data_safety = 1 |
+| `U_installs_new_dep` | no | S_installs_new_dep = 0 |
+| **Total** | | **2** |
 
-**Auto-classification**: rule 1 fires (`S_persistence==2`) → **architecture**.
+**Auto-classification**: rule 1? `U_behavior_shift==yes`? NO. `U_data_shape_breaking==yes`? NO. `U_installs_new_dep==yes`? NO. `total >= 8`? NO. → skip. Rule 2? `U_user_visible==yes`? NO. → skip. Rule 3 → **bugfix**.
 
-Wait, that contradicts the user's observation that Round 1 was "a simple bug fix". Let me re-examine: Round 1 touched `state.json` semantics (atomicity), which IS a persistence-shape change. Under the rules, it correctly classifies as `architecture` — which is why the user felt the loop was heavy. The **proper fix** for Round 1 is to either:
+Under v3 rules, Round 1 would have auto-classified as **bugfix** (not architecture, not feature). The `U_data_safety` signal properly captures the user value ("review history survives crashes") without forcing the profile up to architecture. The 2-point total under the threshold (≥3 for feature, ≥8 for architecture) reflects that the user doesn't see a behavior change — they just see "no more crashes."
 
-(a) **Soften S_persistence rule** — atomicity changes don't break schema, just write mechanism. Split into:
-- `S_persistence_breaking` (schema change) = 2
-- `S_persistence_cosmetic` (atomicity, ordering, etc.) = 1
+This is the same conclusion as the previous `S_persistence_cosmetic=1, total=7` reclassification, but cleaner: PM thinks in user terms (does the user's data become safer? yes), lead translates that to a numeric score (1 point) that doesn't accidentally tip Round 1 into `feature` or `architecture`.
 
-(b) **Loosen the bugfix/architecture boundary** — give the auto-classifier more leeway. E.g. require BOTH `S_persistence==2` AND (total >= 6) for architecture.
+### Why split PM-side `U_*` from lead-side `S_*`
 
-I'll go with (a) — splitting S_persistence into breaking vs cosmetic is more honest. Re-scored Round 1:
+**The fundamental reason**: PM's job is to articulate user pain, not to estimate code metrics. When PM emits `U_user_visible: yes` they're saying "users will notice this" — that's a user-land judgment. When lead converts that to `S_user_visible: 2`, they're translating to scope-land scoring. Keeping the two stages explicit prevents PM from sliding into developer thinking (which Round 1+2 evidence shows happened — both rounds were framed as "bug fixes" because the input source was bug-shaped, not user-story-shaped).
 
-| Signal | Score |
-|---|---|
-| `S_persistence_cosmetic` (atomicity) | 1 |
-| Total | 7 |
-
-Rule 1: `S_persistence==2`? NO. `S_persistence_breaking==2`? NO. `S_dependencies==2`? NO. `total >= 6`? YES (7) → **architecture**.
-
-Still architecture. The issue is total is dominated by S_size (585 lines) + S_new_module (2 files) + S_persistence_cosmetic (1). 7 is still high.
-
-**Honest conclusion**: Round 1 was a substantial change — 6 files, 2 new files, 585 lines. The 7-phase loop was actually proportionate to the work. The user felt it was "over the loop" because the 7 phases feel bureaucratic for a single bug, not because the work was small.
-
-**Better fix**: the **per-phase category tuning** (already done in 8f2aa39) + **per-phase skip** (this section's profile gating) — these together reduce perceived overhead without removing the safety net. Under the new rules, Round 1 would be:
-- `profile = "feature"` (or borderline architecture)
-- 3-lens review instead of 5 (drop Code + Context if they're noise for an internal state file)
-- 1-paragraph README (atomicity note), no new screenshot
-- 1-paragraph plan instead of 446 lines
-
-This is ~40% reduction in lead overhead. That's the win, not bypassing the whole loop.
-
-### Re-scoring rules (final)
-
-```
-1. IF S_architecture==3 OR S_persistence_breaking==2 OR S_dependencies==2 OR total >= 8
-   → profile = "architecture"
-
-2. ELSE IF S_user_visible==2 AND total >= 3
-   → profile = "feature"
-
-3. ELSE
-   → profile = "bugfix"
-```
-
-Under final rules, Round 1 (total=7) classifies as **feature** (not architecture). Better.
+If PM tries to estimate `lines_changed` or `files_changed`, that's a code metric and PM doesn't have ground truth. The `U_size` field deliberately uses "small/medium/large in user-visible files" — PM's honest estimate of user impact, not code churn. Lead converts to scope scoring only at Phase 4 prep time.
 
 ## Self-judgment (agent's discretion)
 

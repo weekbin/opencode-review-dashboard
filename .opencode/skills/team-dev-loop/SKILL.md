@@ -53,12 +53,27 @@ For each round `N`:
 const round = N
 const roundDir = `.omo/round-${round}`
 
-// === Phase 0: PM Triage ===
+// === Round profile classification (lead applies BEFORE any phase) ===
+// Read PM's `U_*` fields from brief.md. Convert to numeric `S_*` scores:
+//   yes → 2, no → 0 (per U_size / U_files gradation table in loop-decision.md).
+// Apply auto-classification rules:
+//   1. U_behavior_shift / U_data_shape_breaking / U_installs_new_dep = yes, OR total ≥ 8 → "architecture"
+//   2. U_user_visible = yes AND total ≥ 3 → "feature"
+//   3. else → "bugfix"
+// Use the profile to gate which phases run (see Per-phase execution table below).
+// Skip phases are recorded in decision.md ## Skipped phases with reason.
+
+// === Phase 0: PM Triage (user-story advocate, NOT developer) ===
 const brief = await task({
   category: "unspecified-high",  // product judgment
   prompt: PM_TRIAGE_PROMPT,   // from references/phase-prompts.md
 })
-// Writes: ${roundDir}/brief.md (incl. ## Self-Critique at end — no separate quality report)
+// Writes: ${roundDir}/brief.md
+//   - ## Candidates ranked (3-5 user-stories: As / I want / So that)
+//   - ## User-impact profile (U_* fields: U_size, U_files, U_new_capability,
+//     U_behavior_shift, U_user_visible, U_data_shape_breaking,
+//     U_data_safety, U_installs_new_dep)
+// PM does NOT estimate lines of code or file counts — that's lead's job.
 
 // === Phase 0.5: PM Manager gate ===
 const pmMgr = await task({
@@ -163,45 +178,53 @@ For each phase, read `references/phase-prompts.md` for the exact prompt body. Ea
 
 ## Round profile auto-classification (run before Phase 0)
 
-Each round is auto-classified into 1 of 3 profiles based on **7 quantitative signals** — not lead judgment. The profile gates which phases run (see "Profile gating" column in the per-phase table above). The user feedback that triggered this: "如果是单纯的 bug 修复，用这个 loop 流程做就有点复杂了".
+Each round is auto-classified into 1 of 3 profiles based on **8 quantitative user-impact signals** — NOT lead judgment. The profile gates which phases run (see "Profile gating" column in the per-phase table above).
 
-### 3 profiles
+**Two-stage signal flow** (PM stays user-focused; lead does scope scoring):
+1. **PM Triage (Phase 0)** emits `U_*` fields (user-impact framing: As/I want/So that user-stories, plus 8 boolean/sized `U_*` fields).
+2. **Lead (Phase 4 prep)** converts `U_*` → numeric `S_*` scores (yes → 2, no → 0) and applies auto-classification rules.
 
-| Profile | What | Example |
+This separation prevents PM from sliding into developer thinking (Round 1+2 evidence showed PM framing candidates as "bug fixes" instead of user-stories — that was the bug that v3 fixes).
+
+### 3 profiles (reframed in user terms)
+
+| Profile | What the user sees | Example |
 |---|---|---|
-| **bugfix** | Single-bug fix: 1-2 files, <50 lines, no architectural decision | Round 1: atomic state.json writes (1 new file 156 lines + 1 test file 338 lines) |
-| **feature** | New user-visible feature: 3-6 files, 50-500 lines, may add new module/file | Adding "Resolved filter" button (2-3 files, ~100 lines) |
-| **architecture** | Schema/state/API change, new dependency, new module boundary, >500 lines, >7 files | Refactoring state.json schema |
+| **bugfix** | User's existing behavior was wrong/unreliable; we made it correct. No new capability. | Round 1: user lost review history to a power-loss race → we made state.json atomic |
+| **feature** | User gets a brand-new capability they didn't have before. | Adding "Resolved filter" button to conversation panel |
+| **architecture** | User's data shape changes (e.g., existing state.json becomes incompatible), or a structural shift with install/dep impact. | Refactoring state.json schema; adding a new dependency |
 
-### 7 quantitative signals (each scored 0-3)
+### PM-side signals (`U_*`, user-impact — PM emits these)
 
-| Signal | Source | 0 | 1 | 2 | 3 |
-|---|---|---|---|---|---|
-| `S_size` | `lines_changed` (from `git diff --stat <base>..<branch>`) | 0-49 | 50-199 | 200-499 | 500+ |
-| `S_files` | `files_changed` (count from `git diff --stat`) | 1 | 2-3 | 4-6 | 7+ |
-| `S_new_module` | `new_files_count > 0` | no | — | yes | — |
-| `S_architecture` | PM brief `## Architectural decisions` section (boolean) | no | — | — | yes |
-| `S_user_visible` | PM brief `## User-visible changes` section (boolean) | no | — | yes | — |
-| `S_persistence_breaking` | diff changes `state.json` schema / API response shape | no | — | yes | — |
-| `S_persistence_cosmetic` | diff changes only write mechanism (atomicity, ordering) | no | yes | — | — |
-| `S_dependencies` | diff adds/updates `package.json` deps | no | — | yes | — |
+Lead reads these from `brief.md` `## User-impact profile` section.
+
+| Signal | User-impact meaning | no → score | yes → score |
+|---|---|---|---|
+| `U_size` | User-visible scope (PM's estimate, NOT lines of code) | small (1-2) → 0 | medium (3-6) → 1 / large (7+) → 2 |
+| `U_files` | User-visible surface area | narrow (1) → 0 | small (2-3) → 1 / medium (4-6) → 2 / wide (7+) → 3 |
+| `U_new_capability` | User gets a brand-new feature? | no → 0 | yes → 2 |
+| `U_behavior_shift` | User-visible behavior fundamentally changes? | no → 0 | yes → 3 |
+| `U_user_visible` | User notices the change at all (README/docs/UI)? | no → 0 | yes → 2 |
+| `U_data_shape_breaking` | User's existing data files become incompatible? | no → 0 | yes → 2 |
+| `U_data_safety` | User's data becomes safer (atomic write, recovery)? | no → 0 | yes → 1 |
+| `U_installs_new_dep` | User's `npm install` adds new packages? | no → 0 | yes → 2 |
+
+Total = sum of all 8 → 0-16 range, typical 0-8.
 
 ### Auto-classification rules (deterministic — first match wins)
 
 ```yaml
-1. IF S_architecture==3 OR S_persistence_breaking==2 OR S_dependencies==2 OR total >= 8
+1. IF U_behavior_shift==yes OR U_data_shape_breaking==yes OR U_installs_new_dep==yes OR total >= 8
    → profile = "architecture"
-2. ELSE IF S_user_visible==2 AND total >= 3
+2. ELSE IF U_user_visible==yes AND total >= 3
    → profile = "feature"
 3. ELSE
    → profile = "bugfix"
 ```
 
-Lead reads these signals from PM Triage's `brief.md` `## Profile signals` section (machine-readable frontmatter) — see "PM Triage profile output" in `references/phase-prompts.md` § 1.
-
 **Override rule**: lead MAY override auto-classification if user chat explicitly states scope (e.g. "treat as architecture review"). Document the override in `decision.md` ## Round profile section.
 
-**Reclassification mid-round**: if work scope expands (e.g. bugfix touches persistence), lead MAY reclassify. Document in `decision.md`.
+**Reclassification mid-round**: if work scope expands (e.g. bugfix touches persistence), lead MAY reclassify mid-round. Document the reclassification in `decision.md`.
 
 **Full details + Round 1 retroactive scoring**: see `references/loop-decision.md` § "Round profile auto-classification".
 
@@ -245,27 +268,30 @@ When all 7 phases terminal (each `task()` either returned or was taken over):
 
 ### Example 1: Round 1 (bugfix profile) — atomic state.json writes
 
-**Trigger**: User chat said "fix the data loss bug in state.json". PM Triage was skipped (bugfix profile, user chat IS the brief).
+**Trigger** (user-story framing): PM Triage produced:
+> **As a** reviewer doing long review sessions,
+> **I want** my review history to survive power loss / editor crash / OOM-kill,
+> **So that** I don't lose all my findings to a corrupted `state.json`.
 
-**Profile classification** (from `brief.md` `## Profile signals`):
+PM emitted `U_*` fields (user-impact framing):
 ```yaml
-S_size: 500+       # 614 lines (insertion 585 + deletion 29)
-S_files: 2-3       # 6 files
-S_new_module: yes  # 2 new files
-S_architecture: no
-S_user_visible: no
-S_persistence_breaking: no   # state.json SCHEMA unchanged, only WRITE mechanism
-S_persistence_cosmetic: yes  # atomic write instead of direct write
-S_dependencies: no
-# total = 7
+U_size: "small (1-2)"          # 2 user-visible files (src + tests)
+U_files: "small (2-3)"
+U_new_capability: no           # user doesn't get a new feature
+U_behavior_shift: no          # existing behavior is just made correct
+U_user_visible: no            # internal state file format
+U_data_shape_breaking: no     # state.json SCHEMA unchanged
+U_data_safety: yes            # atomic write, corrupt-file recovery
+U_installs_new_dep: no
+# lead conversion: U_size=0 + U_files=1 + others all 0/1 + U_data_safety=1 → total=2
 ```
 
-**Auto-classification**:
-- Rule 1 (architecture): `S_persistence_breaking==yes`? NO. `total >= 8`? NO (7). → skip.
-- Rule 2 (feature): `S_user_visible==yes`? NO. → skip.
+Lead auto-classification:
+- Rule 1 (architecture): `U_behavior_shift==yes`? NO. `U_data_shape_breaking==yes`? NO. `U_installs_new_dep==yes`? NO. `total >= 8`? NO (2). → skip.
+- Rule 2 (feature): `U_user_visible==yes`? NO. → skip.
 - Rule 3 (bugfix): default → **bugfix**.
 
-**Phases run** (under bugfix profile, see gating table): Dev, 3a (3 lens: Goal+QA+Security), 3b (Tester Diff), 3.5 (PM Doc Writer), 4 (Decision). Skipped: 0 PM Triage, 0.5 PM Manager, user pick, 1 Architect full plan (1-para), 3a-3 Code lens, 3a-5 Context lens, 3c Playwright (no UI change).
+**Phases run** (under bugfix profile, see gating table): Dev, 3a (3 lens: Goal+QA+Security), 3b (Tester Diff), 3.5 (PM Doc Writer), 4 (Decision). Skipped: 0 PM Triage (skipped per profile), 0.5 PM Manager, user pick, 1 Architect full plan (1-para), 3a-3 Code lens, 3a-5 Context lens, 3c Playwright (no UI change).
 
 **Output**:
 - 6 files committed, +585 / -29 lines
@@ -274,17 +300,54 @@ S_dependencies: no
 
 ### Example 2: bugfix (1 file, <50 lines)
 
-**Trigger**: User reports typo in README.
+**Trigger** (user-story): PM Triage produced:
+> **As a** contributor reading the README,
+> **I want** the example command in the README to actually work,
+> **So that** I can copy-paste it without a typo fix-up loop.
 
-**Profile**: bugfix (total=0-1).
+PM emitted `U_*`:
+```yaml
+U_size: "small (1-2)"
+U_files: "narrow (1)"
+U_new_capability: no
+U_behavior_shift: no
+U_user_visible: yes     # user sees a corrected README
+U_data_shape_breaking: no
+U_data_safety: no
+U_installs_new_dep: no
+# lead conversion: U_size=0 + U_files=0 + U_user_visible=2 → total=2
+```
+
+Lead auto-classification:
+- Rule 1: NO matches. Rule 2: `U_user_visible==yes`? YES. `total >= 3`? NO (2). → skip.
+- Rule 3: default → **bugfix**.
+
+(Note: `U_user_visible=yes` triggers the feature check, but `total < 3` excludes it — so it stays bugfix. README typo fix is user-visible but trivial scope = bugfix profile, not feature.)
 
 **Phases run**: Dev, 3a (3 lens), 3b, 3.5 (1-para README fix), 4. Total ~5 phases instead of 8.
 
 ### Example 3: architecture (schema change)
 
-**Trigger**: User says "refactor state.json to use indexed-by-round structure".
+**Trigger** (user-story): PM Triage produced:
+> **As a** maintainer planning the v2 schema,
+> **I want** to refactor state.json to use indexed-by-round structure,
+> **So that** future rounds can be efficiently archived and queried without scanning the full history.
 
-**Profile**: architecture (`S_persistence_breaking==yes`).
+PM emitted `U_*`:
+```yaml
+U_size: "large (7+)"
+U_files: "wide (7+)"
+U_new_capability: yes       # users gain indexed-by-round query
+U_behavior_shift: yes       # state.json format fundamentally changes
+U_user_visible: yes         # users with old state.json files need migration
+U_data_shape_breaking: yes  # old state.json becomes INCOMPATIBLE
+U_data_safety: no
+U_installs_new_dep: no
+# lead conversion: U_size=2 + U_files=3 + U_new_capability=2 + U_behavior_shift=3 + U_user_visible=2 + U_data_shape_breaking=2 → total=14
+```
+
+Lead auto-classification:
+- Rule 1 (architecture): `U_behavior_shift==yes`? YES → **architecture**.
 
 **Phases run**: all 8 + `/shared/hyperplan` adversarial sub-loop. Per-phase: full plan, 5 lens + external review, full Playwright walkthrough, full README section.
 
