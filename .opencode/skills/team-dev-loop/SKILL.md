@@ -135,26 +135,72 @@ gitPush("origin", "main")   // no PR — this is a single-commit-per-round workf
 
 For each phase, read `references/phase-prompts.md` for the exact prompt body. Each prompt is copy-paste ready. Order is fixed: PM → PM Manager → user pick → Architect → Dev → Tester (3 lanes) → PM Doc Writer → Decision.
 
-| Phase | Role | Subagent type | Output file(s) |
-|---|---|---|---|
-| 0 | PM Triage | `unspecified-high` | `brief.md` |
-| 0.5 | PM Manager (gate) | `ultrabrain` | `pm-manager-review.md` |
-| — | User pick candidate | (no subagent) | (lead asks user) |
-| 1 | Architect | `ultrabrain` | `plan.md` |
-| 2 | Dev | `deep` | (worktree + code + tests; inline AC trace in return) |
-| 3a | Tester Review (5 lens parallel) | `deep` (orchestrator) + 5 internal lenses | `review-{goal,qa,code,security,context}.md` + `test-report.md` |
-|   | 3a-1 Lens Goal | `quick` (parallel) | `review-goal.md` |
-|   | 3a-2 Lens QA | `quick` (parallel) | `review-qa.md` |
-|   | 3a-3 Lens Code | `ultrabrain` (parallel) | `review-code.md` |
-|   | 3a-4 Lens Security | `ultrabrain` (parallel) | `review-security.md` |
-|   | 3a-5 Lens Context | `artistry` (parallel) | `review-context.md` |
-| 3b | Tester Diff | `unspecified-high` | `diff-report.md` |
-| 3c | Tester Playwright | `visual-engineering` | `playwright-report.md` |
-| 3.5 | PM Doc Writer | `writing` | `doc-update-report.md` (side effect: README + screenshots) |
-| 4 | Decision | (lead writes directly) | `decision.md` |
-| — | Append audit log | (lead writes directly) | `.omo/proposals.jsonl` (1 line) |
+**IMPORTANT**: phases marked with `bugfix` / `feature` / `architecture` are gated by the round profile — see "Round profile auto-classification" below. Lead should NOT call `task()` for phases that the profile says to skip.
+
+| Phase | Role | Subagent type | Output file(s) | Profile gating |
+|---|---|---|---|---|
+| 0 | PM Triage | `unspecified-high` | `brief.md` | bugfix: **skip** / feature: run / architecture: run |
+| 0.5 | PM Manager (gate) | `ultrabrain` | `pm-manager-review.md` | bugfix: **skip** / feature: run / architecture: run |
+| — | User pick candidate | (no subagent) | (lead asks user) | bugfix: **skip** / feature: run / architecture: run |
+| 1 | Architect | `ultrabrain` | `plan.md` | bugfix: 1-para plan / feature: full plan / architecture: full plan + hyperplan |
+| 2 | Dev | `deep` | (worktree + code + tests; inline AC trace in return) | always run |
+| 3a | Tester Review (5 lens parallel) | `deep` (orchestrator) + 5 internal lenses | `review-{goal,qa,code,security,context}.md` + `test-report.md` | bugfix: 3 lens (Goal+QA+Security) / feature+architecture: 5 lens |
+|   | 3a-1 Lens Goal | `quick` (parallel) | `review-goal.md` | always if 3a runs |
+|   | 3a-2 Lens QA | `quick` (parallel) | `review-qa.md` | always if 3a runs |
+|   | 3a-3 Lens Code | `ultrabrain` (parallel) | `review-code.md` | bugfix: **skip** / feature+architecture: run |
+|   | 3a-4 Lens Security | `ultrabrain` (parallel) | `review-security.md` | always if 3a runs |
+|   | 3a-5 Lens Context | `artistry` (parallel) | `review-context.md` | bugfix: **skip** / feature+architecture: run |
+| 3b | Tester Diff | `unspecified-high` | `diff-report.md` | always run |
+| 3c | Tester Playwright | `visual-engineering` | `playwright-report.md` | bugfix: **skip unless UI changed** / feature+architecture: run |
+| 3.5 | PM Doc Writer | `writing` | `doc-update-report.md` (side effect: README + screenshots) | bugfix: 1-para README / feature+architecture: full README + screenshot |
+| 4 | Decision | (lead writes directly) | `decision.md` | always run |
+| — | Append audit log | (lead writes directly) | `.omo/proposals.jsonl` (1 line) | always run |
 
 **Why different categories per role** (per user's 2026-06-28 feedback): each role has a different work shape — product judgment (`unspecified-high`), critical reasoning (`ultrabrain`), autonomous end-to-end (`deep`), mechanical checks (`quick`), soft/uncoventional judgment (`artistry`), UI walkthrough (`visual-engineering`), documentation (`writing`). Picking the right sub-model per role gives better quality per token than a one-size-fits-all `unspecified-high` for everything.
+
+## Round profile auto-classification (run before Phase 0)
+
+Each round is auto-classified into 1 of 3 profiles based on **7 quantitative signals** — not lead judgment. This was added 2026-06-28 in response to user feedback ("如果是单纯的 bug 修复，用这个 loop 流程做就有点复杂了"). The profile gates which phases run (see "Profile gating" column in the per-phase table above).
+
+### 3 profiles
+
+| Profile | What | Example |
+|---|---|---|
+| **bugfix** | Single-bug fix: 1-2 files, <50 lines, no architectural decision | Round 1: atomic state.json writes (1 new file 156 lines + 1 test file 338 lines) |
+| **feature** | New user-visible feature: 3-6 files, 50-500 lines, may add new module/file | Adding "Resolved filter" button (2-3 files, ~100 lines) |
+| **architecture** | Schema/state/API change, new dependency, new module boundary, >500 lines, >7 files | Refactoring state.json schema |
+
+### 7 quantitative signals (each scored 0-3)
+
+| Signal | Source | 0 | 1 | 2 | 3 |
+|---|---|---|---|---|---|
+| `S_size` | `lines_changed` (from `git diff --stat <base>..<branch>`) | 0-49 | 50-199 | 200-499 | 500+ |
+| `S_files` | `files_changed` (count from `git diff --stat`) | 1 | 2-3 | 4-6 | 7+ |
+| `S_new_module` | `new_files_count > 0` | no | — | yes | — |
+| `S_architecture` | PM brief `## Architectural decisions` section (boolean) | no | — | — | yes |
+| `S_user_visible` | PM brief `## User-visible changes` section (boolean) | no | — | yes | — |
+| `S_persistence_breaking` | diff changes `state.json` schema / API response shape | no | — | yes | — |
+| `S_persistence_cosmetic` | diff changes only write mechanism (atomicity, ordering) | no | yes | — | — |
+| `S_dependencies` | diff adds/updates `package.json` deps | no | — | yes | — |
+
+### Auto-classification rules (deterministic — first match wins)
+
+```
+1. IF S_architecture==3 OR S_persistence_breaking==2 OR S_dependencies==2 OR total >= 8
+   → profile = "architecture"
+2. ELSE IF S_user_visible==2 AND total >= 3
+   → profile = "feature"
+3. ELSE
+   → profile = "bugfix"
+```
+
+Lead reads these signals from PM Triage's `brief.md` `## Profile signals` section (machine-readable frontmatter) — see "PM Triage profile output" in `references/phase-prompts.md` § 1.
+
+**Override rule**: lead MAY override auto-classification if user chat explicitly states scope (e.g. "treat as architecture review"). Document the override in `decision.md` ## Round profile section.
+
+**Reclassification mid-round**: if work scope expands (e.g. bugfix touches persistence), lead MAY reclassify. Document in `decision.md`.
+
+**Full details + Round 1 retroactive scoring**: see `references/loop-decision.md` § "Round profile auto-classification".
 
 ## Lead inline takeover protocol (DESIGN FEATURE, not rescue)
 

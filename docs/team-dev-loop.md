@@ -234,13 +234,103 @@ Each role's `task(category="...")` call uses a different sub-model. Each sub-mod
 
 **Lead takeover rate is a tracked metric**. If it exceeds 50% in a single round, lead should pause and ask user — this signals systematic subagent failure (consider Plan B: revert to v1 team_create with more chat sessions).
 
-## Trivial mode
+## Round profile auto-classification (run before Phase 0)
 
-For trivial work (single file, <30 lines, no architectural decision):
-- SKIP Phase 0.5 (PM Manager) — gate adds no value for trivial work
-- STILL mandatory: PM (brief), Architect (1-paragraph plan), Dev, Tester (with 5 lens + Playwright), PM Doc Writer
-- Reduce 5 lens to 3 lens (drop Goal and Context) for trivial bug fixes
-- SKIP Phase 3.5 (PM Doc Writer) ONLY if change is internal-only (no user-visible behavior) — note this in decision.md
+Each round is **auto-classified** into 1 of 3 profiles based on **7 quantitative signals** — NOT lead judgment. The profile gates which phases run, so a single bug fix doesn't pay the cost of an architecture-review pipeline. This was added 2026-06-28 in response to user feedback ("如果是单纯的 bug 修复，用这个 loop 流程做就有点复杂了，建议给每个阶段是否需要进入执行，增加判断").
+
+### The 3 profiles
+
+| Profile | What | Example |
+|---|---|---|
+| **bugfix** | Single-bug fix: 1-2 files, <50 lines, no architectural decision | Round 1: atomic state.json writes (2 new files, 614 net lines, but no new API surface) |
+| **feature** | New user-visible feature: 3-6 files, 50-500 lines, may add new module/file | Adding "Resolved filter" button to conversation panel (2-3 files, ~100 lines) |
+| **architecture** | Schema/state/API change, new dependency, new module boundary, >500 lines, >7 files | Refactoring state.json schema + adding round exports |
+
+### 7 quantitative signals (each scored 0-3)
+
+Lead reads these from PM Triage's `brief.md` `## Profile signals` section (machine-readable frontmatter). Score is deterministic — same inputs always produce the same profile.
+
+| Signal | Source | 0 | 1 | 2 | 3 |
+|---|---|---|---|---|---|
+| `S_size` | `lines_changed` (from `git diff --stat <base>..<branch>`) | 0-49 | 50-199 | 200-499 | 500+ |
+| `S_files` | `files_changed` (count from `git diff --stat`) | 1 | 2-3 | 4-6 | 7+ |
+| `S_new_module` | `new_files_count > 0` | no | — | yes | — |
+| `S_architecture` | PM brief `## Architectural decisions` section (boolean) | no | — | — | yes |
+| `S_user_visible` | PM brief `## User-visible changes` section (boolean) | no | — | yes | — |
+| `S_persistence_breaking` | diff changes `state.json` schema / API response shape | no | — | yes | — |
+| `S_persistence_cosmetic` | diff changes only write mechanism (atomicity, ordering, retry) | no | yes | — | — |
+| `S_dependencies` | diff adds/updates `package.json` deps | no | — | yes | — |
+
+### Auto-classification rules (deterministic — first match wins)
+
+```
+1. IF S_architecture==3 OR S_persistence_breaking==2 OR S_dependencies==2 OR total >= 8
+   → profile = "architecture"
+2. ELSE IF S_user_visible==2 AND total >= 3
+   → profile = "feature"
+3. ELSE
+   → profile = "bugfix"
+```
+
+**Override rule**: lead MAY override auto-classification if user chat explicitly states scope (e.g. "treat as architecture review"). Document the override in `decision.md` ## Round profile section.
+
+**Reclassification mid-round**: if work scope expands (e.g. bugfix touches persistence), lead MAY reclassify. Document in `decision.md`.
+
+### Phase gating per profile
+
+**Skip a phase = lead does NOT call `task()` for it.** All skipped phases must be recorded in `decision.md` `## Skipped phases` section with reason.
+
+| Phase | bugfix | feature | architecture |
+|---|---|---|---|
+| 0 PM Triage | **skip** (user chat IS the brief) | run | run |
+| 0.5 PM Manager (gate) | **skip** | run | run |
+| User pick candidate | **skip** (only 1 candidate) | run | run |
+| 1 Architect | 1-paragraph plan (no full 7-section plan) | run (full plan) | run (full plan) + `/shared/hyperplan` |
+| 2 Dev | run | run | run |
+| 3a Tester Review (5 lens) | **3 lens** (Goal + QA + Security, drop Code + Context) | 5 lens | 5 lens + external review |
+| 3b Tester Diff | run | run | run |
+| 3c Tester Playwright | **skip unless UI changed** (diff touches `src/ui/` or `docs/screenshots/`) | run | run |
+| 3.5 PM Doc Writer | run (1-para README add, no new screenshot) | run (full README section + screenshot) | run (full README section + screenshot) |
+| 4 Decision | run (lead writes directly) | run | run |
+
+**Phase 2, 3b, 3.5, 4, audit log are ALWAYS run** — these are the spine of the loop (worktree + empirical diff + documentation + decision + audit). Profile only skips optional lenses (Phase 3a) and gates pre-work (PM / PM Manager / user pick / full Architect plan).
+
+### Round 1 retroactive scoring (validates the rules)
+
+| Signal | Round 1 value | Score |
+|---|---|---|
+| `S_size` | 614 (insertion 585 + deletion 29) | **3** |
+| `S_files` | 6 | **1** |
+| `S_new_module` | 2 new files (`state-store.ts` + `state-store.test.ts`) | **2** |
+| `S_architecture` | None (used existing patterns) | **0** |
+| `S_user_visible` | No (internal state file) | **0** |
+| `S_persistence_breaking` | No (state.json schema unchanged, only write mechanism) | **0** |
+| `S_persistence_cosmetic` | Yes (atomic write instead of direct write) | **1** |
+| `S_dependencies` | No | **0** |
+| **Total** | | **7** |
+
+**Rule 1** (architecture): `S_architecture==3`? NO. `S_persistence_breaking==2`? NO. `S_dependencies==2`? NO. `total >= 8`? NO (7).
+**Rule 2** (feature): `S_user_visible==2`? NO. → skip.
+**Rule 3** (bugfix): default → **`bugfix`**.
+
+Under the new rules, Round 1 would have been auto-classified as **bugfix**, skipping:
+- Phase 0 PM Triage
+- Phase 0.5 PM Manager (gate)
+- User pick candidate
+- 3a-3 Lens Code
+- 3a-5 Lens Context
+- Phase 3c Playwright (no UI change)
+
+That's **6 of 8 main phases** → ~50-60% reduction in lead overhead. Same quality gate, less bureaucracy.
+
+### Why this works
+
+- **Deterministic**: same inputs always produce the same profile. No "well, it depends".
+- **Auditable**: the 7 signals come from `git diff --stat` + PM brief checkboxes. Lead records them in `decision.md` for retroactive verification.
+- **Self-correcting**: the reclassification rule handles cases where the bugfix scope expands mid-round (e.g. discovered it needs to touch persistence).
+- **Bounded**: profile can only SKIP phases, never ADD phases. Architecture profile is the max-iteration ceiling.
+
+See `references/loop-decision.md` § "Round profile auto-classification" for the full section including Round 1 retroactive scoring rationale (why I initially classified it as `architecture` and then split `S_persistence` into breaking vs cosmetic to land on `bugfix`).
 
 ## Round artifacts (file structure)
 

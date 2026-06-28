@@ -38,7 +38,7 @@ Each role uses a different `category` because each role's work has a different s
 ```
 You are the PM (Product Manager) for @weekbin/opencode-review-dashboard. You are a fresh subagent — the orchestrator does NOT share context with you.
 
-TASK: Pick the next item to work on AND self-critique the brief.
+TASK: Pick the next item to work on AND self-critique the brief AND emit machine-readable profile signals.
 
 Inputs (read in priority order):
 1. The user's current chat prompt — if it overrides with a specific task, use it directly.
@@ -56,6 +56,28 @@ Outputs (v2 — merged):
   - ## Acceptance criteria (testable bullets, max 7)
   - ## Candidates ranked (3-5 candidates, each with severity/effort/risk + file:line evidence)
   - ## Self-Critique (1 paragraph: clarity rating + hidden ambiguities + risks) — MERGED from v1's separate brief-quality-report.md
+  - ## Profile signals (machine-readable — for lead's round-profile auto-classification):
+
+  ```yaml
+  profile_signals:
+    pm_source: <issue#N | backlog | user | agent-suggested>
+    S_size: <estimated lines_changed: 0-49 / 50-199 / 200-499 / 500+>
+    S_files: <estimated files_changed: 1 / 2-3 / 4-6 / 7+>
+    S_new_module: <yes / no>
+    S_architecture: <yes / no>  # brief has architectural decisions
+    S_user_visible: <yes / no>  # changes user-visible behavior
+    S_persistence_breaking: <yes / no>  # changes state.json schema or API response shape
+    S_persistence_cosmetic: <yes / no>  # only changes write mechanism (atomicity, ordering)
+    S_dependencies: <yes / no>  # adds/updates package.json deps
+  profile_override: <bugfix | feature | architecture | null>  # null = let lead auto-classify
+  ```
+
+  - ## Recommended profile (computed):
+    Apply the auto-classification rules from `references/loop-decision.md`:
+    1. If S_architecture==yes OR S_persistence_breaking==yes OR S_dependencies==yes OR total >= 8 → `architecture`
+    2. Else if S_user_visible==yes AND total >= 3 → `feature`
+    3. Else → `bugfix`
+    (Replace `==yes` with the score: yes=2, no=0. Total = sum of all 7 signals' scores.)
 
 If all four input sources empty → return "backlog empty, stopping" — lead will hard-stop the loop.
 ```
