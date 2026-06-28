@@ -1230,7 +1230,7 @@ async function collect(
     return merged;
   }
   const worktrees = await listWorktrees(root);
-  const others = worktrees.filter((wt) => wt.path !== root);
+  const others = worktrees.filter((wt) => wt.path !== wtRoot);
   const candidates: { path: string; branch: string; ahead: number }[] = [];
   for (const wt of others) {
     const summary = await worktreeAheadSummary(wt.path, wt.branch);

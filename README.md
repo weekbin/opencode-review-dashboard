@@ -52,7 +52,7 @@ You do not need to do anything to get this — every existing `/diff-review-dash
 - **Diff range with cross-round drift banner** — report the actual diff range reviewed; show a yellow banner when the range changes between rounds. See [Diff range](#diff-range).
 - **Multi-round reviews** — findings carry over between rounds; auto-close stale ones when anchored code changes.
 - **Auto-apply workflow** — agent plan-first applies actionable findings in one batch, then re-runs the review.
-- **Worktree auto-detection** — picks the worktree with the most commits ahead of `origin/main` when `--worktree` is omitted.
+- **Worktree auto-detection** — picks the worktree with the most commits ahead of `origin/main` when `--worktree` is omitted; an explicit `--worktree <path>` is always respected, even when the named worktree is empty (the auto-pickaround excludes the worktree it already tried, so it never silently overrides the user's flag).
 
 ---
 
@@ -190,7 +190,7 @@ The plugin resolves the repository root and review scope in this priority order:
 
 The first one that resolves to a valid git toplevel wins. State files and the diff source are pinned to that path across all rounds of the same session.
 
-Auto-detection (when `--worktree` is not passed): if you're in the main checkout, the plugin lists every worktree, picks the one with the most commits ahead of `origin/main`, and uses that as the diff source. If you're already inside a worktree, it sticks with the current one.
+Auto-detection (when `--worktree` is not passed): if you're in the main checkout, the plugin lists every worktree, picks the one with the most commits ahead of `origin/main`, and uses that as the diff source. If you're already inside a worktree, it sticks with the current one. The auto-pickaround excludes the explicitly-named worktree (or the current one if no `--worktree` is passed), so the plugin never picks the same worktree it already tried.
 
 ### Tips
 
