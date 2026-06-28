@@ -85,7 +85,7 @@ Review state is persisted to `.opencode/reviews/<session>/`. Each round produces
 - `round-NNN.json` — snapshot of findings for that round
 - `round-NNN.md` — markdown summary
 
-Drafts are auto-saved as you work, so you can close the browser and reopen without losing progress.
+Drafts are auto-saved as you work, so you can close the browser and reopen without losing progress. Review state files are written atomically (temp file + rename) so a crash or power loss can't leave a half-written `state.json`. If `state.json` is ever found unreadable, it is preserved as `state.json.corrupt-<timestamp>` and a fresh review state is started; check the TUI for the warning and inspect the `.corrupt-*` file to recover data manually if needed.
 
 ---
 
@@ -212,6 +212,7 @@ Originally forked from [`oorestisime/opencode-diffs`](https://github.com/ooresti
 | `bun run typecheck` | Type-check with `tsc --noEmit`. |
 | `bun run check` | `format:check && lint && typecheck`. |
 | `bun run prepublishOnly` | Runs `check` then `build` before `npm publish`. |
+| `bun run test:unit` | Unit tests (`bun test src/`) — atomic-write invariant, corrupt-file recovery, concurrent saves. |
 | `bun run test:ui` | End-to-end browser tests (Playwright MCP) — 10 git scenarios with mock review server. |
 
 ### Setup

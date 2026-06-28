@@ -1,6 +1,6 @@
 import { type Plugin, tool } from "@opencode-ai/plugin";
-import { mkdir } from "node:fs/promises";
 import path from "node:path";
+import { readState, saveState, writeFileAtomic } from "./state-store";
 
 const command = "diff-review-dashboard";
 const name = "diff_review_dashboard";
@@ -508,6 +508,13 @@ function open(url: string, options?: { cwd?: string }) {
   return true;
 }
 
+function split(text: string) {
+  return text
+    .split("\n")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 function defaultState(session_id: string): State {
   return {
     session_id,
@@ -515,25 +522,6 @@ function defaultState(session_id: string): State {
     findings: [],
     updated_at: Date.now(),
   };
-}
-
-async function readState(file: string, session_id: string) {
-  const source = Bun.file(file);
-  const exists = await source.exists();
-  if (!exists) return defaultState(session_id);
-  return source.json().catch(() => defaultState(session_id)) as Promise<State>;
-}
-
-async function saveState(file: string, state: State) {
-  await mkdir(path.dirname(file), { recursive: true });
-  await Bun.write(file, JSON.stringify(state, null, 2));
-}
-
-function split(text: string) {
-  return text
-    .split("\n")
-    .map((item) => item.trim())
-    .filter(Boolean);
 }
 
 function count(text: string) {
@@ -1430,7 +1418,7 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
 
           const output_root = path.join(effective_scope, ".opencode", "reviews", context.sessionID);
           const state_file = path.join(output_root, "state.json");
-          const state = await readState(state_file, context.sessionID);
+          const state = await readState(state_file, context.sessionID, defaultState);
 
           const priorDiffBase = state.diff_base;
           let range_changed_from_last_round = false;
@@ -1817,8 +1805,8 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                   base: parsed.base,
                   generated_at: Date.now(),
                 };
-                await Bun.write(json_path, JSON.stringify(export_data, null, 2));
-                await Bun.write(
+                await writeFileAtomic(json_path, JSON.stringify(export_data, null, 2));
+                await writeFileAtomic(
                   md_path,
                   markdown({
                     session_id: context.sessionID,
@@ -1970,7 +1958,7 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
             return JSON.stringify({ error: "state_file not provided and cannot be derived" });
           }
 
-          const state = await readState(state_file, ctx.sessionID);
+          const state = await readState(state_file, ctx.sessionID, defaultState);
           const target = state.findings.find((item) => item.id === finding_id);
           if (!target) {
             return JSON.stringify({ error: "finding not found" });
