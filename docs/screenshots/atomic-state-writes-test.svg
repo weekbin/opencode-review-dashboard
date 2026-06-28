@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="720" viewBox="0 0 1100 720">
+  <!-- Background: terminal dark -->
+  <rect width="1100" height="720" fill="#0d1117"/>
+
+  <!-- Title bar (mac chrome) -->
+  <rect x="0" y="0" width="1100" height="34" fill="#161b22"/>
+  <circle cx="22" cy="17" r="6" fill="#ff5f57"/>
+  <circle cx="44" cy="17" r="6" fill="#febc2e"/>
+  <circle cx="66" cy="17" r="6" fill="#28c840"/>
+  <text x="550" y="22" text-anchor="middle" font-family="SF Mono, Menlo, Consolas, monospace" font-size="13" fill="#8b949e">~/team-dev-loop-round-1  ▸  bun run test:unit</text>
+
+  <!-- Output -->
+  <g font-family="SF Mono, Menlo, Consolas, monospace" font-size="14">
+    <text x="36" y="74" fill="#c9d1d9">$ bun run test:unit</text>
+    <text x="36" y="98" fill="#c9d1d9">$ bun test src/</text>
+    <text x="36" y="122" fill="#c9d1d9">bun test v1.3.14 (0d9b296a)</text>
+
+    <!-- T1 -->
+    <text x="36" y="158" fill="#c9d1d9">  ✓ writeFileAtomic — T1 atomic invariant (happy path)</text>
+    <text x="56" y="180" fill="#7ee787">    ✓</text>
+    <text x="76" y="180" fill="#c9d1d9">writes content that is byte-equal to the input on disk</text>
+    <text x="940" y="180" fill="#8b949e">[1.86 ms]</text>
+    <text x="56" y="202" fill="#7ee787">    ✓</text>
+    <text x="76" y="202" fill="#c9d1d9">saveState: on-disk file is the most-recent state and parses as JSON</text>
+    <text x="940" y="202" fill="#8b949e">[1.39 ms]</text>
+
+    <!-- T2 -->
+    <text x="36" y="238" fill="#c9d1d9">  ✓ writeFileAtomic — T2 mid-write failure isolation (ENOSPC)</text>
+    <text x="56" y="260" fill="#7ee787">    ✓</text>
+    <text x="76" y="260" fill="#c9d1d9">when Bun.write throws, target file is left untouched and temp is cleaned up</text>
+    <text x="940" y="260" fill="#8b949e">[0.98 ms]</text>
+
+    <!-- T3 -->
+    <text x="36" y="296" fill="#c9d1d9">  ✓ writeFileAtomic — T3 EXDEV cross-device fallback</text>
+    <text x="56" y="318" fill="#7ee787">    ✓</text>
+    <text x="76" y="318" fill="#c9d1d9">when rename throws EXDEV, falls back to copyFile + unlink</text>
+    <text x="940" y="318" fill="#8b949e">[0.73 ms]</text>
+
+    <!-- T4 -->
+    <text x="36" y="354" fill="#c9d1d9">  ✓ writeFileAtomic — T4 EACCES rename failure propagation</text>
+    <text x="56" y="376" fill="#7ee787">    ✓</text>
+    <text x="76" y="376" fill="#c9d1d9">error propagates with context AND temp file is cleaned up</text>
+    <text x="940" y="376" fill="#8b949e">[0.76 ms]</text>
+
+    <!-- T5 -->
+    <text x="36" y="412" fill="#c9d1d9">  ✓ writeFileAtomic — T5 concurrent saves (race)</text>
+    <text x="56" y="434" fill="#7ee787">    ✓</text>
+    <text x="76" y="434" fill="#c9d1d9">10 parallel saveState calls: final is one of 10 inputs, no orphan temps</text>
+    <text x="940" y="434" fill="#8b949e">[2.17 ms]</text>
+
+    <!-- T6 -->
+    <text x="36" y="470" fill="#c9d1d9">  ✓ readState — T6 corrupt-file preservation</text>
+    <text x="56" y="492" fill="#7ee787">    ✓</text>
+    <text x="76" y="492" fill="#c9d1d9">corrupt JSON: renames to .corrupt-&lt;ts&gt;, logs warn, returns defaultState</text>
+    <text x="940" y="492" fill="#8b949e">[1.51 ms]</text>
+    <text x="56" y="514" fill="#7ee787">    ✓</text>
+    <text x="76" y="514" fill="#c9d1d9">missing file: returns defaultState without warning</text>
+    <text x="940" y="514" fill="#8b949e">[0.34 ms]</text>
+
+    <!-- T7 -->
+    <text x="36" y="550" fill="#c9d1d9">  ✓ writeFileAtomic — T7 round-export atomicity</text>
+    <text x="56" y="572" fill="#7ee787">    ✓</text>
+    <text x="76" y="572" fill="#c9d1d9">round-NNN.json + round-NNN.md both written atomically and both parse</text>
+    <text x="940" y="572" fill="#8b949e">[1.26 ms]</text>
+    <text x="56" y="594" fill="#7ee787">    ✓</text>
+    <text x="76" y="594" fill="#c9d1d9">mid-write failure of second write leaves the first intact</text>
+    <text x="940" y="594" fill="#8b949e">[0.97 ms]</text>
+
+    <!-- Summary -->
+    <text x="36" y="640" fill="#7ee787" font-weight="bold"> 10 pass</text>
+    <text x="36" y="664" fill="#c9d1d9"> 0 fail</text>
+    <text x="36" y="688" fill="#8b949e"> 37 expect() calls</text>
+    <text x="200" y="688" fill="#8b949e">Ran 10 tests across 1 file. [24.00 ms]</text>
+  </g>
+</svg>

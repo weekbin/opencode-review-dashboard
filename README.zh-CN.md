@@ -28,6 +28,34 @@
 
 ![未提交文件灰显 + diff_base header + 跨轮 banner](docs/screenshots/uncommitted-files.png)
 
+## 功能清单
+
+本节列出所有已交付的能力，方便把 README 当作产品 spec 来读。每个条目给出用户能感知到的保证、证据（测试或截图）、以及如何验证。
+
+### 崩溃安全的审查状态（原子写入）
+
+即使断电、编辑器中途关闭，或 `state.json` 文件损坏，你的审查历史也不会丢。所有对 `state.json`、`round-NNN.json`、`round-NNN.md` 的写入都走同一个原子辅助函数（`src/state-store.ts` 里的 `writeFileAtomic`），它在同一文件系统下用 POSIX 原子语义的"临时文件 + rename"实现：读者要么看到旧内容，要么看到新内容，绝不会看到半截写入。跨设备场景回退到 `copyFile + unlink`。如果临时写入中途失败（ENOSPC、EIO 等），目标文件保持不变，残留的 `.tmp.*` 也会被清理。如果磁盘上的 `state.json` 无法解析，会被重命名为 `state.json.corrupt-<timestamp>`（保留数据用于手动恢复），TUI 中打印一条 warning，然后启动一个全新的 state。
+
+![原子写入单元测试 — 7 个场景共 10 pass / 0 fail](docs/screenshots/atomic-state-writes-test.png)
+
+单元测试覆盖的 7 个场景（T1 happy path · T2 ENOSPC 隔离 · T3 EXDEV 回退 · T4 EACCES 透传 · T5 并发写入 · T6 损坏文件保留 · T7 round-export 原子性）通过下面的命令运行：
+
+```bash
+bun run test:unit
+```
+
+你不需要做任何额外配置：每次 `/diff-review-dashboard` 都会走原子写入路径。唯一的用户可见副作用：如果你在 TUI 看到 `[diff-review-dashboard] state.json at … was unreadable; preserved as …`，说明历史被保留到了 `.corrupt-<ts>` 文件里，可以先尝试手工恢复再继续。
+
+### 其他已交付能力
+
+- **浏览器审查 UI** — 文件树、语法高亮 diff（可折叠未改动区域）、finding 抽屉（分类/等级/评论）。见 [审查界面](#审查界面)。
+- **Diff 范围 + 跨轮 drift banner** — 报告实际审查的 diff 范围；跨轮范围变化时显示黄色 banner。见 [Diff 范围](#diff-范围)。
+- **多轮审查** — finding 在轮次间保留，锚点代码变更时自动标记为 stale。
+- **自动应用工作流** — Agent 先统一规划，再一次性应用可操作 finding，然后重跑 review 确认。
+- **Worktree 自动检测** — 未传 `--worktree` 时自动选取 ahead-of-`origin/main` 最多的 worktree。
+
+---
+
 ## Diff 范围
 
 每一轮 `/diff-review-dashboard` 都会在响应和 UI header 中报告**实际的 diff 范围**：
@@ -85,7 +113,7 @@
 - `round-NNN.json` — 单轮 finding 快照
 - `round-NNN.md` — Markdown 摘要
 
-草稿会自动保存，关闭浏览器后重新打开不会丢失进度。
+草稿会自动保存，关闭浏览器后重新打开不会丢失进度。审查状态文件采用原子写入（临时文件 + rename），即便崩溃或断电也不会留下半截的 `state.json`。如果发现 `state.json` 不可读，会先保留为 `state.json.corrupt-<timestamp>` 再启动新 state；TUI 中会打印 warning，可在 `.corrupt-*` 文件里尝试手工恢复数据。
 
 ---
 
