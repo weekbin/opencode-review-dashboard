@@ -28,6 +28,34 @@ The command is named `diff-review-dashboard` (tool name: `diff_review_dashboard`
 
 ![Uncommitted files shown in gray with diff_base header and range banner](docs/screenshots/uncommitted-files.png)
 
+## Features
+
+This section catalogs every shipped capability so the README doubles as a product spec. Each entry lists a user-visible guarantee, where to find evidence (test or screenshot), and how to exercise it.
+
+### Crash-safe review state (atomic writes)
+
+Your review history survives power loss, an editor closing mid-save, and a corrupt `state.json` file. Every write to `state.json`, `round-NNN.json`, and `round-NNN.md` goes through a single atomic helper (`writeFileAtomic` in `src/state-store.ts`) that uses POSIX-atomic temp-file + rename. On the same filesystem the kernel guarantees readers see either the old contents or the new contents — never a half-written mix. Cross-device fallback uses `copyFile + unlink`. If the temp write fails partway (ENOSPC, EIO, etc.) the target is left untouched and the orphan `.tmp.*` file is cleaned up. If `state.json` is ever found unreadable on disk, it is renamed to `state.json.corrupt-<timestamp>` (preserving your review data for manual recovery), a warning is logged to the TUI, and a fresh state is started.
+
+![Unit tests for atomic state writes — 10 pass / 0 fail across 7 scenarios](docs/screenshots/atomic-state-writes-test.png)
+
+The 7 scenarios in the unit suite (T1 happy path · T2 ENOSPC isolation · T3 EXDEV fallback · T4 EACCES propagation · T5 concurrent saves · T6 corrupt-file preservation · T7 round-export atomicity) are run via:
+
+```bash
+bun run test:unit
+```
+
+You do not need to do anything to get this — every existing `/diff-review-dashboard` invocation already uses the atomic path. The only user-visible side effect: if you ever see `[diff-review-dashboard] state.json at … was unreadable; preserved as …` in your TUI, check the `.corrupt-<ts>` file to recover your data before continuing.
+
+### Other shipped features
+
+- **Browser review UI** — file tree, syntax-highlighted diffs with folded unchanged regions, finding drawer (category, severity, comment). See [Review UI](#review-ui).
+- **Diff range with cross-round drift banner** — report the actual diff range reviewed; show a yellow banner when the range changes between rounds. See [Diff range](#diff-range).
+- **Multi-round reviews** — findings carry over between rounds; auto-close stale ones when anchored code changes.
+- **Auto-apply workflow** — agent plan-first applies actionable findings in one batch, then re-runs the review.
+- **Worktree auto-detection** — picks the worktree with the most commits ahead of `origin/main` when `--worktree` is omitted.
+
+---
+
 ## Diff range
 
 Each round of `/diff-review-dashboard` reports the **actual diff range** that was reviewed, and shows it in the UI header:
