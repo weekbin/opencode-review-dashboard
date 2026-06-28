@@ -108,7 +108,14 @@ The existing `isWorktree(root)` check at line 1226 already prevents auto-pickaro
 
 **PASS — Round 2 SHIPS to main.**
 
-Branch `team-dev-loop-round-2-worktree-auto-pickaround` (in worktree at `/Users/yangweibin/.worktrees/team-dev-loop-round-2`) is ready for Phase 5 (commit + push).
+Branch `team-dev-loop-round-2-worktree-auto-pickaround` (in worktree at `/Users/yangweibin/.worktrees/team-dev-loop-round-2`) is ready for 
+
+## Commits landed
+
+- `3f24272` fix: --worktree auto-pickaround excludes the named worktree (code change)
+- `ca5f056` docs(round-2): add Round 2 audit trail (.omo/round-2/) (this audit + commit)
+
+Both on origin/main. Round 2 SHIPS.
 
 ---
 
@@ -128,4 +135,10 @@ All artifacts in `.omo/round-2/`:
 - `decision.md` (this file)
 
 Plus audit log in `.omo/proposals.jsonl` (1 line appended).
-Plus commit in main branch (Phase 5).
+
+## Commits landed
+
+- `3f24272` fix: --worktree auto-pickaround excludes the named worktree (code change)
+- `ca5f056` docs(round-2): add Round 2 audit trail (.omo/round-2/) (audit + commit)
+
+Both on origin/main. Round 2 SHIPS.
