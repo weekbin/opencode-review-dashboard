@@ -3,11 +3,33 @@
 > **Agent architecture (v2)**: All prompts below are for **role-specific subagents spawned by lead via `task(category="...", subagent_type="...")`**. Each role is a single-shot subagent with its own fresh context. There is no `team_create`, no `team_send_message`, no `team_shutdown_request` — those are gone in v2.
 >
 > Lead (primary chat, `sisyphus`) does:
-> 1. For each phase: `task(category="unspecified-high", prompt=<one of the 7 sequential prompts below>)` — receives return value, then proceeds to next phase
-> 2. Phase 3a (Tester Review) internally does `Promise.all([5 run_in_background=true])` for the 5 parallel lenses
+> 1. For each phase: `task(category=<role-specific>, prompt=<one of the 7 sequential prompts below>)` — receives return value, then proceeds to next phase
+> 2. Phase 3a (Tester Review) internally does `Promise.all([5 run_in_background=true])` for the 5 parallel lenses, each with its own `category`
 > 3. At end: writes `decision.md` directly + appends to `proposals.jsonl` + `git add` + `git commit` + `git push origin main`
 
 **Total prompts in this file: 12** = 7 sequential role prompts + 5 parallel lens prompts (used inside Tester Review).
+
+## Per-role category mapping
+
+Each role uses a different `category` because each role's work has a different shape — category picks the sub-model optimized for that shape (so we don't pay `ultrabrain` cost for mechanical tasks, nor `quick` cost for hard-judgment tasks).
+
+| # | Role | category | Why this category |
+|---|---|---|---|
+| 1 | PM Triage | `unspecified-high` | Product judgment + structured brief writing, no closer fit |
+| 2 | PM Manager (gate) | `ultrabrain` | Critical anti-pseudo-requirement reasoning, hard logic |
+| 3 | Architect | `ultrabrain` | Architecture decisions, decision-complete plan |
+| 4 | Dev | `deep` | Autonomous end-to-end (worktree + tests + commit) |
+| 5 | Tester Review (orchestrator) | `deep` | Coordinate 5 lenses + synthesize `test-report.md` |
+| 5a | Lens #1 Goal | `quick` | Mechanical AC-matching, no judgment needed |
+| 5b | Lens #2 QA | `quick` | Run test commands, check gates |
+| 5c | Lens #3 Code | `ultrabrain` | Code-quality analysis, complexity judgment |
+| 5d | Lens #4 Security | `ultrabrain` | Threat modeling, security reasoning |
+| 5e | Lens #5 Context | `artistry` | Repo-fit, commit honesty, soft judgment (non-standard) |
+| 6 | Tester Diff | `unspecified-high` | Invokes `/diff-review-dashboard` tool, no closer fit |
+| 7 | Tester Playwright | `visual-engineering` | Real-browser UI walkthrough, must be visual-engineering |
+| 8 | PM Doc Writer | `writing` | Playwright + README documentation, writing-specialized |
+
+**Cost implication**: 6 different categories (was 1 in v1) — each task routes to its optimal sub-model. Total cost ≈ same as before (we always paid the sub-model that category picks), but quality per role should be higher.
 
 ---
 
@@ -700,17 +722,17 @@ If FAIL → lead retries Phase 3.5 (code is already shipped, just docs).
 | # | Phase | Prompt name | Output file | Subagent category |
 |---|---|---|---|---|
 | 1 | 0 | PM Triage | `brief.md` | `unspecified-high` |
-| 2 | 0.5 | PM Manager | `pm-manager-review.md` | `unspecified-high` |
-| 3 | 1 | Architect | `plan.md` | `unspecified-high` |
-| 4 | 2 | Dev | (worktree + return value) | `unspecified-high` |
-| 5 | 3a | Tester Review (orchestrator) | `test-report.md` + 5 review-*.md | `unspecified-high` (orchestrator) |
-| 5a | (inside 3a) | Lens Goal | `review-goal.md` | `unspecified-high` (parallel) |
-| 5b | (inside 3a) | Lens QA | `review-qa.md` | `unspecified-high` (parallel) |
-| 5c | (inside 3a) | Lens Code | `review-code.md` | `unspecified-high` (parallel) |
-| 5d | (inside 3a) | Lens Security | `review-security.md` | `unspecified-high` (parallel) |
-| 5e | (inside 3a) | Lens Context | `review-context.md` | `unspecified-high` (parallel) |
+| 2 | 0.5 | PM Manager | `pm-manager-review.md` | `ultrabrain` |
+| 3 | 1 | Architect | `plan.md` | `ultrabrain` |
+| 4 | 2 | Dev | (worktree + return value) | `deep` |
+| 5 | 3a | Tester Review (orchestrator) | `test-report.md` + 5 review-*.md | `deep` (orchestrator) |
+| 5a | (inside 3a) | Lens Goal | `review-goal.md` | `quick` (parallel) |
+| 5b | (inside 3a) | Lens QA | `review-qa.md` | `quick` (parallel) |
+| 5c | (inside 3a) | Lens Code | `review-code.md` | `ultrabrain` (parallel) |
+| 5d | (inside 3a) | Lens Security | `review-security.md` | `ultrabrain` (parallel) |
+| 5e | (inside 3a) | Lens Context | `review-context.md` | `artistry` (parallel) |
 | 6 | 3b | Tester Diff | `diff-report.md` | `unspecified-high` |
-| 7 | 3c | Tester Playwright | `playwright-report.md` | `unspecified-high` |
-| 8 | 3.5 | PM Doc Writer | `doc-update-report.md` (+ README + screenshots) | `unspecified-high` |
+| 7 | 3c | Tester Playwright | `playwright-report.md` | `visual-engineering` |
+| 8 | 3.5 | PM Doc Writer | `doc-update-report.md` (+ README + screenshots) | `writing` |
 | — | 4 | Decision | `decision.md` (lead writes directly) | (no subagent) |
 | — | — | Append audit log | `.omo/proposals.jsonl` (lead writes directly) | (no subagent) |

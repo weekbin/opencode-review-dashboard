@@ -61,6 +61,30 @@ Lead takes over:
 
 **Why this is a design feature, not a failure mode**: v1 had a 43% rescue rate (3 of 7 members needed lead takeover in Round 1). Reframing as a designed protocol (a) eliminates the "did we succeed or fail" ambiguity, (b) lets us track takeover rate as a metric, (c) makes the failure mode cheaper to invoke (5-10 line note vs debugging a stuck chat session).
 
+## Per-role category (sub-model) selection
+
+Each role's `task(category="...")` call uses a different sub-model — each sub-model is optimized for that role's work shape. The mapping (per user's 2026-06-28 feedback):
+
+| Role | category | Why |
+|---|---|---|
+| PM Triage | `unspecified-high` | Product judgment + structured brief |
+| PM Manager (gate) | `ultrabrain` | Critical anti-pseudo-requirement reasoning |
+| Architect | `ultrabrain` | Architecture decisions, decision-complete plan |
+| Dev | `deep` | Autonomous end-to-end (worktree + tests + commit) |
+| Tester Review orchestrator | `deep` | Coordinate 5 lenses + synthesize `test-report.md` |
+| Lens Goal | `quick` | Mechanical AC matching |
+| Lens QA | `quick` | Run test commands, check gates |
+| Lens Code | `ultrabrain` | Code-quality analysis, complexity judgment |
+| Lens Security | `ultrabrain` | Threat modeling, security reasoning |
+| Lens Context | `artistry` | Repo-fit, commit honesty (soft/non-standard judgment) |
+| Tester Diff | `unspecified-high` | Tool-invocation, no closer fit |
+| Tester Playwright | `visual-engineering` | Real-browser UI walkthrough |
+| PM Doc Writer | `writing` | Playwright + README documentation |
+
+**Why not all `unspecified-high`**: a 12-role loop pays a wide range of costs. Mechanical AC matching (Lens Goal) doesn't need `ultrabrain` cost. Playwright UI walkthrough is intrinsically visual-engineering's domain. Picking the right sub-model per role gets better quality per token than a one-size-fits-all.
+
+**Self-judgment on category**: lead MAY override a category for a specific round if the work shape is different (e.g. PM Triage for a complex architecture decision could use `ultrabrain`). But this should be rare — the defaults in the table above are the result of v1 evidence + user's 2026-06-28 directive.
+
 ## Self-judgment (agent's discretion)
 
 The agent (lead) MAY decide to:

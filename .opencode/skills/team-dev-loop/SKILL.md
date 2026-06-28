@@ -52,14 +52,14 @@ const roundDir = `.omo/round-${round}`
 
 // === Phase 0: PM Triage ===
 const brief = await task({
-  category: "unspecified-high",
+  category: "unspecified-high",  // product judgment
   prompt: PM_TRIAGE_PROMPT,   // from references/phase-prompts.md
 })
 // Writes: ${roundDir}/brief.md (incl. ## Self-Critique at end — no separate quality report)
 
 // === Phase 0.5: PM Manager gate ===
 const pmMgr = await task({
-  category: "unspecified-high",
+  category: "ultrabrain",  // critical anti-pseudo-requirement reasoning
   prompt: PM_MANAGER_PROMPT,
 })
 if (pmMgr.verdict === "REJECT" || pmMgr.verdict === "CLARIFY") {
@@ -72,45 +72,50 @@ if (pmMgr.verdict === "REJECT" || pmMgr.verdict === "CLARIFY") {
 
 // === Phase 1: Architect ===
 const plan = await task({
-  category: "unspecified-high",
+  category: "ultrabrain",  // architecture decisions
   prompt: ARCHITECT_PROMPT,  // includes the user-picked candidate
 })
 // Writes: ${roundDir}/plan.md (decision-complete, ACs, file structure, worker checklist)
 
 // === Phase 2: Dev ===
 const dev = await task({
-  category: "unspecified-high",
+  category: "deep",  // autonomous end-to-end (worktree + tests + commit)
   prompt: DEV_PROMPT,        // includes brief + PM Manager review + plan
 })
 // Internal: creates worktree per project memory 372
 // Internal: implements, runs tests, writes inline self-check into dev's return value
 // (Dev does NOT write a separate dev-self-check.md — AC trace is appended to decision.md in Phase 4)
 
-// === Phase 3a: Tester Review (5 parallel lenses) ===
+// === Phase 3a: Tester Review (orchestrator + 5 parallel lenses with mixed categories) ===
 const review = await task({
-  category: "unspecified-high",
-  prompt: TESTER_REVIEW_PROMPT,  // internally fires 5 run_in_background=true
+  category: "deep",  // orchestrator: coordinate 5 lenses + synthesize test-report.md
+  prompt: TESTER_REVIEW_PROMPT,  // internally fires 5 run_in_background=true with mixed categories:
+                                 //   Lens Goal:   category: "quick"
+                                 //   Lens QA:     category: "quick"
+                                 //   Lens Code:   category: "ultrabrain"
+                                 //   Lens Security: category: "ultrabrain"
+                                 //   Lens Context: category: "artistry"
 })
 // Writes: ${roundDir}/review-goal.md, review-qa.md, review-code.md, review-security.md, review-context.md
 // Writes: ${roundDir}/test-report.md (synthesis of 5 lenses)
 
 // === Phase 3b: Tester Diff (uses /diff-review-dashboard on the diff) ===
 const diff = await task({
-  category: "unspecified-high",
+  category: "unspecified-high",  // tool-invocation, no closer fit
   prompt: TESTER_DIFF_PROMPT,
 })
 // Writes: ${roundDir}/diff-report.md
 
 // === Phase 3c: Tester Playwright (real browser walkthrough) ===
 const playwright = await task({
-  category: "unspecified-high",
+  category: "visual-engineering",  // UI browser work
   prompt: TESTER_PLAYWRIGHT_PROMPT,
 })
 // Writes: ${roundDir}/playwright-report.md
 
 // === Phase 3.5: PM Doc Writer ===
 const doc = await task({
-  category: "unspecified-high",
+  category: "writing",  // documentation specialization
   prompt: PM_DOC_WRITER_PROMPT,
 })
 // Writes: ${roundDir}/doc-update-report.md
@@ -133,16 +138,23 @@ For each phase, read `references/phase-prompts.md` for the exact prompt body. Ea
 | Phase | Role | Subagent type | Output file(s) |
 |---|---|---|---|
 | 0 | PM Triage | `unspecified-high` | `brief.md` |
-| 0.5 | PM Manager (gate) | `unspecified-high` | `pm-manager-review.md` |
+| 0.5 | PM Manager (gate) | `ultrabrain` | `pm-manager-review.md` |
 | — | User pick candidate | (no subagent) | (lead asks user) |
-| 1 | Architect | `unspecified-high` | `plan.md` |
-| 2 | Dev | `unspecified-high` | (worktree + code + tests; inline AC trace in return) |
-| 3a | Tester Review (5 lens parallel) | `unspecified-high` (×5 internal) | `review-{goal,qa,code,security,context}.md` + `test-report.md` |
+| 1 | Architect | `ultrabrain` | `plan.md` |
+| 2 | Dev | `deep` | (worktree + code + tests; inline AC trace in return) |
+| 3a | Tester Review (5 lens parallel) | `deep` (orchestrator) + 5 internal lenses | `review-{goal,qa,code,security,context}.md` + `test-report.md` |
+|   | 3a-1 Lens Goal | `quick` (parallel) | `review-goal.md` |
+|   | 3a-2 Lens QA | `quick` (parallel) | `review-qa.md` |
+|   | 3a-3 Lens Code | `ultrabrain` (parallel) | `review-code.md` |
+|   | 3a-4 Lens Security | `ultrabrain` (parallel) | `review-security.md` |
+|   | 3a-5 Lens Context | `artistry` (parallel) | `review-context.md` |
 | 3b | Tester Diff | `unspecified-high` | `diff-report.md` |
-| 3c | Tester Playwright | `unspecified-high` | `playwright-report.md` |
-| 3.5 | PM Doc Writer | `unspecified-high` | `doc-update-report.md` (side effect: README + screenshots) |
+| 3c | Tester Playwright | `visual-engineering` | `playwright-report.md` |
+| 3.5 | PM Doc Writer | `writing` | `doc-update-report.md` (side effect: README + screenshots) |
 | 4 | Decision | (lead writes directly) | `decision.md` |
 | — | Append audit log | (lead writes directly) | `.omo/proposals.jsonl` (1 line) |
+
+**Why different categories per role** (per user's 2026-06-28 feedback): each role has a different work shape — product judgment (`unspecified-high`), critical reasoning (`ultrabrain`), autonomous end-to-end (`deep`), mechanical checks (`quick`), soft/uncoventional judgment (`artistry`), UI walkthrough (`visual-engineering`), documentation (`writing`). Picking the right sub-model per role gives better quality per token than a one-size-fits-all `unspecified-high` for everything.
 
 ## Lead inline takeover protocol (DESIGN FEATURE, not rescue)
 

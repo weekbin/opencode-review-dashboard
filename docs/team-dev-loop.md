@@ -79,7 +79,7 @@ Each phase is a SEPARATE subagent with fresh context. This prevents:
 
 | Aspect | v1 (Round 1) | v2 (Round 2+) |
 |---|---|---|
-| **Orchestration** | `team_create` (teamRunId) + `team_send_message` × 7 | Sequential `task(category="unspecified-high", prompt=...)` × 7-8 |
+| **Orchestration** | `team_create` (teamRunId) + `team_send_message` × 7 | Sequential `task(category=<role-specific>, prompt=...)` × 7-8 (6 different categories per role — see "Per-role category" below) |
 | **Member lifecycle** | 7 chat sessions opened/closed per round | No sessions — subagents are ephemeral |
 | **Communication** | `team_send_message` (wakeup message to member) | Direct return value from `task()` |
 | **Completion detection** | `team_task_list` polling (~12 polls per round) | Implicit — `task()` is synchronous, returns = done |
@@ -157,6 +157,35 @@ GIT: add + commit + push ───────→ origin/main (no PR)
 | 7 | **Decision** | Phase 4 (after Doc Writer) | `decision.md` + `proposals.jsonl` append | Lead writes directly (no subagent) |
 
 **7 roles, 8 phases** (Phase 4 + the audit log append are written by lead, so they're not separate "roles"). **5 internal parallel lenses** (inside Phase 3a Tester Review).
+
+## Per-role category (sub-model) selection
+
+Each role's `task(category="...")` call uses a different sub-model. Each sub-model is optimized for that role's work shape — picking the right one per role gives better quality per token than a one-size-fits-all `unspecified-high`. This was added 2026-06-28 in response to user feedback ("建议按照子模型分类特色选用不同的").
+
+| Role | category | Why this category |
+|---|---|---|
+| PM Triage | `unspecified-high` | Product judgment + structured brief writing, no closer fit |
+| PM Manager (gate) | `ultrabrain` | Critical anti-pseudo-requirement reasoning, hard logic |
+| Architect | `ultrabrain` | Architecture decisions, decision-complete plan |
+| Dev | `deep` | Autonomous end-to-end (worktree + tests + commit) |
+| Tester Review orchestrator | `deep` | Coordinate 5 lenses + synthesize `test-report.md` |
+| Lens #1 Goal | `quick` | Mechanical AC matching, no judgment |
+| Lens #2 QA | `quick` | Run test commands, check gates |
+| Lens #3 Code | `ultrabrain` | Code-quality analysis, complexity judgment |
+| Lens #4 Security | `ultrabrain` | Threat modeling, security reasoning |
+| Lens #5 Context | `artistry` | Repo-fit, commit honesty, soft/non-standard judgment |
+| Tester Diff | `unspecified-high` | Invokes `/diff-review-dashboard` tool, no closer fit |
+| Tester Playwright | `visual-engineering` | Real-browser UI walkthrough, must be visual-engineering |
+| PM Doc Writer | `writing` | Playwright + README documentation, writing-specialized |
+
+**Why not all `unspecified-high`**: v2-v1 (the "team_create" era) used `unspecified-high` for every role. That's wasteful when the work shape is well-defined — `quick` for mechanical checks, `visual-engineering` for UI, `writing` for docs. v2 picks the right sub-model per role.
+
+**Cost implication**: 6 different categories (was 1 in v1) — each task routes to its optimal sub-model. Total cost ≈ same as before (we always paid the sub-model that category picks), but quality per role should be higher. Specifically:
+- Lens Goal/QA no longer pay `ultrabrain` cost (saves ~3-5× tokens on 2 of 5 lenses)
+- PM Manager + Architect get `ultrabrain` (was `unspecified-high` — gains quality on the 2 hardest judgment tasks)
+- Playwright + Doc Writer get the sub-models optimized for their domain (better output for same cost)
+
+**Override rule**: lead MAY override a category for a specific round if the work shape is genuinely different (e.g. PM Triage for a complex architecture decision could use `ultrabrain`). But this should be rare — the defaults in the table are the result of v1 evidence + user directive.
 
 ## Backlog priority
 
@@ -428,7 +457,7 @@ git push origin main   # no PR — user reviews commits on main directly
 v1 ran Round 1 successfully. **No re-run of Round 1 needed or wanted** — the artifacts are preserved in `.omo/round-1/` for retroactive review.
 
 To migrate future rounds:
-1. Use `task(category="unspecified-high", prompt=<one of 12 prompts in phase-prompts.md>)` instead of `team_send_message`
+1. Use `task(category=<role-specific>, prompt=<one of 12 prompts in phase-prompts.md>)` instead of `team_send_message`. Per-role category is documented in `references/phase-prompts.md` "Per-role category mapping" table.
 2. Use `Promise.all([5 run_in_background=true])` inside Phase 3a subagent for parallel lenses
 3. Write outputs to `.omo/round-N/*.md` (NOT `.omo/team/<runId>/*.md`)
 4. Lead writes `decision.md` and appends to `.omo/proposals.jsonl` directly (no subagent for these)
