@@ -1,6 +1,11 @@
 node_modules
 dist/
-.opencode
+# .opencode runtime state (per-machine, not tracked) — but .opencode/skills/ IS tracked
+.opencode/reviews/
+.opencode/logs/
+.opencode/cache/
+.opencode/state.json
+.opencode/magic-context/
 .playwright-mcp/
 *.tmp
 .omo/

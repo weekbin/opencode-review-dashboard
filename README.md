@@ -188,6 +188,14 @@ Light/dark mode follows your system preference, or you can toggle it manually.
 
 ---
 
+## Development Workflow
+
+This project uses an internal **7-role dev loop** (PM / PM Manager / Architect / Dev / Tester / PM Doc Writer / Decision) to pick the next issue, propose it, gate it on pseudo-requirements, design it, build it, validate it (including user-perspective Playwright tests), document it (with screenshots), and loop — without any single agent being biased toward "looks done." The loop reuses `/shared/ulw-plan`, `/shared/start-work`, `/shared/review-work`, and dogfoods this plugin's own `/diff-review-dashboard` for code review.
+
+See **[docs/team-dev-loop.md](docs/team-dev-loop.md)** for the full design, the anti-bias rationale, the backlog priority rules, and how to install the loop's skill locally (it's gitignored).
+
+---
+
 ## Development
 
 Originally forked from [`oorestisime/opencode-diffs`](https://github.com/oorestisime/opencode-diffs), now substantially rewritten with auto-worktree detection, file-level findings, commits/conversation panels, finding comments, resizable sidebar, diff folding, and the auto-apply review workflow.
