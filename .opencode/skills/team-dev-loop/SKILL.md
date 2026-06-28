@@ -1,13 +1,16 @@
 ---
 name: team-dev-loop
-description: "7-role dev loop for THIS REPO. 7 sequential task() calls + 5 parallel review-work lenses. NO team_create. Round N pre-staged at .omo/round-N/ as tracked docs (project-level design library, NOT ephemeral audit). Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
+description: "Use this skill for running a 7-role dev loop (PM/PM Manager/Architect/Dev/Tester/PM Doc Writer/Decision) on this repo, with 5 parallel review-work lenses, deterministic round-profile auto-classification into bugfix/feature/architecture, and a tracked .omo/round-N/ design library. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
 ---
 
-# /team-dev-loop Command (v2 — 2026-06-28 redesign)
+# /team-dev-loop Command (v2)
+
+> **Last Updated**: 2026-06-28 (v2 redesign: removed team_create, added per-role category, added round profile auto-classification)
+> **Status**: stable — Round 1 ran on v1 (commit `708a6fc`), Round 2+ will run on v2.
 
 ## What changed from v1
 
-v1 (Round 1, earlier 2026-06-28) used `team_create` to spin up 7 chat sessions per round, with `team_send_message` / `team_task_list` / `team_shutdown_request` coordination. **v2 removes the entire team_* lifecycle** and runs the same 7 roles as sequential `task(category=...)` calls. The 5 review-work lenses (Goal / QA / Code / Security / Context) that ran in parallel inside v1's `tester-review` member now run via `Promise.all([5 run_in_background=true])` inside the v2 `tester-review` task.
+v1 (Round 1) used `team_create` to spin up 7 chat sessions per round, with `team_send_message` / `team_task_list` / `team_shutdown_request` coordination. **v2 removes the entire team_* lifecycle** and runs the same 7 roles as sequential `task(category=...)` calls. The 5 review-work lenses (Goal / QA / Code / Security / Context) that ran in parallel inside v1's `tester-review` member now run via `Promise.all([5 run_in_background=true])` inside the v2 `tester-review` task.
 
 **Why**: v1 used 7 chat sessions + ~7 wakeups + ~12 polls + 3 lead inline takeovers (43% rescue rate) for one round. v2 eliminates all session-management overhead while keeping the 5-lens parallel value. Evidence: `.omo/round-1/` (tracked, see Section 6) + `.omo/round-2-plan.md` (this redesign's plan).
 
@@ -156,11 +159,11 @@ For each phase, read `references/phase-prompts.md` for the exact prompt body. Ea
 | 4 | Decision | (lead writes directly) | `decision.md` | always run |
 | — | Append audit log | (lead writes directly) | `.omo/proposals.jsonl` (1 line) | always run |
 
-**Why different categories per role** (per user's 2026-06-28 feedback): each role has a different work shape — product judgment (`unspecified-high`), critical reasoning (`ultrabrain`), autonomous end-to-end (`deep`), mechanical checks (`quick`), soft/uncoventional judgment (`artistry`), UI walkthrough (`visual-engineering`), documentation (`writing`). Picking the right sub-model per role gives better quality per token than a one-size-fits-all `unspecified-high` for everything.
+**Why different categories per role** (per user feedback on category-specialization): each role has a different work shape — product judgment (`unspecified-high`), critical reasoning (`ultrabrain`), autonomous end-to-end (`deep`), mechanical checks (`quick`), soft/uncoventional judgment (`artistry`), UI walkthrough (`visual-engineering`), documentation (`writing`). Picking the right sub-model per role gives better quality per token than a one-size-fits-all `unspecified-high` for everything.
 
 ## Round profile auto-classification (run before Phase 0)
 
-Each round is auto-classified into 1 of 3 profiles based on **7 quantitative signals** — not lead judgment. This was added 2026-06-28 in response to user feedback ("如果是单纯的 bug 修复，用这个 loop 流程做就有点复杂了"). The profile gates which phases run (see "Profile gating" column in the per-phase table above).
+Each round is auto-classified into 1 of 3 profiles based on **7 quantitative signals** — not lead judgment. The profile gates which phases run (see "Profile gating" column in the per-phase table above). The user feedback that triggered this: "如果是单纯的 bug 修复，用这个 loop 流程做就有点复杂了".
 
 ### 3 profiles
 
@@ -185,7 +188,7 @@ Each round is auto-classified into 1 of 3 profiles based on **7 quantitative sig
 
 ### Auto-classification rules (deterministic — first match wins)
 
-```
+```yaml
 1. IF S_architecture==3 OR S_persistence_breaking==2 OR S_dependencies==2 OR total >= 8
    → profile = "architecture"
 2. ELSE IF S_user_visible==2 AND total >= 3
@@ -224,7 +227,7 @@ Lead takes over:
 
 When all 7 phases terminal (each `task()` either returned or was taken over):
 
-1. **Verify** all expected output files exist (use the table in "Per-phase execution" above)
+1. **Verify** expected output files exist: for `bugfix` profile, expect ≥ 3 of 13 files; for `feature` profile, expect ≥ 8 of 13 files; for `architecture` profile, expect all 13 files in `.omo/round-${N}/`. If any expected file is missing AND the phase that produces it was NOT marked as `skipped` in `decision.md` `## Skipped phases`, halt and write `lead-takeover-<role>.md` for the missing role.
 2. **Write** `decision.md` using the template in `references/loop-decision.md` § Decision template
 3. **Append** one line to `.omo/proposals.jsonl` (see § Decision log in loop-decision.md)
 4. **Commit** all round-N files + any side effects (README updates, screenshots, code in worktree):
@@ -238,11 +241,58 @@ When all 7 phases terminal (each `task()` either returned or was taken over):
    ```
 5. **No team_delete** (v2 has no team to delete)
 
+## Examples
+
+### Example 1: Round 1 (bugfix profile) — atomic state.json writes
+
+**Trigger**: User chat said "fix the data loss bug in state.json". PM Triage was skipped (bugfix profile, user chat IS the brief).
+
+**Profile classification** (from `brief.md` `## Profile signals`):
+```yaml
+S_size: 500+       # 614 lines (insertion 585 + deletion 29)
+S_files: 2-3       # 6 files
+S_new_module: yes  # 2 new files
+S_architecture: no
+S_user_visible: no
+S_persistence_breaking: no   # state.json SCHEMA unchanged, only WRITE mechanism
+S_persistence_cosmetic: yes  # atomic write instead of direct write
+S_dependencies: no
+# total = 7
+```
+
+**Auto-classification**:
+- Rule 1 (architecture): `S_persistence_breaking==yes`? NO. `total >= 8`? NO (7). → skip.
+- Rule 2 (feature): `S_user_visible==yes`? NO. → skip.
+- Rule 3 (bugfix): default → **bugfix**.
+
+**Phases run** (under bugfix profile, see gating table): Dev, 3a (3 lens: Goal+QA+Security), 3b (Tester Diff), 3.5 (PM Doc Writer), 4 (Decision). Skipped: 0 PM Triage, 0.5 PM Manager, user pick, 1 Architect full plan (1-para), 3a-3 Code lens, 3a-5 Context lens, 3c Playwright (no UI change).
+
+**Output**:
+- 6 files committed, +585 / -29 lines
+- 10/10 unit tests pass, 13/13 e2e pass
+- PR #6 mergeable on first push
+
+### Example 2: bugfix (1 file, <50 lines)
+
+**Trigger**: User reports typo in README.
+
+**Profile**: bugfix (total=0-1).
+
+**Phases run**: Dev, 3a (3 lens), 3b, 3.5 (1-para README fix), 4. Total ~5 phases instead of 8.
+
+### Example 3: architecture (schema change)
+
+**Trigger**: User says "refactor state.json to use indexed-by-round structure".
+
+**Profile**: architecture (`S_persistence_breaking==yes`).
+
+**Phases run**: all 8 + `/shared/hyperplan` adversarial sub-loop. Per-phase: full plan, 5 lens + external review, full Playwright walkthrough, full README section.
+
 ## File structure (tracked, NOT ephemeral)
 
 Every round produces a directory `.omo/round-N/` with these 13 files (all tracked):
 
-```
+```text
 .omo/round-N/
 ├── brief.md                    # PM's proposal + ranked candidates + ## Self-Critique
 ├── pm-manager-review.md        # PM Manager gate verdict (APPROVE / REJECT / CLARIFY)
