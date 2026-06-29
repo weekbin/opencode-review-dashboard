@@ -627,15 +627,18 @@ function count(text: string) {
 
 type Language = "zh-CN" | "en" | "mixed";
 
+const CJK_RATIO_ZH_CN = 0.3;
+const CJK_RATIO_EN = 0.1;
+
 const CJK_RE = /[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/g;
 
 function detectLanguage(text: string): Language {
-  const trimmed = text?.trim() ?? "";
+  const trimmed = text.trim();
   if (!trimmed) return "en";
   const cjkCount = trimmed.match(CJK_RE)?.length ?? 0;
   const ratio = cjkCount / trimmed.length;
-  if (ratio > 0.3) return "zh-CN";
-  if (ratio < 0.1) return "en";
+  if (ratio > CJK_RATIO_ZH_CN) return "zh-CN";
+  if (ratio < CJK_RATIO_EN) return "en";
   return "mixed";
 }
 
