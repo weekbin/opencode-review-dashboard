@@ -1,5 +1,6 @@
 import { FileDiff, type DiffLineAnnotation } from "@pierre/diffs";
 
+import { cycleTab, TAB_ORDER, tabIndexFor, type TabKey } from "../sidebar-keyboard";
 import { filterByQuery } from "../search-utils";
 
 type Category = "bug" | "style" | "perf" | "question" | "recommend";
@@ -451,6 +452,7 @@ function applySidebarMode() {
 }
 applySidebarMode();
 applyConversationFilter();
+applyActiveTab();
 
 function setSidebarMode(mode: SidebarMode) {
   if (state.sidebarMode === mode) return;
@@ -469,15 +471,22 @@ sidebarMode.addEventListener("click", (event) => {
 const navbarTabs = document.querySelector("#navbar-tabs") as HTMLDivElement;
 
 function applyActiveTab() {
-  for (const btn of navbarTabs.querySelectorAll("button")) {
-    btn.setAttribute("aria-pressed", btn.dataset.tab === state.activeTab ? "true" : "false");
+  const tabButtons = [...navbarTabs.querySelectorAll<HTMLButtonElement>("button")];
+  const activeIndex = TAB_ORDER.indexOf(state.activeTab as TabKey);
+  const tabindexes = tabIndexFor(activeIndex < 0 ? 0 : activeIndex, tabButtons.length);
+  for (const [i, btn] of tabButtons.entries()) {
+    const isActive = btn.dataset.tab === state.activeTab;
+    btn.setAttribute("aria-pressed", isActive ? "true" : "false");
+    // R8 #2: ARIA tablist semantics — aria-selected + roving tabindex.
+    btn.setAttribute("aria-selected", isActive ? "true" : "false");
+    btn.setAttribute("tabindex", tabindexes[i] ?? "-1");
   }
   for (const pane of document.querySelectorAll("[data-pane]")) {
     (pane as HTMLElement).hidden = (pane as HTMLElement).dataset.pane !== state.activeTab;
   }
 }
 
-function setActiveTab(tab: "files" | "commits" | "conversation" | "previously") {
+function setActiveTab(tab: TabKey) {
   if (state.activeTab === tab) {
     renderActivePane();
     return;
@@ -489,13 +498,49 @@ function setActiveTab(tab: "files" | "commits" | "conversation" | "previously") 
   writeStored(ACTIVE_TAB_KEY, tab);
   updateTabCounts();
   renderActivePane();
+  // R8 #2: keep keyboard focus in sync with the new active tab.
+  const newTab = navbarTabs.querySelector<HTMLButtonElement>(`button[data-tab="${tab}"]`);
+  newTab?.focus();
 }
 
 navbarTabs.addEventListener("click", (event) => {
   const btn = (event.target as HTMLElement).closest("button");
   if (!btn) return;
-  const tab = btn.dataset.tab as "files" | "commits" | "conversation" | "previously" | undefined;
+  const tab = btn.dataset.tab as TabKey | undefined;
   if (tab) setActiveTab(tab);
+});
+
+// R8 #2: keyboard navigation across sidebar tabs (WAI-ARIA tablist).
+// ArrowLeft/Right/Up/Down cycle, Home/End jump to first/last, default
+// Tab/Shift+Tab still exit the tablist (browser default — R8-4 risk
+// mitigated by roving tabindex above).
+navbarTabs.addEventListener("keydown", (event) => {
+  const key = event.key;
+  if (
+    key !== "ArrowLeft" &&
+    key !== "ArrowRight" &&
+    key !== "ArrowUp" &&
+    key !== "ArrowDown" &&
+    key !== "Home" &&
+    key !== "End"
+  ) {
+    return;
+  }
+  const currentIndex = TAB_ORDER.indexOf(state.activeTab as TabKey);
+  if (currentIndex < 0) return;
+  let nextIndex: number;
+  if (key === "Home") {
+    nextIndex = 0;
+  } else if (key === "End") {
+    nextIndex = TAB_ORDER.length - 1;
+  } else if (key === "ArrowLeft" || key === "ArrowUp") {
+    nextIndex = cycleTab(currentIndex, -1, TAB_ORDER.length);
+  } else {
+    nextIndex = cycleTab(currentIndex, 1, TAB_ORDER.length);
+  }
+  event.preventDefault();
+  const nextTab = TAB_ORDER[nextIndex];
+  if (nextTab) setActiveTab(nextTab);
 });
 
 function setConversationFilter(filter: "open" | "resolved" | "all") {
