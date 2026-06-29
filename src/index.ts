@@ -43,6 +43,8 @@ type Finding = {
   closed_at?: number;
   close_reason?: "file_removed" | "anchor_missing";
   manually_reopened?: boolean;
+  manually_edited?: boolean;
+  edited_at?: number;
   comments?: FindingComment[];
 };
 
@@ -176,6 +178,14 @@ function isSeverity(input: string): input is Severity {
 
 function isSide(input: string): input is Side {
   return sides.includes(input as Side);
+}
+
+const EDIT_FINDING_RE = /^\/api\/review\/([^/]+)\/findings\/([^/]+)$/;
+function editFindingPathnameMatch(pathname: string, id: string): string | null {
+  const match = pathname.match(EDIT_FINDING_RE);
+  if (!match) return null;
+  if (match[1] !== id) return null;
+  return match[2] ?? null;
 }
 
 function parse(raw: string | undefined) {
@@ -1465,6 +1475,8 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
             "   - Apply a fix if actionable. The user's most recent `Manually reopened: <reason>` comment in `comments[]` is your new context — read it before designing the fix.",
             "   - If the fix is not actionable in this round (e.g. the snippet genuinely no longer exists in the file), call `add_review_comment` with the finding id explaining why, rather than silently re-closing it.",
             "   - Example: `F-007` was closed in round N with `close_reason: 'anchor_missing'`. The user clicked Force Reopen in round N+1 with reason `still applies — the fix removed the symptom not the cause`. You MUST treat F-007 as open in round N+2's auto-close pass and act on it (apply a fix, or `add_review_comment` explaining why you can't).",
+            "1a. **Manually-edited findings (R10 honor directive)**:",
+            "   If `state.json`'s `findings[]` contains any entry with `manually_edited: true`, the user has corrected that finding's category / severity / comment via the in-place Edit button. Re-read those fields as the user's current intent — do NOT re-derive severity/category/comment from your prior fix attempt. The most recent `Edited by user` comment in `comments[]` (with the changes summary appended) is your source of truth.",
             "2. **Round Summary (must print AFTER reading history, before any tool calls or edits)**:",
             "   Once you have read state.json, ALWAYS print a short human-readable summary in this exact shape:",
             "   ```",
@@ -1946,6 +1958,89 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                 return new Response(JSON.stringify({ ok: true, comment }), {
                   headers: { "content-type": "application/json" },
                 });
+              }
+
+              if (request.method === "PATCH" && editFindingPathnameMatch(pathname, id)) {
+                const findingId = editFindingPathnameMatch(pathname, id)!;
+                const input = (await request.json().catch(() => ({}))) as {
+                  category?: string;
+                  severity?: string;
+                  comment?: string;
+                };
+                const hasCategory = typeof input.category === "string";
+                const hasSeverity = typeof input.severity === "string";
+                const hasComment = typeof input.comment === "string";
+                if (!hasCategory && !hasSeverity && !hasComment) {
+                  return new Response(JSON.stringify({ error: "no fields to update" }), {
+                    status: 400,
+                    headers: { "content-type": "application/json" },
+                  });
+                }
+                if (hasCategory && !isCategory(input.category as string)) {
+                  return new Response(
+                    JSON.stringify({ error: `invalid category: ${input.category}` }),
+                    { status: 400, headers: { "content-type": "application/json" } },
+                  );
+                }
+                if (hasSeverity && !isSeverity(input.severity as string)) {
+                  return new Response(
+                    JSON.stringify({ error: `invalid severity: ${input.severity}` }),
+                    { status: 400, headers: { "content-type": "application/json" } },
+                  );
+                }
+                if (hasComment && (input.comment as string).length > 2000) {
+                  return new Response(
+                    JSON.stringify({ error: "comment exceeds 2000 characters" }),
+                    { status: 400, headers: { "content-type": "application/json" } },
+                  );
+                }
+                const target = base.findings.find((item) => item.id === findingId);
+                if (!target) {
+                  return new Response(JSON.stringify({ error: "finding not found" }), {
+                    status: 404,
+                    headers: { "content-type": "application/json" },
+                  });
+                }
+                const changes: string[] = [];
+                if (hasCategory && input.category !== target.category) {
+                  changes.push(`category ${target.category}→${input.category}`);
+                  target.category = input.category as Category;
+                }
+                if (hasSeverity && input.severity !== target.severity) {
+                  changes.push(`severity ${target.severity}→${input.severity}`);
+                  target.severity = input.severity as Severity;
+                }
+                if (hasComment && input.comment !== target.comment) {
+                  changes.push("comment updated");
+                  target.comment = input.comment as string;
+                }
+                target.manually_edited = true;
+                target.edited_at = Date.now();
+                target.updated_at = Date.now();
+                const summary = changes.length > 0 ? ` (${changes.join(", ")})` : "";
+                const editComment: FindingComment = {
+                  id: `comment_${Date.now().toString(36)}_${crypto.randomUUID().slice(0, 6)}`,
+                  author: "user",
+                  text: `Edited by user${summary}`,
+                  created_at: Date.now(),
+                };
+                target.comments = target.comments ?? [];
+                target.comments.push(editComment);
+                base.updated_at = Date.now();
+                await saveState(state_file, base);
+                const idx = data.existing_findings.findIndex((item) => item.id === findingId);
+                if (idx !== -1) {
+                  data.existing_findings[idx] = { ...target };
+                } else {
+                  data.existing_findings.push({ ...target });
+                }
+                return new Response(
+                  JSON.stringify({
+                    ok: true,
+                    finding: target,
+                  }),
+                  { headers: { "content-type": "application/json" } },
+                );
               }
 
               if (request.method === "POST" && pathname === `/api/review/${id}/submit`) {

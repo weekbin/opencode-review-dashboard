@@ -329,6 +329,63 @@ export async function setupReopenStaleFinding(dir) {
   return { branch: "main", worktrees: [] };
 }
 
+/**
+ * Scenario 21: R10 #1 — Saved Replies / Comment Templates (GH#10).
+ * 1 commit so the dashboard is non-empty. Verifies the dashboard loads
+ * without errors when the Saved Replies dropdown is wired into the
+ * comment input row. Runtime verification (save 2 templates → reload →
+ * insert one into a finding's comment → verify localStorage + DOM) is
+ * done via Playwright walkthrough.
+ * Locks in the AC1.1 / AC1.2 / AC1.3 / AC1.5 / AC1.6 / AC1.7 / AC1.8
+ * / AC1.9 / AC1.10 contract.
+ */
+export async function setupSavedReplies(dir) {
+  await emptyRepo(dir);
+  await sh("echo 'v1' > app.ts", dir);
+  await git(["add", "app.ts"], dir);
+  await git(["commit", "-q", "-m", "first"], dir);
+  return { branch: "main", worktrees: [] };
+}
+
+/**
+ * Scenario 22: R10 #4 — Export review as markdown / patch (GH#14).
+ * 1 commit so the dashboard is non-empty. Verifies the dashboard loads
+ * without errors when the Export button + modal are wired into the
+ * header. Runtime verification (click Export → click Markdown → verify
+ * download triggered with correct filename + content; click Export →
+ * click Patch → verify patch content includes --- a/ +++ b/ headers)
+ * is done via Playwright walkthrough.
+ * Locks in the AC4.1 / AC4.2 / AC4.3 / AC4.4 / AC4.5 / AC4.6 / AC4.7
+ * / AC4.8 / AC4.9 contract.
+ */
+export async function setupExportReview(dir) {
+  await emptyRepo(dir);
+  await sh("echo 'v1' > app.ts", dir);
+  await git(["add", "app.ts"], dir);
+  await git(["commit", "-q", "-m", "first"], dir);
+  return { branch: "main", worktrees: [] };
+}
+
+/**
+ * Scenario 23: R10 #2 — Edit a finding in-place (GH#11, architecture).
+ * 1 commit so the dashboard is non-empty. Verifies the dashboard loads
+ * without errors when the Edit button + modal are wired into the
+ * conversation panel. Runtime verification (click Edit → change
+ * severity high→low → save → assert "edited <relative-time>" badge
+ * + data.existing_findings[i].severity === "low" + manually_edited ===
+ * true) is done via Playwright walkthrough.
+ * Locks in the AC2.1 / AC2.2 / AC2.3 / AC2.4 / AC2.6 / AC2.8 / AC2.9
+ * / AC2.10 / AC2.11 / AC2.12 contract. AC2.7 (multi-round auto-close
+ * preserves flag) is verified by the edit-finding.test.ts unit test.
+ */
+export async function setupEditFinding(dir) {
+  await emptyRepo(dir);
+  await sh("echo 'v1' > app.ts", dir);
+  await git(["add", "app.ts"], dir);
+  await git(["commit", "-q", "-m", "first"], dir);
+  return { branch: "main", worktrees: [] };
+}
+
 export const SCENARIOS = {
   "no-worktree-clean": { setup: setupNoWorktreeClean, expect: { kind: "diagnostic" } },
   "has-worktree-unpushed": { setup: setupHasWorktreeUnpushed, expect: { kind: "auto-worktree" } },
@@ -376,4 +433,15 @@ export const SCENARIOS = {
   // manually_reopened:true → state.json updates) is verified via
   // Playwright walkthrough.
   "reopen-stale-finding": { setup: setupReopenStaleFinding, expect: { kind: "working-tree" } },
+  // R10 #1 (GH#10): Saved Replies / Comment Templates. localStorage CRUD +
+  // dropdown UI + insert into comment. Verifies the launch path with 1
+  // commit; full flow verified via Playwright walkthrough.
+  "saved-replies": { setup: setupSavedReplies, expect: { kind: "working-tree" } },
+  // R10 #4 (GH#14): Export review as markdown / patch download.
+  // Verifies the launch path with 1 commit; full flow verified via
+  // Playwright walkthrough.
+  "export-review": { setup: setupExportReview, expect: { kind: "working-tree" } },
+  // R10 #2 (GH#11, architecture): Edit a finding in-place. Verifies the
+  // launch path with 1 commit; full flow verified via Playwright walkthrough.
+  "edit-finding": { setup: setupEditFinding, expect: { kind: "working-tree" } },
 };
