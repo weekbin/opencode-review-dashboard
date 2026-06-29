@@ -856,6 +856,66 @@ ps aux | grep -E "cliDaemon.*r5|chrome.*headless" | grep -v grep | wc -l  # shou
 
 If artifacts are 0 AND processes are accumulating (5+ Chrome zygotes) — STALL DETECTED. Cancel via `background_cancel(taskId="bg_...")`, kill orphan Chrome + mock-server + cliDaemon, lead takes over using the direct `playwright-cli` pattern (~2 min for 5 scenarios).
 
+### Mandatory console-error check (R8 retro Gap K — MANDATORY for all Playwright walkthroughs)
+
+**Why**: R8 Dev shipped 2 atomic commits with self-check claiming all 16 ACs PASS. Lead's Playwright walkthrough caught a CRITICAL runtime TDZ error that Dev's static-analysis tests + unit tests missed:
+```
+ReferenceError: Cannot access 'navbarTabs' before initialization
+    at applyActiveTab (http://127.0.0.1:55006/assets/app.js:18069:21)
+```
+
+**Mandatory check** after page load (between steps 4 and 5 above, OR after each scenario walkthrough):
+
+```bash
+# Check for runtime errors after page load
+playwright-cli -s=r<N> console error
+```
+
+**Rule**: If `playwright-cli console error` returns ANY error messages, FAIL the walkthrough. Fix the underlying code error before proceeding.
+
+**Specifically check for**:
+- `ReferenceError` — TDZ / out-of-scope variable access (R8 caught this)
+- `TypeError` — wrong type passed to function
+- `SyntaxError` — bad code in shipped JS (shouldn't happen after build, but possible)
+- `Uncaught (in promise)` — async error not handled
+- Any other unhandled exception
+
+**If error found**: write `.omo/round-N/playwright-report.md` with `Verdict: FAIL` + the console error + recommended fix. Do NOT proceed to claim SHIP verdict.
+
+**R8 evidence**: lead caught TDZ bug in 8 min total (5 min fix + 3 min re-verify), preventing a broken R8 from shipping. The 5-min cost was much less than the alternative of shipping broken UI.
+
+### Mandatory walkthrough for Dev self-check (R8 retro Gap J — strengthened Gap I)
+
+**Why**: R8 Dev's self-check claimed all 16 ACs PASS but missed the TDZ runtime bug. Dev had:
+- ✓ Static-analysis tests (R7 pattern: extract browser-safe helpers)
+- ✓ Unit tests (84/84 pass)
+- ✓ Typecheck clean
+- ✓ Build clean
+- ✗ **NO browser walkthrough** — Dev never ran `playwright-cli`
+
+**Mandatory**: For UI changes, Dev MUST run `playwright-cli` walkthrough BEFORE claiming self-check PASS:
+
+```bash
+# After Phase 2 implementation + tests pass:
+playwright-cli -s=dev-test open "http://127.0.0.1:55006/review/r<N>_test?token=test"
+playwright-cli -s=dev-test goto "http://127.0.0.1:55006/review/r<N>_test?token=test"  # ensure fresh load
+playwright-cli -s=dev-test console error  # MUST be 0 errors
+playwright-cli -s=dev-test eval "() => document.querySelectorAll('input').length"  # for input changes
+# ... at least 1-2 scenario walkthroughs ...
+playwright-cli -s=dev-test close
+playwright-cli close-all
+```
+
+**Failure modes this prevents**:
+- TDZ errors (R8)
+- Race conditions at module load time
+- DOM elements not rendering despite TypeScript assertions
+- Event handlers attached to wrong elements
+
+**Combined with Patch A** (lead does 3c Playwright walkthrough by default): Gap J makes Dev's walkthrough a MANDATORY precondition, and Patch A makes lead's walkthrough the default. Belt-and-suspenders.
+
+**R8 evidence**: Gap J would have prevented the 5-min lead fix by catching the bug earlier in Dev's self-check.
+
 ### Test scenarios (use playwright-cli)
 
 For EACH feature changed/added in this round, walk through:
