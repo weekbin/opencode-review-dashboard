@@ -1433,7 +1433,7 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
             "",
             "### Language Matching",
             "- Match the language of the user's `findings[].comment` and `notes` when composing your `add_review_comment` replies and Post-Apply Trace comments.",
-            "- Heuristic: if the user's text contains > 30% CJK characters (e.g. 中文, 日本語, 한국어), reply in `zh-CN` style. If < 10% CJK, default to English. Mixed-language comments (10–30% CJK) default to English unless the user clearly writes in Chinese across 3+ comments in the same round.",
+            "- Heuristic: if the user's text contains > 30% CJK characters (Chinese Hanzi 中國, Japanese Kanji/Hiragana/Katakana 日本語, Korean Hangul 한국어), reply in `zh-CN` style. If < 10% CJK, default to English. Mixed-language comments (10–30% CJK) default to English unless the user clearly writes in Chinese across 3+ comments in the same round.",
             "- Empty / whitespace-only input defaults to English (preserves prior behavior).",
             "- This directive applies to `add_review_comment` calls and any prose you print in the round summary or Post-Apply Trace — code, file paths, and tool identifiers stay in their canonical form.",
             "",
