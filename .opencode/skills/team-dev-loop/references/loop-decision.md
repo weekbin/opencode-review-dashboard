@@ -116,7 +116,7 @@ PM Triage outputs these in `brief.md` `## User-impact profile` section. Lead rea
 | `U_files` | User-visible surface area | narrow (1 file) | yes if wider |
 | `U_new_capability` | User gets a brand-new feature? | no = existing capability only | yes |
 | `U_behavior_shift` | User-visible behavior fundamentally changes? (not just "fixes wrong") | no | yes |
-| `U_user_visible` | User notices the change at all (README/docs/UI)? | no (internal refactor) | yes |
+| `U_user_visible` | **Can you point to a concrete paragraph in the README that wouldn't exist without this change?** If yes → user will notice → `yes`. If the change is purely an internal refactor / dead-code removal / perf fix with no doc or UI delta → `no`. Round 3 evidence: feature profile was correctly classified only because `U_user_visible=yes` (a new "Multi-round reviews" + "Other shipped features" README paragraph was added). Without the README paragraph, this would have been a bugfix and Rule 2 wouldn't have triggered. | no (internal refactor) | yes |
 | `U_data_shape_breaking` | User's existing data files become incompatible? | no | yes |
 | `U_data_safety` | User's data becomes safer (atomic write, recovery, no data loss)? | no | yes |
 | `U_installs_new_dep` | User's `npm install` adds new packages? | no | yes |
@@ -183,6 +183,17 @@ Each profile runs a different subset of phases. **Skip a phase = lead does NOT c
 | 4 Decision | run (lead writes directly) | run | run |
 
 **Phase skip reason must be recorded** in `decision.md` `## Skipped phases` section (e.g. "Phase 0.5 PM Manager skipped: profile=bugfix, see loop-decision.md 'Round profile auto-classification'"). This is auditable.
+
+### Multi-round AC test-design rule (Round 3 lesson)
+
+If a brief contains any AC whose assertion is **"what the agent / user sees on round N where N>1"** — e.g. "round 2's payload includes prior-round resolved findings" — that AC is **structurally impossible to verify via a single-round e2e scenario**. The e2e harness (see Tester Review prompt "Known harness limitations") runs each scenario as one round.
+
+Required design:
+- For such ACs, write a **direct unit test** on the function that builds the round-N output (e.g. `format()` builds the round-N payload). The test invokes the function with a synthetic `Done` / `State` object that simulates "round 2 with 1 prior resolved finding" and asserts the exact fields.
+- The e2e scenario should cover only the round-1 ground truth (basic shape, schema validity, additive-on-disk state). Multi-round assertions belong in unit tests.
+- The architect-equivalent plan MUST call out which ACs are multi-round and require unit tests. If the plan doesn't, lead must rewrite the plan before delegating to Dev.
+
+Without this rule, Round 3 evidence: AC6 was specified as "1 e2e scenario verifying prior-round resolved findings appear in resolved[]" — but the e2e scenario could never produce a resolved finding in round 1, so the assertion silently passed-for-the-wrong-reason. Caught by Goal lens only because the test was mechanical enough to expose the gap.
 
 ### Quantitative evidence — Round 1 retroactive reclassification under v3 (user-impact framing)
 

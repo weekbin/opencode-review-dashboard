@@ -102,7 +102,16 @@ ANTI-PATTERNS to reject before emitting brief:
 - Candidate with no As/I want/So that → REJECT and rewrite
 - File:line evidence cited as "where the bug is" → RE-FRAME as "where the user-visible behavior lives"
 
-If all input sources empty → return "backlog empty, stopping" — lead will hard-stop the loop.
+## Backlog freshness check (Round 3 lesson)
+
+Before pulling candidates from `.omo/proposals.jsonl` follow_up_candidates, ask:
+1. When was the user last asked about direction? If the user has NOT been consulted in this session or recent rounds, you are probably re-treading stale backlog (Round 3 evidence: PM auto-retreaded Round 1+2's 3 leftover candidates without first asking "what direction does the user want NOW?")
+2. Has the user signaled a new theme since these candidates were first proposed? If yes, prioritize user-stories derived from the new theme — even if they're not in any backlog.
+3. Are all your candidates "fix something a developer noticed" rather than "address something a user expressed"? If yes, surface at least one candidate that came from a direct user signal (issue, chat prompt, recent user-file edit, etc.).
+
+This checkpoint is what kept Round 3 from auto-falling into the same bugfix profile Rounds 1+2 produced. Without it, PM v3 design is incomplete — user-story framing alone doesn't prevent stale backlog burn-down.
+
+If all input sources empty OR every candidate fails the freshness check → return "backlog empty or stale, stopping — ask user for direction" — lead will surface a question to the user.
 ```
 
 ---
@@ -281,6 +290,17 @@ All 5 lens reports in `.omo/round-N/review-{goal,qa,code,security,context}.md`.
 Return value to lead: `{ verdict: "PASS|FAIL", per_lens: { goal: "PASS|FAIL", qa: "PASS|FAIL", code: "PASS|FAIL", security: "PASS|FAIL", context: "PASS|FAIL" }, critical_count: <N>, major_count: <N>, minor_count: <N> }`.
 
 If any of the 5 lenses returns empty / BLOCKED / context-exhausted — write `.omo/round-N/lead-takeover-tester-review.md` with the failure note, then write the deliverable yourself based on the lenses that DID succeed. Lead will be notified via the proposals.jsonl `lead_takeovers` field.
+
+## Known harness limitations (Round 3 lesson — `ctx.client.app.log`)
+
+The lead sets up the test invocation with a mock `ctx` object because the real OpenCode runtime isn't available in subagent runs. Most plugins (including this dashboard's reviewer-diffs plugin) emit a `ctx.client.app.log(...)` call AFTER the server-side JSON response has already been written. In the mock environment that call throws (`undefined is not an object (evaluating 'ctx.client.app')`) and the JS return value is lost — only the side-effect (state.json on disk, browser session terminated) survives.
+
+Consequences for test design:
+- An e2e scenario can NOT rely on `result.kind === "return"` to read the tool's JSON payload. The harness catches that throw and converts it to `result.kind === "would-launch"`.
+- To verify payload shape end-to-end, **stash the side-effect (state.json content) onto `setupInfo` BEFORE the test cleanup deletes it**, and read from the stash inside `check()`. See e2e.mjs `runScenario()` around the `_stateContent` field for the reference pattern.
+- For verifying "what round N>1 sees" (multi-round AC), prefer **direct unit tests on the function that builds the payload** (e.g., `format()` in this codebase) over e2e — the harness runs each scenario as a single round, so multi-round assertions are structurally impossible e2e (Round 3 AC6 was originally written as e2e and silently asserted nothing — caught by Goal lens because the harness never produced a resolved-finding state for round 1 to verify against).
+
+Both limitations are now first-class test-design constraints. The Tester Review orchestrator must surface them to each lens prompt when the brief contains a multi-round AC or a payload-shape AC.
 ```
 
 ---
