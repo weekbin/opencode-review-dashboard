@@ -1940,6 +1940,13 @@ function renderPreviouslyDiscussedPanel(root: HTMLElement) {
     return;
   }
 
+  if (currentRound > 1) {
+    const hint = document.createElement("p");
+    hint.className = "previously-panel-hint";
+    hint.textContent = `Showing prior rounds only (round ${currentRound - 1} and earlier). The current round's findings are in the Conversation tab.`;
+    root.appendChild(hint);
+  }
+
   for (const roundEntry of grouped) {
     const section = document.createElement("section");
     section.className = "previously-round";
