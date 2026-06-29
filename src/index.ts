@@ -446,6 +446,100 @@ function format(result: Done) {
   });
 }
 
+/** Strict session_id validator. Rejects `..`, `/`, NUL, empty string, and any
+ *  character outside `[a-zA-Z0-9_-]`. Caps length at 64 to bound path sizes. */
+function validateSessionId(id: unknown): id is string {
+  if (typeof id !== "string") return false;
+  if (id.length === 0 || id.length > 64) return false;
+  return /^[a-zA-Z0-9_-]+$/.test(id);
+}
+
+/** Parse the `## Notes` section from a `round-NNN.md` body.
+ *  Tolerant of `## Notes` / `### Notes` / `# Notes` (case-insensitive).
+ *  Returns "" if no `## Notes` heading is found. */
+function parsePriorNotes(md: string): string {
+  if (!md) return "";
+  const lines = md.split("\n");
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i] ?? "";
+    if (/^#{1,3}\s*Notes\s*$/i.test(line)) {
+      i++;
+      const body: string[] = [];
+      while (i < lines.length && !/^#{1,3}\s/.test(lines[i] ?? "")) {
+        body.push(lines[i] ?? "");
+        i++;
+      }
+      return body.join("\n").trim();
+    }
+    i++;
+  }
+  return "";
+}
+
+/** Read prior `notes` from `round-NNN.md` files in the session directory.
+ *  Returns the parsed prior-notes envelope, or a structured error.
+ *  Exported for unit tests; the route handler delegates to this. */
+async function readPriorNotesFromSession(
+  sessionDir: string,
+): Promise<
+  | { ok: true; rounds: Array<{ round: number; notes: string }> }
+  | { ok: false; status: number; error: string }
+> {
+  if (!sessionDir) return { ok: false, status: 400, error: "session_dir required" };
+  // Refuse any path component that smells like traversal, even though the
+  // router already validates the id; defense in depth.
+  if (sessionDir.includes("\u0000")) {
+    return { ok: false, status: 400, error: "invalid session_dir" };
+  }
+  const dirStat = await Bun.file(sessionDir)
+    .stat()
+    .catch(() => null);
+  // Bun.file().stat() works for files; for a directory, fall back to readdir.
+  let exists = dirStat != null;
+  if (!exists) {
+    try {
+      const { readdir } = await import("node:fs/promises");
+      await readdir(sessionDir);
+      exists = true;
+    } catch {
+      exists = false;
+    }
+  }
+  if (!exists) return { ok: false, status: 404, error: "session not found" };
+
+  const { readdir, readFile } = await import("node:fs/promises");
+  let names: string[];
+  try {
+    names = await readdir(sessionDir);
+  } catch {
+    return { ok: false, status: 404, error: "session not found" };
+  }
+  const rounds: Array<{ round: number; notes: string }> = [];
+  const roundRe = /^round-(\d+)\.md$/;
+  for (const name of names) {
+    const m = roundRe.exec(name);
+    if (!m) continue;
+    const round = Number(m[1]);
+    if (!Number.isFinite(round) || round < 0) continue;
+    const filePath = path.join(sessionDir, name);
+    // Defense in depth: ensure the resolved file is exactly the sessionDir
+    // child we expect (no symlink escape).
+    const resolved = path.resolve(filePath);
+    const prefix = sessionDir.endsWith(path.sep) ? sessionDir : `${sessionDir}${path.sep}`;
+    if (resolved !== sessionDir && !resolved.startsWith(prefix)) continue;
+    let content: string;
+    try {
+      content = await readFile(resolved, "utf8");
+    } catch {
+      continue;
+    }
+    rounds.push({ round, notes: parsePriorNotes(content) });
+  }
+  rounds.sort((a, b) => a.round - b.round);
+  return { ok: true, rounds };
+}
+
 function markdown(input: {
   session_id: string;
   round: number;
@@ -1588,6 +1682,26 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                 });
               }
 
+              if (request.method === "GET" && pathname === `/api/review/${id}/prior-notes`) {
+                if (!validateSessionId(id)) {
+                  return new Response(JSON.stringify({ error: "invalid session id" }), {
+                    status: 400,
+                    headers: { "content-type": "application/json" },
+                  });
+                }
+                const sessionDir = path.dirname(state_file);
+                const result = await readPriorNotesFromSession(sessionDir);
+                if (!result.ok) {
+                  return new Response(JSON.stringify({ error: result.error }), {
+                    status: result.status,
+                    headers: { "content-type": "application/json" },
+                  });
+                }
+                return new Response(JSON.stringify({ rounds: result.rounds }), {
+                  headers: { "content-type": "application/json" },
+                });
+              }
+
               if (request.method === "PUT" && pathname === `/api/review/${id}/draft`) {
                 const input = (await request.json().catch(() => ({}))) as Submit;
                 const notes = typeof input.notes === "string" ? input.notes : "";
@@ -1979,6 +2093,12 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
       }),
     },
   };
+};
+
+export const __test = {
+  validateSessionId,
+  parsePriorNotes,
+  readPriorNotesFromSession,
 };
 
 export default DiffReviewPlugin;

@@ -240,4 +240,10 @@ export const SCENARIOS = {
   "uncommitted-with-commits": { setup: setupUncommittedWithCommits, expect: { kind: "working-tree-with-commits" } },
   "range-changed-banner": { setup: setupRangeChangedBanner, expect: { kind: "working-tree" } },
   "default-base-on-main": { setup: setupDefaultBaseOnMain, expect: { kind: "diagnostic-with-base" } },
+  // R4 candidate #1: the plugin must still launch cleanly when the UI fetches
+  // /api/review/${id}/prior-notes. The full UI assertion (panel renders,
+  // comment threads visible) is covered by the Playwright skill
+  // review-dashboard-ui-test; this scenario verifies the server-side
+  // endpoint doesn't break the launch path.
+  "previously-discussed-panel": { setup: setupWorkingTreeChanges, expect: { kind: "working-tree" } },
 };

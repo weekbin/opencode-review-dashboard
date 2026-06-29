@@ -50,7 +50,7 @@ You do not need to do anything to get this — every existing `/diff-review-dash
 
 - **Browser review UI** — file tree, syntax-highlighted diffs with folded unchanged regions, finding drawer (category, severity, comment). See [Review UI](#review-ui).
 - **Diff range with cross-round drift banner** — report the actual diff range reviewed; show a yellow banner when the range changes between rounds. See [Diff range](#diff-range).
-- **Multi-round reviews** — findings carry over between rounds; auto-close stale ones when anchored code changes.
+- **Multi-round reviews** — findings carry over between rounds; auto-close stale ones when anchored code changes. See [Multi-round reviews](#multi-round-reviews) for the **Previously discussed** tab that surfaces prior rounds' notes and comment threads.
 - **Auto-apply workflow** — agent plan-first applies actionable findings in one batch, then re-runs the review.
 - **Worktree auto-detection** — picks the worktree with the most commits ahead of `origin/main` when `--worktree` is omitted; an explicit `--worktree <path>` is always respected, even when the named worktree is empty (the auto-pickaround excludes the worktree it already tried, so it never silently overrides the user's flag).
 
@@ -104,6 +104,8 @@ The slash-command template tells the agent to **not ask the user how to proceed*
 ### Multi-round reviews
 
 Each session tracks review rounds. When you run `/diff-review-dashboard` again in the same session, findings from previous rounds carry over. If a file was removed or the anchored code changed, old findings are automatically closed (shown as `stale`). This enables iterative review.
+
+**Previously discussed tab** — a 4th sidebar tab that surfaces prior-round context in one glance. For each prior round, it shows the round badge, the `notes` you sent to the agent (read from the existing `round-NNN.md` exports via the new `GET /api/review/${id}/prior-notes` endpoint), every prior finding (open, resolved, and stale), and the full `comments[]` thread on each finding (every user and agent reply, in `created_at` order). The current round is excluded — that's the Conversation tab's job. Round 1 sessions show the empty-state message ("No prior discussion yet. Submit a round to start the history."). The active tab persists in `localStorage` like the other three. No state schema change; the data is already in `state.findings[]` and `round-NNN.md`.
 
 ### State and exports
 
@@ -204,10 +206,11 @@ Auto-detection (when `--worktree` is not passed): if you're in the main checkout
 
 The browser UI has three main areas:
 
-- **Sidebar** (left) — resizable panel (drag the handle, width persisted to `localStorage`). Contains three tabs:
+- **Sidebar** (left) — resizable panel (drag the handle, width persisted to `localStorage`). Contains four tabs:
   - **Files Changed** — lists changed files with add/delete stats, tree/flat view toggle. File-level findings show a 📄 badge.
   - **Commits** — per-file commit list with short SHA and message.
   - **Conversation** — all findings with status badges (open/resolved/stale), plus inline comments per finding. Resolve, Remove, Reopen, or Jump-to-file actions per finding.
+  - **Previously discussed** — prior rounds' `notes` + their findings + every `comments[]` thread, grouped by round. See [Multi-round reviews](#multi-round-reviews).
 - **Diff cards** (center) — syntax-highlighted diffs. Click line numbers to select a range. Click the file card **+** button to add a file-level finding. Large unchanged regions are folded; click expand buttons to reveal 20 lines at a time.
 - **Review drawer** (overlay) — pick category (`bug`, `style`, `perf`, `question`, `recommend`) and severity (`high`, `medium`, `low`), write a comment, and click "Add Finding". A notes field holds general observations about this round.
 - **Header actions** (top-right) — `Submit Review` is always visible in the page header so the final action is never behind a panel toggle. Layout (unified / split) and theme (light / auto / dark) controls sit alongside it. The "Review" toggle button shows a live count of findings.

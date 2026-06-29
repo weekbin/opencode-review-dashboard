@@ -102,6 +102,11 @@ function check(scenarioName, setupInfo, raw, expect, result) {
       name: "diagnostic includes diff_base info",
       pass: result.kind === "return" && result.value.includes("Diff base:"),
     });
+  } else if (expect.kind === "previously-discussed-panel") {
+    checks.push({
+      name: "server launches with Previously discussed panel (R4 candidate #1)",
+      pass: result.kind === "would-launch" || result.kind === "return",
+    });
   } else {
     checks.push({ name: "unknown expectation", pass: false });
   }

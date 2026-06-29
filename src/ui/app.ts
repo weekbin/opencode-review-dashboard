@@ -363,9 +363,9 @@ const state = {
   themeMode: readStored<ThemeMode>(THEME_KEY, ["light", "dark", "auto"], "light"),
   diffLayout: readStored<DiffLayout>(LAYOUT_KEY, ["unified", "split"], "split"),
   sidebarMode: readStored<SidebarMode>(SIDEBAR_KEY, ["tree", "flat"], "tree"),
-  activeTab: readStored<"files" | "commits" | "conversation">(
+  activeTab: readStored<"files" | "commits" | "conversation" | "previously">(
     ACTIVE_TAB_KEY,
-    ["files", "commits", "conversation"],
+    ["files", "commits", "conversation", "previously"],
     "files",
   ),
   conversationFilter: readStored<"open" | "resolved" | "all">(
@@ -373,6 +373,8 @@ const state = {
     ["open", "resolved", "all"],
     "open",
   ),
+  priorNotes: [] as Array<{ round: number; notes: string }>,
+  priorNotesLoaded: false,
   drawerOpen: false,
   pendingFileFinding: null as string | null,
 };
@@ -473,7 +475,7 @@ function applyActiveTab() {
   }
 }
 
-function setActiveTab(tab: "files" | "commits" | "conversation") {
+function setActiveTab(tab: "files" | "commits" | "conversation" | "previously") {
   if (state.activeTab === tab) {
     renderActivePane();
     return;
@@ -490,7 +492,7 @@ function setActiveTab(tab: "files" | "commits" | "conversation") {
 navbarTabs.addEventListener("click", (event) => {
   const btn = (event.target as HTMLElement).closest("button");
   if (!btn) return;
-  const tab = btn.dataset.tab as "files" | "commits" | "conversation" | undefined;
+  const tab = btn.dataset.tab as "files" | "commits" | "conversation" | "previously" | undefined;
   if (tab) setActiveTab(tab);
 });
 
@@ -1328,6 +1330,10 @@ function renderActivePane() {
     renderCommitsPane();
   } else if (state.activeTab === "conversation") {
     renderConversationPane();
+  } else if (state.activeTab === "previously") {
+    void loadPriorNotes().then(() => {
+      if (state.activeTab === "previously") renderPreviouslyPane();
+    });
   }
   updateTabCounts();
 }
@@ -1840,6 +1846,215 @@ function renderConversationPanel(root: HTMLElement) {
 
     root.appendChild(item);
   }
+}
+
+// ── Previously discussed panel ──
+
+// parsePriorNotes lives in src/index.ts (server-shared). The UI consumes the
+// pre-parsed notes from GET /api/review/${id}/prior-notes, so no client-side
+// markdown parsing is needed.
+
+type PriorRoundEntry = {
+  round: number;
+  notes: string;
+  findings: ConversationEntry[];
+};
+
+function groupFindingsByRound(entries: ConversationEntry[]): Map<number, ConversationEntry[]> {
+  const byRound = new Map<number, ConversationEntry[]>();
+  for (const entry of entries) {
+    if (!entry.round || entry.round <= 0) continue;
+    const list = byRound.get(entry.round) ?? [];
+    list.push(entry);
+    byRound.set(entry.round, list);
+  }
+  return byRound;
+}
+
+function buildPriorRoundEntries(
+  notes: Array<{ round: number; notes: string }>,
+  entries: ConversationEntry[],
+): PriorRoundEntry[] {
+  const byRound = groupFindingsByRound(entries);
+  const rounds = new Set<number>();
+  for (const item of notes) if (item.round > 0) rounds.add(item.round);
+  for (const r of byRound.keys()) rounds.add(r);
+  return Array.from(rounds)
+    .sort((a, b) => a - b)
+    .map((round) => {
+      const note = notes.find((item) => item.round === round);
+      return {
+        round,
+        notes: note?.notes ?? "",
+        findings: (byRound.get(round) ?? []).sort((a, b) => a.created_at - b.created_at),
+      };
+    });
+}
+
+async function loadPriorNotes(): Promise<void> {
+  if (state.priorNotesLoaded) return;
+  state.priorNotesLoaded = true;
+  try {
+    const response = await fetch(endpoint("/prior-notes"));
+    if (!response?.ok) {
+      state.priorNotes = [];
+      return;
+    }
+    const data = (await response.json().catch(() => ({}))) as {
+      rounds?: Array<{ round: number; notes: string }>;
+    };
+    state.priorNotes = Array.isArray(data.rounds) ? data.rounds : [];
+  } catch {
+    state.priorNotes = [];
+  }
+}
+
+function renderPreviouslyDiscussedPanel(root: HTMLElement) {
+  // Exclude the current round — the panel is "previously" (prior rounds only);
+  // the current round is already covered by the Conversation tab.
+  const currentRound = state.data?.round ?? 0;
+  const priorEntries: ConversationEntry[] = state.existing
+    .map((item) => ({
+      ...item,
+      origin: "existing" as const,
+      round: item.round ?? 0,
+      status: item.status ?? ("open" as const),
+      created_at: item.created_at ?? 0,
+    }))
+    .filter((entry) => entry.round > 0 && entry.round < currentRound);
+
+  const priorNotes = state.priorNotes.filter((item) => item.round < currentRound);
+  const grouped = buildPriorRoundEntries(priorNotes, priorEntries);
+
+  if (grouped.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "previously-empty";
+    empty.textContent = "No prior discussion yet. Submit a round to start the history.";
+    root.appendChild(empty);
+    return;
+  }
+
+  for (const roundEntry of grouped) {
+    const section = document.createElement("section");
+    section.className = "previously-round";
+    section.dataset.round = String(roundEntry.round);
+
+    const header = document.createElement("header");
+    header.className = "previously-round-header";
+
+    const roundBadge = document.createElement("span");
+    roundBadge.className = "previously-round-badge";
+    roundBadge.textContent = `Round ${roundEntry.round}`;
+    header.appendChild(roundBadge);
+
+    const counts = document.createElement("span");
+    counts.className = "previously-round-counts";
+    const findingsCount = roundEntry.findings.length;
+    const openCount = roundEntry.findings.filter(
+      (f) => f.status === "open" || f.status === "closed_auto",
+    ).length;
+    const resolvedCount = roundEntry.findings.filter((f) => f.status === "resolved").length;
+    const countBits: string[] = [];
+    if (findingsCount > 0) {
+      countBits.push(`${findingsCount} finding${findingsCount === 1 ? "" : "s"}`);
+      if (openCount > 0) countBits.push(`${openCount} open`);
+      if (resolvedCount > 0) countBits.push(`${resolvedCount} resolved`);
+    } else {
+      countBits.push("no findings");
+    }
+    counts.textContent = countBits.join(" · ");
+    header.appendChild(counts);
+
+    section.appendChild(header);
+
+    if (roundEntry.notes) {
+      const notesBlock = document.createElement("div");
+      notesBlock.className = "previously-notes";
+      const notesLabel = document.createElement("div");
+      notesLabel.className = "previously-notes-label";
+      notesLabel.textContent = "Notes you sent to the agent";
+      notesBlock.appendChild(notesLabel);
+      const notesText = document.createElement("div");
+      notesText.className = "previously-notes-text";
+      notesText.textContent = roundEntry.notes;
+      notesBlock.appendChild(notesText);
+      section.appendChild(notesBlock);
+    } else {
+      const notesBlock = document.createElement("div");
+      notesBlock.className = "previously-notes previously-notes-empty";
+      notesBlock.textContent = "(no notes sent this round)";
+      section.appendChild(notesBlock);
+    }
+
+    if (roundEntry.findings.length > 0) {
+      const findingsHeader = document.createElement("div");
+      findingsHeader.className = "previously-findings-header";
+      findingsHeader.textContent = "Findings + comment threads";
+      section.appendChild(findingsHeader);
+
+      for (const finding of roundEntry.findings) {
+        const findingItem = document.createElement("div");
+        findingItem.className = "previously-finding";
+        findingItem.dataset.status = finding.status;
+
+        const head = document.createElement("div");
+        head.className = "previously-finding-head";
+
+        const fileLabel = document.createElement("span");
+        fileLabel.className = "previously-finding-file";
+        const loc =
+          finding.kind === "file"
+            ? finding.file
+            : finding.start_line === finding.end_line
+              ? `${finding.file}:${finding.start_line}`
+              : `${finding.file}:${finding.start_line}-${finding.end_line}`;
+        fileLabel.textContent = loc;
+        head.appendChild(fileLabel);
+
+        const statusBadge = document.createElement("span");
+        statusBadge.className = "conversation-status";
+        statusBadge.dataset.status = finding.status;
+        statusBadge.textContent = finding.status === "closed_auto" ? "stale" : finding.status;
+        head.appendChild(statusBadge);
+
+        findingItem.appendChild(head);
+
+        const body = document.createElement("div");
+        body.className = "previously-finding-body";
+        body.textContent = finding.comment;
+        findingItem.appendChild(body);
+
+        if (finding.comments?.length) {
+          const thread = document.createElement("div");
+          thread.className = "previously-thread";
+          for (const comment of finding.comments) {
+            const commentEl = document.createElement("div");
+            commentEl.className = "previously-comment";
+            const meta = document.createElement("div");
+            meta.className = "previously-comment-meta";
+            meta.textContent = `${comment.author === "agent" ? "🤖 Agent" : "🧑 You"} · ${formatRelativeTime(comment.created_at)}`;
+            commentEl.appendChild(meta);
+            const text = document.createElement("div");
+            text.className = "previously-comment-text";
+            text.textContent = comment.text;
+            commentEl.appendChild(text);
+            thread.appendChild(commentEl);
+          }
+          findingItem.appendChild(thread);
+        }
+
+        section.appendChild(findingItem);
+      }
+    }
+
+    root.appendChild(section);
+  }
+}
+
+function renderPreviouslyPane() {
+  const previouslyListRoot = document.querySelector("#previously-list") as HTMLDivElement;
+  previouslyListRoot.innerHTML = "";
+  renderPreviouslyDiscussedPanel(previouslyListRoot);
 }
 
 function renderDiffPanel() {
