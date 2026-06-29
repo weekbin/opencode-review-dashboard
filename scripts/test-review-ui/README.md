@@ -17,7 +17,7 @@ For interactive UI testing (drag, screenshot, etc.) see the skill
 
 ## What it tests
 
-17 git scenarios:
+20 git scenarios:
 
 | # | Scenario | What it checks |
 |---|---|---|
@@ -38,6 +38,9 @@ For interactive UI testing (drag, screenshot, etc.) see the skill
 | 15 | `untracked-file-in-tree` | Untracked files appear with `status: "added"` + uncommitted badge |
 | 16 | `previously-discussed-race` | AbortController for loadPriorNotes (R7 MINOR #1) — server launches without errors with abort logic in place; race condition itself verified via Playwright walkthrough |
 | 17 | `previously-discussed-hint` | UI hint for "current round in Conversation" panel (R7 MINOR #2) — multi-round state triggers hint render; visibility verified via Playwright walkthrough |
+| 18 | `in-tab-search` | In-tab search input filters active panel content (R8 MINOR #1) — search input renders + filter + Escape-clear verified via Playwright walkthrough |
+| 19 | `sidebar-keyboard-nav` | Sidebar tabs keyboard navigation (R8 MINOR #2, WAI-ARIA tablist) — Arrow/Home/End + roving tabindex + aria-selected cycle verified via Playwright walkthrough |
+| 20 | `reopen-stale-finding` | Manually re-open stale findings (R9 #1) — Force Reopen button on `closed_auto` + reason modal + `manually_reopened: true` POST payload + state.json update verified via Playwright walkthrough |
 
 ## Files
 

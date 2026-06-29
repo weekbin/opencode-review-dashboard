@@ -252,11 +252,35 @@ Total = sum of all 8 → 0-16 range, typical 0-8.
 ```yaml
 1. IF U_behavior_shift==yes OR U_data_shape_breaking==yes OR U_installs_new_dep==yes OR total >= 8
    → profile = "architecture"
-2. ELSE IF U_user_visible==yes AND total >= 3
-   → profile = "feature"
+2. ELSE IF U_user_visible=yes AND total >= 3
+   → feature
 3. ELSE
-   → profile = "bugfix"
+   → bugfix
 ```
+
+### Per-profile Phase 2 (Dev) timeout guidance (R9 retro Gap L)
+
+**Why**: R9 Dev timed out at 30 min despite partial commits being intact. Architecture profile with 3 file surfaces + Gap J mandatory walkthrough naturally takes longer than feature profile.
+
+**Per-profile guidance** (lead uses when launching Phase 2):
+
+| Profile | Expected Phase 2 wall-clock | Recommended timeout | Rationale |
+|---|---|---|---|
+| **bugfix** | 5-15 min | 20 min | Small scope, single file, no walkthrough |
+| **feature** | 15-25 min | 30 min | Medium scope, 1-2 files, Gap J walkthrough |
+| **architecture** | 30-45 min | **45 min** | Large scope, 3+ files, server-contract + agent-prompt + Gap J walkthrough |
+
+**Default orchestrator timeout is 30 min** (per `task()` config). For architecture rounds, lead SHOULD:
+1. Pre-architect the round into smaller Dev sub-tasks if expected to exceed 45 min
+2. Or split into multiple rounds (e.g., R9a server + R9b UI + R9c tests) — but this violates single-commit-per-round
+3. Or accept partial Dev completion + lead recovery (what happened in R9)
+
+**R9 evidence**: 30-min timeout hit with 2 product commits intact + partial Commit 3. Lead completed remaining work in ~5 min. Net: R9 still shipped but with lead assistance. Net cost: ~5 min extra (vs. clean 35-40 min Dev round).
+
+**Apply to R10+**: When launching Phase 2 for architecture profile, lead should:
+- Expect ~30-45 min wall-clock
+- Pre-architect into 2-3 sub-tasks if scope is large
+- Or use the lead-recovery pattern (R9) which proved robust
 
 **Override rule**: lead MAY override auto-classification if user chat explicitly states scope (e.g. "treat as architecture review"). Document the override in `decision.md` ## Round profile section.
 

@@ -42,6 +42,7 @@ type Finding = {
   updated_at: number;
   closed_at?: number;
   close_reason?: "file_removed" | "anchor_missing";
+  manually_reopened?: boolean;
   comments?: FindingComment[];
 };
 
@@ -1457,7 +1458,14 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
             "   - Read the `comments[]` thread under each finding. If you need to respond to a user comment or record your own take before editing, call the `add_review_comment` tool with the finding id and your text. Keep it under 500 characters.",
             "   - Treat the current round's `notes` as the top of the stack (the user just wrote them), and treat prior findings+resolutions+comments as the long-running thread that informs why the current state is the way it is.",
             "   This step is mandatory when `state.json` exists (i.e. when `round > 1` or any prior finding exists). Do not skip it — the user expects you to remember the full conversation, not just the most recent round.",
-            "1. **Round Summary (must print AFTER reading history, before any tool calls or edits)**:",
+            "1. **Manually-reopened findings (R9 honor directive)**:",
+            "   If `state.json`'s `findings[]` contains any entry with `manually_reopened: true`, the user has explicitly re-opened that finding after your prior auto-close (e.g. anchor drift closed it via `close_reason: 'anchor_missing'` but the user disagrees and clicked Force Reopen with a reason).",
+            "   Honor directive:",
+            "   - Treat that finding as `open` in this round's auto-close pass. Do NOT re-auto-close it based on the SAME anchor drift that originally closed it.",
+            "   - Apply a fix if actionable. The user's most recent `Manually reopened: <reason>` comment in `comments[]` is your new context — read it before designing the fix.",
+            "   - If the fix is not actionable in this round (e.g. the snippet genuinely no longer exists in the file), call `add_review_comment` with the finding id explaining why, rather than silently re-closing it.",
+            "   - Example: `F-007` was closed in round N with `close_reason: 'anchor_missing'`. The user clicked Force Reopen in round N+1 with reason `still applies — the fix removed the symptom not the cause`. You MUST treat F-007 as open in round N+2's auto-close pass and act on it (apply a fix, or `add_review_comment` explaining why you can't).",
+            "2. **Round Summary (must print AFTER reading history, before any tool calls or edits)**:",
             "   Once you have read state.json, ALWAYS print a short human-readable summary in this exact shape:",
             "   ```",
             "   📋 Round N — {open_count} open finding(s) ({by_severity})",
@@ -1466,15 +1474,15 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
             "   • history context: {1-line summary of any relevant prior-round findings/rejections that inform this round}",
             "   ```",
             "   This MUST be the first thing you output after parsing. Do not silently jump to edits. The user reads this summary to follow what is being done.",
-            "2. **Plan-First Rule**:",
+            "3. **Plan-First Rule**:",
             "   - Read all affected files associated with the diff once.",
             "   - Design a **unified fix plan** that addresses all actionable `notes` and `findings` together. Do NOT handle items one at a time (per-finding fixes lose context and produce inconsistent patches — the plan must cover all findings as a coherent change).",
             "   - **Honor prior-round context**: if a previous round's finding was resolved and the user's notes this round align with it, your plan should make sure the prior resolution still holds. If the user rejected a previous fix, do not re-apply the same pattern.",
-            "3. **Fix Application**:",
+            "4. **Fix Application**:",
             "   - Apply the entire unified plan in a single batch via Edit calls.",
             '   - **Post-Apply Trace (mandatory)**: After each Edit, call `add_review_comment` once per addressed finding id with a short description of what changed at that location (file:line range, what was changed, why). If one edit fixed multiple findings, comment on each. Keep each comment under 500 characters. Example: `"Fixed in src/foo.ts:120-125 — replaced X with Y, added null check"`. These comments persist in `state.json` even after the user resolves the finding, so they can read what was done and continue the discussion with their own follow-up comments.',
-            "4. **Validation**: After all fixes are applied, re-run the tool to confirm resolution of all actionable items.",
-            "5. **Closing Rule**: Only respond with `Round N: no actionable items, closing out.` if BOTH:",
+            "5. **Validation**: After all fixes are applied, re-run the tool to confirm resolution of all actionable items.",
+            "6. **Closing Rule**: Only respond with `Round N: no actionable items, closing out.` if BOTH:",
             "   - `notes` is empty or whitespace, AND",
             "   - There are no actionable `findings` (excluding `category: question`).",
             "   Otherwise, act on the non-empty `notes` or actionable `findings`.",
@@ -1778,7 +1786,11 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
               }
 
               if (request.method === "POST" && pathname === `/api/review/${id}/reopen`) {
-                const input = (await request.json().catch(() => ({}))) as { finding_id?: string };
+                const input = (await request.json().catch(() => ({}))) as {
+                  finding_id?: string;
+                  manually_reopened?: boolean;
+                  reason?: string;
+                };
                 const finding_id = input.finding_id;
                 if (!finding_id) {
                   return new Response(JSON.stringify({ error: "finding_id required" }), {
@@ -1793,7 +1805,13 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                     headers: { "content-type": "application/json" },
                   });
                 }
-                if (target.status !== "resolved") {
+                // R9 #1: allow reopen on closed_auto when client sends
+                // manually_reopened === true (explicit user override of the
+                // auto-close). Otherwise keep the strict status guard so
+                // already-resolved findings still reopen via the same path.
+                const manualOverride =
+                  input.manually_reopened === true && target.status === "closed_auto";
+                if (target.status !== "resolved" && !manualOverride) {
                   return new Response(
                     JSON.stringify({ error: `cannot reopen (status: ${target.status})` }),
                     {
@@ -1845,6 +1863,26 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                 target.status = "open";
                 target.updated_at = Date.now();
                 target.closed_at = undefined;
+                // R9 #1: when the reopen came via the manual-override path,
+                // stamp the honor-flag + clear stale close_reason + record
+                // the system comment that explains why the user re-opened.
+                if (manualOverride) {
+                  target.manually_reopened = true;
+                  target.close_reason = undefined;
+                  const reason = typeof input.reason === "string" ? input.reason.trim() : "";
+                  const trimmedReason = reason.slice(0, 200);
+                  const commentText = trimmedReason
+                    ? `Manually reopened: ${trimmedReason}`
+                    : "Manually reopened";
+                  const comment: FindingComment = {
+                    id: `comment_${Date.now().toString(36)}_${crypto.randomUUID().slice(0, 6)}`,
+                    author: "user",
+                    text: commentText,
+                    created_at: Date.now(),
+                  };
+                  target.comments = target.comments ?? [];
+                  target.comments.push(comment);
+                }
                 base.updated_at = Date.now();
                 await saveState(state_file, base);
                 const idx = data.existing_findings.findIndex((item) => item.id === finding_id);

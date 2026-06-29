@@ -212,6 +212,7 @@ describe("AC9 — State + Finding type shapes are unchanged", () => {
       "  updated_at: number;",
       "  closed_at?: number;",
       '  close_reason?: "file_removed" | "anchor_missing";',
+      "  manually_reopened?: boolean;",
       "  comments?: FindingComment[];",
       "};",
     ].join("\n");

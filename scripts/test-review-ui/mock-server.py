@@ -18,6 +18,7 @@ import http.server
 import json
 import mimetypes
 import os
+import re
 import sys
 from urllib.parse import urlparse
 
@@ -98,6 +99,19 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
         # Default: review.html (root or /review/<id>)
         self.serve_html()
+
+    def do_POST(self):
+        path = urlparse(self.path).path
+        # R9 #1: support /api/review/<id>/reopen with manually_reopened + reason
+        # so the Force Reopen walkthrough completes without 501 errors.
+        # Reads the request body so the mock-server log shows the payload.
+        length = int(self.headers.get("Content-Length", "0") or "0")
+        body = self.rfile.read(length) if length > 0 else b""
+        if re.match(r"^/api/review/[^/]+/reopen$", path):
+            sys.stderr.write(f"[srv] reopen POST body: {body.decode('utf-8', errors='replace')}\n")
+            self.send_text(json.dumps({"ok": True, "received": json.loads(body or b"{}")}), 200, "application/json")
+            return
+        self.send_text("Unsupported method", 501)
 
     def send_text(self, text, status=200, mime="text/plain"):
         body = text.encode()
