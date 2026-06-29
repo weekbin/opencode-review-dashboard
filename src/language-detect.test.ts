@@ -114,3 +114,21 @@ describe("detectLanguage — agent-prompt structural check (AC9-5)", () => {
     expect(templateBody).toContain("English");
   });
 });
+
+describe("detectLanguage — R6 #1: Hangul / Hiragana / Katakana CJK coverage", () => {
+  it("T6.1: Korean Hangul '안녕하세요' returns 'zh-CN' (ratio = 1.0)", () => {
+    expect(detectLanguage("안녕하세요")).toBe("zh-CN");
+  });
+
+  it("T6.2: Japanese Hiragana 'こんにちは' returns 'zh-CN' (ratio = 1.0)", () => {
+    expect(detectLanguage("こんにちは")).toBe("zh-CN");
+  });
+
+  it("T6.3: Japanese Katakana 'カタカナ' returns 'zh-CN' (ratio = 1.0)", () => {
+    expect(detectLanguage("カタカナ")).toBe("zh-CN");
+  });
+
+  it("T6.4: mixed CJK scripts (Chinese + Japanese + Korean) returns 'zh-CN' (ratio > 0.3)", () => {
+    expect(detectLanguage("中文 mixed 日本語 한국어 테스트")).toBe("zh-CN");
+  });
+});
