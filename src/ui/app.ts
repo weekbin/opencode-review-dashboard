@@ -1,5 +1,8 @@
 import { FileDiff, type DiffLineAnnotation } from "@pierre/diffs";
 
+import { cycleTab, TAB_ORDER, tabIndexFor, type TabKey } from "../sidebar-keyboard";
+import { filterByQuery } from "../search-utils";
+
 type Category = "bug" | "style" | "perf" | "question" | "recommend";
 type Severity = "high" | "medium" | "low";
 type Side = "additions" | "deletions";
@@ -441,6 +444,7 @@ layoutToggle.addEventListener("click", (event) => {
 
 // ── Sidebar mode toggle ──
 const sidebarMode = document.querySelector("#sidebar-mode") as HTMLDivElement;
+const navbarTabs = document.querySelector("#navbar-tabs") as HTMLDivElement;
 
 function applySidebarMode() {
   for (const btn of sidebarMode.querySelectorAll("button")) {
@@ -449,6 +453,7 @@ function applySidebarMode() {
 }
 applySidebarMode();
 applyConversationFilter();
+applyActiveTab();
 
 function setSidebarMode(mode: SidebarMode) {
   if (state.sidebarMode === mode) return;
@@ -464,18 +469,23 @@ sidebarMode.addEventListener("click", (event) => {
   setSidebarMode(btn.dataset.mode as SidebarMode);
 });
 
-const navbarTabs = document.querySelector("#navbar-tabs") as HTMLDivElement;
-
 function applyActiveTab() {
-  for (const btn of navbarTabs.querySelectorAll("button")) {
-    btn.setAttribute("aria-pressed", btn.dataset.tab === state.activeTab ? "true" : "false");
+  const tabButtons = [...navbarTabs.querySelectorAll<HTMLButtonElement>("button")];
+  const activeIndex = TAB_ORDER.indexOf(state.activeTab as TabKey);
+  const tabindexes = tabIndexFor(activeIndex < 0 ? 0 : activeIndex, tabButtons.length);
+  for (const [i, btn] of tabButtons.entries()) {
+    const isActive = btn.dataset.tab === state.activeTab;
+    btn.setAttribute("aria-pressed", isActive ? "true" : "false");
+    // R8 #2: ARIA tablist semantics — aria-selected + roving tabindex.
+    btn.setAttribute("aria-selected", isActive ? "true" : "false");
+    btn.setAttribute("tabindex", tabindexes[i] ?? "-1");
   }
   for (const pane of document.querySelectorAll("[data-pane]")) {
     (pane as HTMLElement).hidden = (pane as HTMLElement).dataset.pane !== state.activeTab;
   }
 }
 
-function setActiveTab(tab: "files" | "commits" | "conversation" | "previously") {
+function setActiveTab(tab: TabKey) {
   if (state.activeTab === tab) {
     renderActivePane();
     return;
@@ -487,13 +497,49 @@ function setActiveTab(tab: "files" | "commits" | "conversation" | "previously") 
   writeStored(ACTIVE_TAB_KEY, tab);
   updateTabCounts();
   renderActivePane();
+  // R8 #2: keep keyboard focus in sync with the new active tab.
+  const newTab = navbarTabs.querySelector<HTMLButtonElement>(`button[data-tab="${tab}"]`);
+  newTab?.focus();
 }
 
 navbarTabs.addEventListener("click", (event) => {
   const btn = (event.target as HTMLElement).closest("button");
   if (!btn) return;
-  const tab = btn.dataset.tab as "files" | "commits" | "conversation" | "previously" | undefined;
+  const tab = btn.dataset.tab as TabKey | undefined;
   if (tab) setActiveTab(tab);
+});
+
+// R8 #2: keyboard navigation across sidebar tabs (WAI-ARIA tablist).
+// ArrowLeft/Right/Up/Down cycle, Home/End jump to first/last, default
+// Tab/Shift+Tab still exit the tablist (browser default — R8-4 risk
+// mitigated by roving tabindex above).
+navbarTabs.addEventListener("keydown", (event) => {
+  const key = event.key;
+  if (
+    key !== "ArrowLeft" &&
+    key !== "ArrowRight" &&
+    key !== "ArrowUp" &&
+    key !== "ArrowDown" &&
+    key !== "Home" &&
+    key !== "End"
+  ) {
+    return;
+  }
+  const currentIndex = TAB_ORDER.indexOf(state.activeTab as TabKey);
+  if (currentIndex < 0) return;
+  let nextIndex: number;
+  if (key === "Home") {
+    nextIndex = 0;
+  } else if (key === "End") {
+    nextIndex = TAB_ORDER.length - 1;
+  } else if (key === "ArrowLeft" || key === "ArrowUp") {
+    nextIndex = cycleTab(currentIndex, -1, TAB_ORDER.length);
+  } else {
+    nextIndex = cycleTab(currentIndex, 1, TAB_ORDER.length);
+  }
+  event.preventDefault();
+  const nextTab = TAB_ORDER[nextIndex];
+  if (nextTab) setActiveTab(nextTab);
 });
 
 function setConversationFilter(filter: "open" | "resolved" | "all") {
@@ -575,6 +621,47 @@ let dragPreviewWidth = 0;
 let activeScrollSpyFile: string | null = null;
 let scrollSpyObserver: IntersectionObserver | null = null;
 let priorNotesController: AbortController | null = null;
+
+// R8 #1: in-tab search state — survives tab switches within the session.
+let currentSearchQuery = "";
+
+/**
+ * R8 #1: build the `<input type="search">` shown at the top of each panel.
+ * The input re-renders the active pane on every keystroke (cheap; 20-40
+ * items typical) and clears + refocuses the first focusable pane element
+ * on Escape.
+ */
+function renderSearchInput(paneId: string): HTMLElement {
+  const input = document.createElement("input");
+  input.type = "search";
+  input.id = "search-input";
+  input.className = "search-input";
+  input.placeholder = "Search panel…";
+  input.value = currentSearchQuery;
+  input.dataset.pane = paneId;
+  input.setAttribute("aria-label", "Search current panel");
+  input.addEventListener("input", () => {
+    currentSearchQuery = input.value;
+    renderActivePane();
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    e.preventDefault();
+    currentSearchQuery = "";
+    input.value = "";
+    renderActivePane();
+    // Roving focus: return focus to the first focusable element in the pane
+    // (the first sidebar tab, the conversation-filter button, or the
+    // first sidebar item) so the reviewer can keep moving.
+    const pane = document.querySelector(`[data-pane="${paneId}"]`);
+    if (!pane) return;
+    const firstFocusable = pane.querySelector<HTMLElement>(
+      "button:not([disabled]), [tabindex]:not([tabindex='-1'])",
+    );
+    firstFocusable?.focus();
+  });
+  return input;
+}
 
 sidebarResizer.addEventListener("pointerdown", (event: PointerEvent) => {
   event.preventDefault();
@@ -1389,7 +1476,11 @@ function renderFilesPane() {
   fileListRoot.innerHTML = "";
   state.sidebarItems.clear();
 
-  const files = getOrderedFiles();
+  // R8 #1: search bar at top of the Files pane.
+  fileListRoot.appendChild(renderSearchInput("files"));
+
+  const allFiles = getOrderedFiles();
+  const files = filterByQuery(allFiles, currentSearchQuery, (f) => f.path);
   if (state.sidebarMode === "tree") {
     renderTreeSidebar(buildTree(files));
   } else {
@@ -1400,21 +1491,30 @@ function renderFilesPane() {
 function renderCommitsPane() {
   const commitsListRoot = document.querySelector("#commits-list") as HTMLDivElement;
   commitsListRoot.innerHTML = "";
+  // R8 #1: search bar at top of the Commits pane.
+  commitsListRoot.appendChild(renderSearchInput("commits"));
   renderCommitsPanel(commitsListRoot);
 }
 
 function renderConversationPane() {
   const conversationListRoot = document.querySelector("#conversation-list") as HTMLDivElement;
   conversationListRoot.innerHTML = "";
+  // R8 #1: search bar at top of the Conversation pane.
+  conversationListRoot.appendChild(renderSearchInput("conversation"));
   renderConversationPanel(conversationListRoot);
 }
 
 function renderCommitsPanel(root: HTMLElement) {
-  const commits = state.data?.commits ?? [];
+  const allCommits = state.data?.commits ?? [];
+  // R8 #1: search filter composes with the commits list (no second filter
+  // exists on this pane — `renderCommitsPanel` is the only path).
+  const commits = filterByQuery(allCommits, currentSearchQuery, (c) => c.message);
   if (commits.length === 0) {
     const empty = document.createElement("div");
     empty.className = "conversation-empty";
-    empty.textContent = "No commits in range.";
+    empty.textContent = currentSearchQuery.trim()
+      ? `No commits match "${currentSearchQuery.trim()}".`
+      : "No commits in range.";
     root.appendChild(empty);
     return;
   }
@@ -1649,20 +1749,31 @@ function renderConversationPanel(root: HTMLElement) {
       : state.conversationFilter === "resolved"
         ? entries.filter((e) => e.status === "resolved")
         : entries;
-  if (filtered.length === 0) {
+  // R8 #1: search filter composes with the 3-button conversationFilter.
+  // Match against comment text + category + severity (per AC8-1.2).
+  const searched = filterByQuery(
+    filtered,
+    currentSearchQuery,
+    (e) => `${e.comment} ${e.category} ${e.severity}`,
+  );
+  if (searched.length === 0) {
     const empty = document.createElement("div");
     empty.className = "conversation-empty";
-    empty.textContent =
-      state.conversationFilter === "open"
-        ? "No unresolved findings."
-        : state.conversationFilter === "resolved"
-          ? "No resolved findings."
-          : "No findings found.";
+    if (currentSearchQuery.trim()) {
+      empty.textContent = `No findings match "${currentSearchQuery.trim()}".`;
+    } else {
+      empty.textContent =
+        state.conversationFilter === "open"
+          ? "No unresolved findings."
+          : state.conversationFilter === "resolved"
+            ? "No resolved findings."
+            : "No findings found.";
+    }
     root.appendChild(empty);
     return;
   }
 
-  const sorted = [...filtered].sort((a, b) => {
+  const sorted = [...searched].sort((a, b) => {
     if (a.round !== b.round) return b.round - a.round;
     return a.created_at - b.created_at;
   });
@@ -1930,12 +2041,22 @@ function renderPreviouslyDiscussedPanel(root: HTMLElement) {
     .filter((entry) => entry.round > 0 && entry.round < currentRound);
 
   const priorNotes = state.priorNotes.filter((item) => item.round < currentRound);
-  const grouped = buildPriorRoundEntries(priorNotes, priorEntries);
+  const groupedRaw = buildPriorRoundEntries(priorNotes, priorEntries);
+  // R8 #1: search filter — keep a round only if its notes OR any finding
+  // (comment text + comment thread replies) match the query. AC8-1.2.
+  const grouped = filterByQuery(
+    groupedRaw,
+    currentSearchQuery,
+    (r) =>
+      `${r.notes} ${r.findings.map((f) => `${f.comment} ${(f.comments ?? []).map((c) => c.text).join(" ")}`).join(" ")}`,
+  );
 
   if (grouped.length === 0) {
     const empty = document.createElement("div");
     empty.className = "previously-empty";
-    empty.textContent = "No prior discussion yet. Submit a round to start the history.";
+    empty.textContent = currentSearchQuery.trim()
+      ? `No prior rounds match "${currentSearchQuery.trim()}".`
+      : "No prior discussion yet. Submit a round to start the history.";
     root.appendChild(empty);
     return;
   }
@@ -2067,6 +2188,8 @@ function renderPreviouslyDiscussedPanel(root: HTMLElement) {
 function renderPreviouslyPane() {
   const previouslyListRoot = document.querySelector("#previously-list") as HTMLDivElement;
   previouslyListRoot.innerHTML = "";
+  // R8 #1: search bar at top of the Previously discussed pane.
+  previouslyListRoot.appendChild(renderSearchInput("previously"));
   renderPreviouslyDiscussedPanel(previouslyListRoot);
 }
 

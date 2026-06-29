@@ -274,6 +274,43 @@ export async function setupPreviouslyDiscussedHint(dir) {
   return { branch: "main", worktrees: [] };
 }
 
+/**
+ * Scenario 18: R8 #1 — In-tab search input filters the active panel content.
+ * 1 commit so the dashboard is non-empty. Verifies the dashboard loads
+ * without errors when the `<input type="search">` is rendered at the top
+ * of every pane (Files / Commits / Conversation / Previously discussed).
+ * Runtime verification (typing into the search box → list filters →
+ * Escape → list restores) is verified via Playwright walkthrough.
+ * Locks in the AC8-1.1 / AC8-1.2 / AC8-1.3 / AC8-1.4 / AC8-1.6 contract.
+ */
+export async function setupInTabSearch(dir) {
+  await emptyRepo(dir);
+  for (let i = 1; i <= 3; i++) {
+    await sh(`echo "feature ${i}" >> app.ts`, dir);
+    await git(["add", "app.ts"], dir);
+    await git(["commit", "-q", "-m", `feat ${i}`], dir);
+  }
+  return { branch: "main", worktrees: [] };
+}
+
+/**
+ * Scenario 19: R8 #2 — Sidebar tabs keyboard navigation (WAI-ARIA tablist).
+ * 1 commit so the dashboard is non-empty. Verifies the dashboard loads
+ * without errors when the navbar tabs have role="tablist" + tab focus +
+ * keydown listener wired up. Runtime verification (focus navbar, Tab 4×,
+ * verify aria-selected cycles files → commits → conversation → previously
+ * → files; press Home / End) is done via Playwright walkthrough.
+ * Locks in the AC8-2.1 / AC8-2.2 / AC8-2.3 / AC8-2.4 / AC8-2.5 / AC8-2.6
+ * / AC8-2.7 / AC8-2.8 / AC8-2.9 contract.
+ */
+export async function setupSidebarKeyboardNav(dir) {
+  await emptyRepo(dir);
+  await sh("echo 'v1' > app.ts", dir);
+  await git(["add", "app.ts"], dir);
+  await git(["commit", "-q", "-m", "initial"], dir);
+  return { branch: "main", worktrees: [] };
+}
+
 export const SCENARIOS = {
   "no-worktree-clean": { setup: setupNoWorktreeClean, expect: { kind: "diagnostic" } },
   "has-worktree-unpushed": { setup: setupHasWorktreeUnpushed, expect: { kind: "auto-worktree" } },
@@ -305,4 +342,14 @@ export const SCENARIOS = {
   // loads with state.data.round > 0, so the hint should render. The
   // hint visibility itself is verified via Playwright walkthrough.
   "previously-discussed-hint": { setup: setupPreviouslyDiscussedHint, expect: { kind: "working-tree" } },
+  // R8 candidate #1: in-tab search filters the active panel content.
+  // The e2e harness verifies the launch path with a 3-commit history. The
+  // search input render + filter + Escape-clear behavior is verified via
+  // Playwright walkthrough (R8 Playwright screenshots).
+  "in-tab-search": { setup: setupInTabSearch, expect: { kind: "working-tree" } },
+  // R8 candidate #2: sidebar tabs keyboard navigation (WAI-ARIA tablist).
+  // The e2e harness verifies the launch path with 1 commit. The keyboard
+  // navigation behavior (Arrow keys, Home, End, focus ring, aria-selected
+  // cycling) is verified via Playwright walkthrough.
+  "sidebar-keyboard-nav": { setup: setupSidebarKeyboardNav, expect: { kind: "working-tree" } },
 };

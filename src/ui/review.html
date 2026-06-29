@@ -86,6 +86,13 @@
         color: light-dark(#111, #eee);
         border-bottom-color: light-dark(#1d5a96, #95c1e8);
       }
+      /* R8 #2: visible focus ring on sidebar tabs (WAI-ARIA tablist
+         keyboard nav). Uses :focus-visible so mouse clicks don't show it. */
+      .navbar-tabs button:focus-visible {
+        outline: 2px solid light-dark(#1d5a96, #95c1e8);
+        outline-offset: 2px;
+        border-radius: 4px;
+      }
       .navbar-count {
         font-size: 14px;
         font-weight: 700;
@@ -517,6 +524,27 @@
       .pane-toolbar .sidebar-mode {
         text-transform: none;
         letter-spacing: 0;
+      }
+      /* R8 #1: in-tab search input rendered at the top of each pane */
+      .search-input {
+        width: 100%;
+        margin: 0 0 8px;
+        padding: 6px 10px;
+        font-size: 13px;
+        font-family: inherit;
+        color: light-dark(#222, #ddd);
+        background: light-dark(#fff, #181818);
+        border: 1px solid light-dark(#d0d0d0, #3a3a3a);
+        border-radius: var(--radius);
+        box-sizing: border-box;
+      }
+      .search-input:focus-visible {
+        outline: 2px solid light-dark(#1d5a96, #95c1e8);
+        outline-offset: 1px;
+        border-color: transparent;
+      }
+      .search-input::placeholder {
+        color: light-dark(#999, #666);
       }
       .conversation-item {
         padding: 18px 20px;
@@ -1744,21 +1772,27 @@
       </div>
     </header>
 
-    <nav class="navbar-tabs" id="navbar-tabs">
-      <button data-tab="files" aria-pressed="true" title="Files changed">
+    <nav class="navbar-tabs" id="navbar-tabs" role="tablist" aria-label="Sidebar sections">
+      <button data-tab="files" role="tab" aria-pressed="true" title="Files changed">
         Files changed
         <span class="navbar-count" id="files-count" hidden>0</span>
       </button>
-      <button data-tab="commits" aria-pressed="false" title="Commits in this review">
+      <button data-tab="commits" role="tab" aria-pressed="false" title="Commits in this review">
         Commits
         <span class="navbar-count" id="commits-count" hidden>0</span>
       </button>
-      <button data-tab="conversation" aria-pressed="false" title="Conversation (all findings)">
+      <button
+        data-tab="conversation"
+        role="tab"
+        aria-pressed="false"
+        title="Conversation (all findings)"
+      >
         Conversation
         <span class="navbar-count" id="conversation-count" hidden>0</span>
       </button>
       <button
         data-tab="previously"
+        role="tab"
         aria-pressed="false"
         title="Previously discussed (prior round notes + comment threads)"
       >
