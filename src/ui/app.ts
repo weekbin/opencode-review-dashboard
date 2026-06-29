@@ -28,6 +28,8 @@ type Finding = {
   round?: number;
   created_at?: number;
   manually_reopened?: boolean;
+  manually_edited?: boolean;
+  edited_at?: number;
   close_reason?: "file_removed" | "anchor_missing";
   comments?: FindingComment[];
 };
@@ -134,6 +136,81 @@ function writeStored(key: string, value: string) {
   } catch {
     // ignore
   }
+}
+
+// ── Saved Replies (R10 #1, GH#10) ──
+const SAVED_REPLIES_KEY = "opencode-review-dashboard:saved-replies";
+const SAVED_REPLIES_SOFT_CAP = 200;
+
+type SavedReply = {
+  name: string;
+  body: string;
+  createdAt: number;
+};
+
+function loadSavedReplies(): SavedReply[] {
+  try {
+    const raw = localStorage.getItem(SAVED_REPLIES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter(
+        (item): item is SavedReply =>
+          item &&
+          typeof item.name === "string" &&
+          typeof item.body === "string" &&
+          typeof item.createdAt === "number",
+      )
+      .slice(0, SAVED_REPLIES_SOFT_CAP);
+  } catch {
+    return [];
+  }
+}
+
+function persistSavedReplies(list: SavedReply[]): boolean {
+  try {
+    localStorage.setItem(SAVED_REPLIES_KEY, JSON.stringify(list));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function addSavedReply(name: string, body: string): { ok: boolean; error?: string } {
+  const trimmed = name.trim();
+  if (!trimmed) return { ok: false, error: "name is required" };
+  if (!body.trim()) return { ok: false, error: "body is required" };
+  const list = loadSavedReplies();
+  if (list.length >= SAVED_REPLIES_SOFT_CAP) {
+    return {
+      ok: false,
+      error: `soft cap reached (${SAVED_REPLIES_SOFT_CAP}). Delete some templates first.`,
+    };
+  }
+  list.push({ name: trimmed, body, createdAt: Date.now() });
+  if (!persistSavedReplies(list)) {
+    return { ok: false, error: "localStorage quota exceeded" };
+  }
+  return { ok: true };
+}
+
+function deleteSavedReplyByName(name: string): boolean {
+  const list = loadSavedReplies();
+  const filtered = list.filter((item) => item.name !== name);
+  if (filtered.length === list.length) return false;
+  return persistSavedReplies(filtered);
+}
+
+function insertAtCursor(textarea: HTMLTextAreaElement, text: string): void {
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const before = textarea.value.slice(0, start);
+  const after = textarea.value.slice(end);
+  textarea.value = before + text + after;
+  const caret = start + text.length;
+  textarea.focus();
+  textarea.setSelectionRange(caret, caret);
 }
 
 // ── File-type icon table ──
@@ -333,6 +410,7 @@ const statusRoot = document.querySelector("#status") as HTMLDivElement;
 const addButton = document.querySelector("#add") as HTMLButtonElement;
 const clearButton = document.querySelector("#clear") as HTMLButtonElement;
 const submitButton = document.querySelector("#submit") as HTMLButtonElement;
+const exportButton = document.querySelector("#export") as HTMLButtonElement | null;
 const drawerToggle = document.querySelector("#drawer-toggle") as HTMLButtonElement;
 const drawer = document.querySelector("#drawer") as HTMLElement;
 const drawerBackdrop = document.querySelector("#drawer-backdrop") as HTMLElement;
@@ -1734,6 +1812,8 @@ type ConversationEntry = {
   origin: "existing" | "new";
   created_at: number;
   manually_reopened?: boolean;
+  manually_edited?: boolean;
+  edited_at?: number;
   comments?: FindingComment[];
 };
 
@@ -1751,6 +1831,243 @@ function formatRelativeTime(ts: number): string {
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
+}
+
+// ── Export review (R10 #4, GH#14) ──
+type ExportFile = {
+  path: string;
+  status: "added" | "deleted" | "modified";
+  additions: number;
+  deletions: number;
+  before: string;
+  after: string;
+};
+
+type ExportFinding = {
+  id: string;
+  file: string;
+  start_line?: number;
+  end_line?: number;
+  category?: string;
+  severity?: string;
+  comment?: string;
+  status?: string;
+};
+
+type ExportState = {
+  round?: number;
+  notes?: string;
+  session_id?: string;
+  findings?: ExportFinding[];
+  files?: ExportFile[];
+};
+
+function generateMarkdownSummary(state: ExportState): string {
+  const round = state.round ?? 0;
+  const findings = state.findings ?? [];
+  const files = state.files ?? [];
+  const open = findings.filter((f) => f.status === "open").length;
+  const resolved = findings.filter((f) => f.status === "resolved").length;
+  const stale = findings.filter((f) => f.status === "closed_auto").length;
+  const bySeverity: Record<string, number> = {};
+  const byCategory: Record<string, number> = {};
+  for (const f of findings) {
+    if (f.status !== "open") continue;
+    const sev = f.severity ?? "medium";
+    const cat = f.category ?? "recommend";
+    bySeverity[sev] = (bySeverity[sev] ?? 0) + 1;
+    byCategory[cat] = (byCategory[cat] ?? 0) + 1;
+  }
+  const isoTs = new Date().toISOString();
+  const lines: string[] = [];
+  lines.push(`# Review — Round ${round} (${isoTs})`);
+  lines.push("");
+  lines.push("## Summary");
+  lines.push(`- Files reviewed: ${files.length}`);
+  lines.push(
+    `- Findings: ${findings.length} total (${open} open / ${resolved} resolved / ${stale} stale)`,
+  );
+  const sevParts = Object.entries(bySeverity).sort(([a], [b]) => a.localeCompare(b));
+  if (sevParts.length === 0) {
+    lines.push("- By severity (open): (none)");
+  } else {
+    lines.push(`- By severity (open): ${sevParts.map(([k, v]) => `${k}=${v}`).join(", ")}`);
+  }
+  const catParts = Object.entries(byCategory).sort(([a], [b]) => a.localeCompare(b));
+  if (catParts.length === 0) {
+    lines.push("- By category (open): (none)");
+  } else {
+    lines.push(`- By category (open): ${catParts.map(([k, v]) => `${k}=${v}`).join(", ")}`);
+  }
+  lines.push("");
+  lines.push("## Findings");
+  if (findings.length === 0) {
+    lines.push("_No findings in this round._");
+  } else {
+    lines.push("| id | file:line | category | severity | status | comment |");
+    lines.push("| --- | --- | --- | --- | --- | --- |");
+    for (const f of findings) {
+      const loc =
+        f.start_line && f.end_line && f.start_line !== f.end_line
+          ? `${f.file}:${f.start_line}-${f.end_line}`
+          : `${f.file}:${f.start_line ?? "?"}`;
+      const raw = (f.comment ?? "").replace(/\|/g, "\\|").replace(/\n/g, " ");
+      const excerpt = raw.length > 120 ? raw.slice(0, 117) + "…" : raw;
+      lines.push(
+        `| ${f.id} | ${loc} | ${f.category ?? ""} | ${f.severity ?? ""} | ${f.status ?? ""} | ${excerpt} |`,
+      );
+    }
+  }
+  const notes = (state.notes ?? "").trim();
+  if (notes) {
+    lines.push("");
+    lines.push("## Notes");
+    lines.push("");
+    lines.push(notes);
+  }
+  return lines.join("\n") + "\n";
+}
+
+function generatePatchFile(files: ExportFile[], findings: ExportFinding[]): string {
+  const out: string[] = [];
+  for (const file of files) {
+    const a = file.path;
+    const b = file.path;
+    if (file.status === "added") {
+      out.push(`diff --git a/${a} b/${b}`);
+      out.push("new file mode 100644");
+      out.push(`--- /dev/null`);
+      out.push(`+++ b/${b}`);
+    } else if (file.status === "deleted") {
+      out.push(`diff --git a/${a} b/${b}`);
+      out.push("deleted file mode 100644");
+      out.push(`--- a/${a}`);
+      out.push(`+++ /dev/null`);
+    } else {
+      out.push(`diff --git a/${a} b/${b}`);
+      out.push(`--- a/${a}`);
+      out.push(`+++ b/${b}`);
+    }
+    const fileFindings = findings.filter((f) => f.file === file.path);
+    const fromLines = (file.before ?? "").split("\n");
+    const toLines = (file.after ?? "").split("\n");
+    if (file.status === "added") {
+      out.push(`@@ -0,0 +1,${toLines.length} @@`);
+      for (const line of toLines) out.push(`+${line}`);
+    } else if (file.status === "deleted") {
+      out.push(`@@ -1,${fromLines.length} +0,0 @@`);
+      for (const line of fromLines) out.push(`-${line}`);
+    } else {
+      const fromCount = fromLines.length || 1;
+      const toCount = toLines.length || 1;
+      out.push(`@@ -1,${fromCount} +1,${toCount} @@`);
+      for (const line of fromLines) out.push(`-${line}`);
+      for (const line of toLines) out.push(`+${line}`);
+    }
+    for (const finding of fileFindings) {
+      const tag = `// REVIEW (${finding.id}): ${(finding.comment ?? "").replace(/\n/g, " ").slice(0, 200)}`;
+      out.push(tag);
+    }
+    out.push("");
+  }
+  return out.join("\n");
+}
+
+function generateExportFilename(
+  format: "md" | "patch",
+  round: number,
+  sessionId: string,
+  ts: number,
+): string {
+  const short = sessionId.length > 8 ? sessionId.slice(0, 8) : sessionId;
+  return `review-${round}-${short}-${ts}.${format}`;
+}
+
+function triggerDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function showExportModal(): void {
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  const dialog = document.createElement("div");
+  dialog.className = "modal-dialog";
+  dialog.setAttribute("role", "dialog");
+  dialog.setAttribute("aria-modal", "true");
+  dialog.innerHTML = `
+    <h3>Export review</h3>
+    <p>Choose a format. The file is generated client-side from the current round state.</p>
+    <div class="export-cards">
+      <button class="export-card" data-format="md" type="button">
+        <strong>Markdown summary (.md)</strong>
+        <span class="export-card-desc">Round summary + findings table + notes — paste into Notion / Slack / email.</span>
+      </button>
+      <button class="export-card" data-format="patch" type="button">
+        <strong>Patch file (.patch)</strong>
+        <span class="export-card-desc">Unified diff with // REVIEW (&lt;id&gt;) annotations — attach to a bug report.</span>
+      </button>
+    </div>
+    <div class="modal-actions">
+      <button id="export-cancel" type="button">Cancel</button>
+    </div>
+  `;
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+
+  const cancelBtn = dialog.querySelector("#export-cancel") as HTMLButtonElement | null;
+  const close = () => {
+    if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+  };
+  cancelBtn?.addEventListener("click", close);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) close();
+  });
+
+  for (const card of dialog.querySelectorAll<HTMLButtonElement>(".export-card")) {
+    card.addEventListener("click", () => {
+      const format = card.dataset.format === "patch" ? "patch" : "md";
+      const data = state.data;
+      if (!data) {
+        close();
+        setStatus("No review data to export", true);
+        return;
+      }
+      const ts = Date.now();
+      const filename = generateExportFilename(
+        format,
+        data.round ?? 0,
+        data.session_id ?? "session",
+        ts,
+      );
+      let content = "";
+      let mime = "text/plain;charset=utf-8";
+      if (format === "md") {
+        content = generateMarkdownSummary({
+          round: data.round,
+          notes: state.notes,
+          session_id: data.session_id,
+          findings: all() as ExportFinding[],
+          files: data.files as ExportFile[],
+        });
+        mime = "text/markdown;charset=utf-8";
+      } else {
+        content = generatePatchFile(data.files as ExportFile[], all() as ExportFinding[]);
+        mime = "text/x-diff;charset=utf-8";
+      }
+      const blob = new Blob([content], { type: mime });
+      triggerDownload(blob, filename);
+      close();
+      setStatus(`Exported ${filename}`);
+    });
+  }
 }
 
 function renderConversationPanel(root: HTMLElement) {
@@ -1911,6 +2228,30 @@ function renderConversationPanel(root: HTMLElement) {
       actions.appendChild(reopenBtn);
     }
 
+    const editBtn = document.createElement("button");
+    editBtn.textContent = "Edit";
+    editBtn.title = "Edit category / severity / comment in-place";
+    editBtn.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      const fields = await showEditFindingModal({
+        id: entry.id,
+        category: entry.category,
+        severity: entry.severity,
+        comment: entry.comment,
+      });
+      if (!fields) return;
+      const patch: { category?: string; severity?: string; comment?: string } = {};
+      if (fields.category !== entry.category) patch.category = fields.category;
+      if (fields.severity !== entry.severity) patch.severity = fields.severity;
+      if (fields.comment !== entry.comment) patch.comment = fields.comment;
+      if (Object.keys(patch).length === 0) {
+        setStatus("No changes to save");
+        return;
+      }
+      await editFinding(entry.id, patch);
+    });
+    actions.appendChild(editBtn);
+
     const jumpBtn = document.createElement("button");
     jumpBtn.textContent = "Jump";
     jumpBtn.addEventListener("click", (event) => {
@@ -1948,10 +2289,15 @@ function renderConversationPanel(root: HTMLElement) {
 
     const badgesRow = document.createElement("div");
     badgesRow.className = "finding-badges";
+    const editedBadge =
+      entry.manually_edited && entry.edited_at
+        ? `<span class="badge badge-edited" title="Edited by user at ${new Date(entry.edited_at).toISOString()}">edited ${escapeHtml(formatRelativeTime(entry.edited_at))}</span>`
+        : "";
     badgesRow.innerHTML = [
       `<span class="badge ${entry.severity}">${escapeHtml(entry.severity)}</span>`,
       `<span class="badge">${escapeHtml(entry.category)}</span>`,
       `<span class="badge">${escapeHtml(entry.kind ?? "line")}</span>`,
+      editedBadge,
     ].join("");
     subhead.appendChild(badgesRow);
     item.appendChild(subhead);
@@ -2007,6 +2353,106 @@ function renderConversationPanel(root: HTMLElement) {
     });
     inputRow.appendChild(textarea);
     inputRow.appendChild(counter);
+
+    const savedRepliesBtn = document.createElement("button");
+    savedRepliesBtn.type = "button";
+    savedRepliesBtn.className = "saved-replies-toggle";
+    savedRepliesBtn.title = "Saved Replies (R10)";
+    const initialReplies = loadSavedReplies();
+    const overCap = initialReplies.length > 100;
+    savedRepliesBtn.textContent = `📋${initialReplies.length ? ` ${initialReplies.length}` : ""}${overCap ? " ⚠️" : ""}`;
+    const dropdown = document.createElement("div");
+    dropdown.className = "saved-replies-dropdown";
+    dropdown.hidden = true;
+    const renderSavedRepliesDropdown = () => {
+      dropdown.innerHTML = "";
+      const list = loadSavedReplies();
+      const header = document.createElement("div");
+      header.className = "saved-replies-header";
+      header.textContent = "Saved Replies";
+      dropdown.appendChild(header);
+
+      const saveCurrent = document.createElement("button");
+      saveCurrent.type = "button";
+      saveCurrent.className = "saved-replies-save-current";
+      saveCurrent.textContent = "💾 Save current as template…";
+      saveCurrent.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const body = textarea.value.trim();
+        if (!body) {
+          setStatus("Comment box is empty — write the template body first", true);
+          return;
+        }
+        const name =
+          typeof window !== "undefined"
+            ? window.prompt("Template name (e.g. 'needs-test'):", "")
+            : null;
+        if (name === null) return;
+        const result = addSavedReply(name, body);
+        if (!result.ok) {
+          setStatus(result.error ?? "Failed to save template", true);
+          return;
+        }
+        setStatus(`Saved template "${name.trim()}"`);
+        renderSavedRepliesDropdown();
+        const updated = loadSavedReplies();
+        const over = updated.length > 100;
+        savedRepliesBtn.textContent = `📋${updated.length ? ` ${updated.length}` : ""}${over ? " ⚠️" : ""}`;
+      });
+      dropdown.appendChild(saveCurrent);
+
+      if (list.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "saved-replies-empty";
+        empty.textContent = "No saved replies yet — save your first one";
+        dropdown.appendChild(empty);
+      } else {
+        for (const item of list) {
+          const row = document.createElement("div");
+          row.className = "saved-replies-row";
+          const insert = document.createElement("button");
+          insert.type = "button";
+          insert.className = "saved-replies-insert";
+          const preview = item.body.length > 60 ? item.body.slice(0, 57) + "…" : item.body;
+          insert.textContent = `${item.name} — ${preview}`;
+          insert.title = item.body;
+          insert.addEventListener("click", (e) => {
+            e.stopPropagation();
+            insertAtCursor(textarea, item.body);
+            counter.textContent = `${textarea.value.length}/500`;
+            dropdown.hidden = true;
+          });
+          row.appendChild(insert);
+          const del = document.createElement("button");
+          del.type = "button";
+          del.className = "saved-replies-delete";
+          del.textContent = "×";
+          del.title = `Delete "${item.name}"`;
+          del.addEventListener("click", (e) => {
+            e.stopPropagation();
+            deleteSavedReplyByName(item.name);
+            renderSavedRepliesDropdown();
+            const updated = loadSavedReplies();
+            const over = updated.length > 100;
+            savedRepliesBtn.textContent = `📋${updated.length ? ` ${updated.length}` : ""}${over ? " ⚠️" : ""}`;
+          });
+          row.appendChild(del);
+          dropdown.appendChild(row);
+        }
+      }
+    };
+    savedRepliesBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      renderSavedRepliesDropdown();
+      dropdown.hidden = !dropdown.hidden;
+    });
+    document.addEventListener("click", (e) => {
+      if (!dropdown.contains(e.target as Node) && e.target !== savedRepliesBtn) {
+        dropdown.hidden = true;
+      }
+    });
+    inputRow.appendChild(savedRepliesBtn);
+    inputRow.appendChild(dropdown);
     inputRow.appendChild(submitBtn);
     commentsRoot.appendChild(inputRow);
     item.appendChild(commentsRoot);
@@ -2479,6 +2925,119 @@ async function addComment(id: string, text: string) {
   setStatus("Comment added");
 }
 
+async function editFinding(
+  id: string,
+  fields: { category?: string; severity?: string; comment?: string },
+): Promise<boolean> {
+  const response = await fetch(endpoint(`/findings/${id}`), {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(fields),
+  }).catch(() => undefined);
+  if (!response?.ok) {
+    const data = await response?.json().catch(() => undefined);
+    setStatus(data?.error ?? "Failed to edit finding", true);
+    return false;
+  }
+  const payload = (await response.json().catch(() => undefined)) as
+    | { ok: true; finding: Finding }
+    | undefined;
+  if (!payload?.ok || !payload.finding) return false;
+  const existing = state.existing.find((item) => item.id === id);
+  if (existing) {
+    Object.assign(existing, payload.finding);
+  } else {
+    const fresh = state.fresh.find((item) => item.id === id);
+    if (fresh) Object.assign(fresh, payload.finding);
+  }
+  renderFindings();
+  renderConversationPane();
+  syncAll();
+  setStatus("Finding edited");
+  return true;
+}
+
+function showEditFindingModal(finding: {
+  id: string;
+  category: string;
+  severity: string;
+  comment: string;
+}): Promise<{ category: string; severity: string; comment: string } | null> {
+  return new Promise((resolve) => {
+    const categories = state.data?.taxonomy.categories ?? [];
+    const severities = state.data?.taxonomy.severities ?? [];
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    const dialog = document.createElement("div");
+    dialog.className = "modal-dialog";
+    dialog.setAttribute("role", "dialog");
+    dialog.setAttribute("aria-modal", "true");
+    const catOptions = categories
+      .map((c) => `<option value="${c}"${c === finding.category ? " selected" : ""}>${c}</option>`)
+      .join("");
+    const sevOptions = severities
+      .map((s) => `<option value="${s}"${s === finding.severity ? " selected" : ""}>${s}</option>`)
+      .join("");
+    dialog.innerHTML = `
+      <h3>Edit finding</h3>
+      <p>Update category, severity, or comment. Changes are audited and visible to the agent.</p>
+      <div class="modal-field">
+        <label for="edit-category">Category</label>
+        <select id="edit-category">${catOptions}</select>
+      </div>
+      <div class="modal-field">
+        <label for="edit-severity">Severity</label>
+        <select id="edit-severity">${sevOptions}</select>
+      </div>
+      <div class="modal-field">
+        <label for="edit-comment">Comment</label>
+        <textarea id="edit-comment" rows="4" maxlength="2000"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button id="edit-cancel" type="button">Cancel</button>
+        <button id="edit-save" class="primary" type="button">Save</button>
+      </div>
+    `;
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+    const categoryEl = dialog.querySelector("#edit-category") as HTMLSelectElement | null;
+    const severityEl = dialog.querySelector("#edit-severity") as HTMLSelectElement | null;
+    const commentEl = dialog.querySelector("#edit-comment") as HTMLTextAreaElement | null;
+    const cancelBtn = dialog.querySelector("#edit-cancel") as HTMLButtonElement | null;
+    const saveBtn = dialog.querySelector("#edit-save") as HTMLButtonElement | null;
+    if (commentEl) commentEl.value = finding.comment;
+
+    const closeWith = (value: { category: string; severity: string; comment: string } | null) => {
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      resolve(value);
+    };
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeWith(null);
+    };
+    document.addEventListener("keydown", onKey, { once: false });
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) {
+        document.removeEventListener("keydown", onKey);
+        closeWith(null);
+      }
+    });
+    cancelBtn?.addEventListener("click", () => {
+      document.removeEventListener("keydown", onKey);
+      closeWith(null);
+    });
+    saveBtn?.addEventListener("click", () => {
+      document.removeEventListener("keydown", onKey);
+      closeWith({
+        category: categoryEl?.value ?? finding.category,
+        severity: severityEl?.value ?? finding.severity,
+        comment: commentEl?.value ?? finding.comment,
+      });
+    });
+  });
+}
+
 function flashLine(filePath: string, startLine: number, endLine: number) {
   const file = state.data?.files.find((f) => f.path === filePath);
   if (!file) return;
@@ -2819,6 +3378,13 @@ findingsRoot.addEventListener("click", (event) => {
 addButton.addEventListener("click", addFinding);
 clearButton.addEventListener("click", clearSelection);
 submitButton.addEventListener("click", submit);
+exportButton?.addEventListener("click", () => {
+  if (!state.data) {
+    setStatus("No review data to export", true);
+    return;
+  }
+  showExportModal();
+});
 
 diffsRoot.addEventListener("click", (event) => {
   const target = event.target;
