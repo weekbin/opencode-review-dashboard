@@ -172,6 +172,8 @@ For each phase, read `references/phase-prompts.md` for the exact prompt body. Ea
 | 3c | Tester Playwright | `visual-engineering` | `playwright-report.md` | bugfix: **skip unless UI changed** / feature+architecture: run |
 | 3.5 | PM Doc Writer | `writing` | `doc-update-report.md` (side effect: README + screenshots) | bugfix: 1-para README / feature+architecture: full README + screenshot |
 | 4 | Decision | (lead writes directly) | `decision.md` | always run |
+| 4.5 | **Round-end retrospective** | (lead writes directly) | `.omo/round-N/retro.md` | **always run** (mandatory) |
+| — | Skill-update patch (if retro surfaced skill gaps) | (lead writes directly) | `.opencode/skills/team-dev-loop/**` | **always run if retro surfaces skill gaps** |
 | — | Append audit log | (lead writes directly) | `.omo/proposals.jsonl` (1 line) | always run |
 
 **Why different categories per role** (per user feedback on category-specialization): each role has a different work shape — product judgment (`unspecified-high`), critical reasoning (`ultrabrain`), autonomous end-to-end (`deep`), mechanical checks (`quick`), soft/uncoventional judgment (`artistry`), UI walkthrough (`visual-engineering`), documentation (`writing`). Picking the right sub-model per role gives better quality per token than a one-size-fits-all `unspecified-high` for everything.
@@ -253,16 +255,67 @@ When all 7 phases terminal (each `task()` either returned or was taken over):
 1. **Verify** expected output files exist: for `bugfix` profile, expect ≥ 3 of 13 files; for `feature` profile, expect ≥ 8 of 13 files; for `architecture` profile, expect all 13 files in `.omo/round-${N}/`. If any expected file is missing AND the phase that produces it was NOT marked as `skipped` in `decision.md` `## Skipped phases`, halt and write `lead-takeover-<role>.md` for the missing role.
 2. **Write** `decision.md` using the template in `references/loop-decision.md` § Decision template
 3. **Append** one line to `.omo/proposals.jsonl` (see § Decision log in loop-decision.md)
-4. **Commit** all round-N files + any side effects (README updates, screenshots, code in worktree):
+4. **Run Phase 4.5 — Round-end retrospective** (see next section) BEFORE commit
+5. **Apply skill patches** for any "skill gap" items the retro surfaced (see next section)
+6. **Commit** all round-N files + any side effects (README updates, screenshots, code in worktree, skill updates):
    ```bash
-   git add .omo/round-${N}/ README.md README.zh-CN.md docs/screenshots/ src/ scripts/
+   git add .omo/round-${N}/ README.md README.zh-CN.md docs/screenshots/ src/ scripts/ .opencode/skills/team-dev-loop/
    git commit -m "Round ${N}: <one-line summary>
 
    Co-Authored-By: ..."
 
    git push origin main   # no PR — user reviews the commit on main directly
    ```
-5. **No team_delete** (v2 has no team to delete)
+7. **No team_delete** (v2 has no team to delete)
+
+## Round-end retrospective (Phase 4.5 — MANDATORY every round)
+
+The loop is not closed until the lead writes `.omo/round-N/retro.md` AND (if the retro surfaces skill gaps) commits a skill patch. This is what makes the loop **self-improving** rather than just self-repeating.
+
+**When**: Always, after Phase 4 Decision, BEFORE the closure commit. Skipping the retro is a soft-block — the loop cannot end on `decision = ship-to-main` without it.
+
+**Why mandatory**:
+- Without it, the same loop frictions repeat across rounds. Round 1 spent 90+ min on the Bun.write mocking problem; Round 2 had the React wrong-command-C pitfall; Round 3 had the `ctx.client.app.log` harness limitation. Each was a one-round discovery with no in-band propagation.
+- The loop's purpose is to compound improvements, not just to ship features. Without retro, the skill becomes a snapshot of the Round 0 design and never improves.
+
+**Output `.omo/round-N/retro.md` (no blank sections)**:
+
+```markdown
+# Round <N> Retrospective
+
+## TL;DR
+<1-2 sentences: total round outcome + biggest lesson>
+
+## Successes (what worked, keep doing)
+<3-6 bullets, each grounded in file:line evidence>
+
+## Failures / lessons (what hurt)
+<3-6 bullets, each with: symptom → root cause → fix done now>
+
+## Skill gaps found (changes that would have prevented the issue)
+<0-N bullets, each is a candidate skill patch. If empty, write "None — this round was a clean execution of the existing skill, no gap surfaced.">
+For each gap:
+- **Symptom** (file:line of the issue)
+- **Existing-skill-text** that didn't catch it (file:line of skill)
+- **Proposed patch** (1-2 sentences describing the addition)
+
+## Followup items
+<0-N bullets, each is a concrete carry-over task>
+
+## Action items for next round
+<ordered list, the FIRST item MUST be any pending skill patch>
+```
+
+## Skill-update rule (when retro surfaces skill gaps)
+
+If the retro's "Skill gaps found" section is non-empty:
+
+1. **Apply the patches first** — treat them as the highest-priority deliverable of the next round, ahead of any user-picked candidate. The patches are committed to `.opencode/skills/team-dev-loop/` (SKILL.md, references/loop-decision.md, references/phase-prompts.md, docs/team-dev-loop.md).
+2. **Verify** with the skill-review audit on the skill directory — must hit 100% PASS, 0 blockers, 0 majors before the user picks the next feature candidate. Run via the slash-command .
+3. **Commit and push** the skill patches separately from any product work, so the audit gate is visible in git history.
+4. **Record** the skill-updates commit SHAs in the next round's `brief.md` ## Skill updates section, so the lineage is traceable in `.omo/proposals.jsonl`.
+
+The recursive rule: **the loop improves the skill, the improved skill improves the loop**. Without this, "team-dev-loop" becomes just a static 7-role ceremony.
 
 ## Examples
 
