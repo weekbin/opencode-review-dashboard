@@ -113,6 +113,18 @@ ANTI-PATTERNS to reject before emitting brief:
 - Candidate with no As/I want/So that → REJECT and rewrite
 - File:line evidence cited as "where the bug is" → RE-FRAME as "where the user-visible behavior lives"
 
+### Threshold verification for illustrative AC strings (R5 retro Gap 1)
+
+**MANDATORY** when any AC has a numerical threshold or expected output based on a string input (e.g., language detection thresholds, regex matches, percentage-based classifications):
+
+Before emitting the brief, PM Triage must:
+1. **Identify all illustrative strings** in ACs that have thresholds (e.g., "detectLanguage('X') → 'zh-CN'").
+2. **Compute the actual threshold value** for each illustrative string. For language detection: count CJK chars / total chars and compare against the 0.3/0.1 thresholds in the implementation.
+3. **If the illustrative string does NOT match the AC's claimed expected output**: either (a) rewrite the AC's illustrative string with one that does match, or (b) update the AC's expected output to match what the string actually produces.
+4. **If the implementation's threshold differs from what the AC assumes**: surface a CLARIFY in the brief's ## Self-Critique section, not in the AC text itself.
+
+**R5 evidence this gap would have prevented**: AC9-1 plan-data mismatch — `"这个 auth middleware 应该用 jwt.verify"` has CJK ratio ≈ 0.15 (in "mixed" band 10-30%), but AC claimed it would return "zh-CN". Implementation correctly returned "mixed". Implementation tests use corrected (higher-ratio) strings; both the unit test and the AC's claimed behavior aligned on the corrected strings. PM Triage's threshold verification step would have caught this at brief-write time.
+
 ### Backlog freshness check (Round 3 lesson)
 
 Before pulling candidates from `.omo/proposals.jsonl` follow_up_candidates, ask:
@@ -309,6 +321,30 @@ Return value to lead: {
 }
 
 If verdict is FAIL or PARTIAL → iterate on code before returning. Do not return a failing self-check.
+
+### Doc side-file checklist (R5 retro Gap 3 — MANDATORY before commit)
+
+**Why**: R5's Dev updated main `README.md` e2e scenario count from 10 → 15 but forgot to update `scripts/test-review-ui/README.md:20` which still said "14 git scenarios". Lead caught this in Phase 3b review, but the drift should have been caught at Dev commit time.
+
+**Mandatory checklist before pushing** (apply to ANY number-change, section-add, or label-rename in primary user-facing docs):
+
+```bash
+# Find all docs that reference the changed value
+git grep -l "<old-value>" -- '*.md' '*.mdx'
+# Update each one
+# Verify no stragglers
+git grep -l "<old-value>" -- '*.md' '*.mdx' || echo "no stragglers"
+```
+
+Specifically for the common case of scenario/test count changes:
+- Primary user-facing: `README.md` + `README.zh-CN.md` (if bilingual project)
+- Dev-facing harness: `scripts/test-review-ui/README.md` + `scripts/<harness>/README.md` (if applicable)
+- Internal: `docs/team-dev-loop.md` (if it cites the count)
+- Any other `*.md` that grep finds
+
+**R5 evidence**: `git grep -l "14 git scenarios"` returned `README.md` (correctly updated to 15) + `scripts/test-review-ui/README.md` (forgot). Lead caught the drift in Phase 3b diff-review. The 1-line fix was applied in R5 closure commit.
+
+Apply this checklist as part of Step 7 (commit strategy) for any Doc-change task.
 ```
 
 ---
@@ -745,21 +781,54 @@ If the tool fails (e.g. can't start server, can't find branch) — write the del
 ```
 You are a USER-PERSPECTIVE TESTER for @weekbin/opencode-review-dashboard. You are NOT reviewing code — you are USING the software as a real user would.
 
-TASK: Run the plugin's UI in a real browser via Playwright, click every button relevant to this round, verify each interaction works.
+TASK: Run the plugin's UI in a real browser via **playwright-cli** (NOT Playwright MCP — see SKILL.md § Test environment policy, R4 retro integration). Capture screenshots for evidence.
 
-Setup:
-1. `cd <worktree-path>`
-2. `bun install` (if not done)
-3. `bun run build`
-4. Open a fresh OpenCode session with the plugin loaded
+### Setup (R4 retro, MANDATORY)
 
-Test scenarios via Playwright MCP (load skill: playwright):
+```bash
+# 1. Pre-test cleanup (R5 retro Gap 4 — kill orphan Playwright MCP processes from prior sessions)
+pkill -9 -f "playwright-mcp" 2>/dev/null || true
+pkill -9 -f "@playwright/mcp" 2>/dev/null || true
+pkill -9 -f "chrome.*--type=zygote" 2>/dev/null || true
+pkill -9 -f "mock-server.py" 2>/dev/null || true
+ss -ltn | grep -q :55006 && echo "port 55006 in use" || echo "port 55006 free"
+ps aux | grep -c "chrome" | head -1  # verify Chrome count < 3
 
-For EACH feature changed/added in this round:
-1. Launch `/diff-review-dashboard` in a test session
-2. Verify the review UI loads
-3. Click through every UI element relevant to the feature
-4. For each click, verify the expected response
+# 2. Build
+cd <worktree-path>
+bun run build
+
+# 3. Start mock-server (port 55006)
+python3 scripts/test-review-ui/mock-server.py 55006 > /tmp/mock-server-r5.log 2>&1 &
+MOCK_PID=$!
+sleep 2
+ss -ltn | grep -q :55006 || (echo "mock-server failed"; kill $MOCK_PID; exit 1)
+
+# 4. Pre-warm playwright-cli (cold start ~1.5-2.5s, one-time cost)
+playwright-cli -s=r5 open "http://127.0.0.1:55006/review/r5_test?token=test"
+```
+
+### 5-min heartbeat check (R5 retro Gap 2)
+
+After 5 minutes from `playwright-cli open`, check for artifacts:
+```bash
+ls docs/screenshots/r5-*.png 2>/dev/null | wc -l  # should be > 0 by now
+ls .omo/round-N/playwright-report.md 2>/dev/null  # may not exist yet
+ps aux | grep -E "cliDaemon.*r5|chrome.*headless" | grep -v grep | wc -l  # should be 1-3 processes
+```
+
+If artifacts are 0 AND processes are accumulating (5+ Chrome zygotes) — STALL DETECTED. Cancel via `background_cancel(taskId="bg_...")`, kill orphan Chrome + mock-server + cliDaemon, lead takes over using the direct `playwright-cli` pattern (~2 min for 5 scenarios).
+
+### Test scenarios (use playwright-cli)
+
+For EACH feature changed/added in this round, walk through:
+1. `playwright-cli -s=r5 goto <url>` (warm, ~65ms — reuses warm browser)
+2. `playwright-cli -s=r5 screenshot --filename docs/screenshots/r5-sN-name.png`
+3. `playwright-cli -s=r5 click <selector>` (if interaction needed)
+4. `playwright-cli -s=r5 type <selector> <text>` (if text input)
+5. `playwright-cli -s=r5 select-option <selector> <value>` (if dropdown)
+
+**DO NOT call `playwright-cli close` between scenarios** — use `goto` instead (5.7x speedup). For state isolation, use `playwright-cli localstorage-clear` + `cookie-clear` (~100ms each).
 
 For this project specifically, ALWAYS test:
 - File tree expand/collapse
@@ -773,40 +842,57 @@ For this project specifically, ALWAYS test:
 - Conversation panel: Resolve / Remove / Reopen / Jump-to-file
 - Cross-round drift: re-launch, verify previous findings carry over
 - Yellow range banner shows when diff range changes
+- Notes surface (R5 #8): visible when drawer closed
+- Drawer scope (R5 #8): contains only finding fields, no notes/submit
+- Header Submit (R5 #8): the only submit action
 
-Capture a screenshot at EACH meaningful step.
+Capture a screenshot at EACH meaningful step. Save to `docs/screenshots/r5-s{N}-{name}.png`.
 
-Output `.omo/round-N/playwright-report.md`:
+### Post-test cleanup (MANDATORY)
 
-```
-# Playwright UI Walkthrough — Round <N>
-
-## Scenarios
-
-| # | Scenario | Expected | Actual | Status |
-|---|---|---|---|---|
-| 1 | File tree expand | Tree opens | <observed> | PASS/FAIL |
-| 2 | Line click → drawer | Drawer opens | <observed> | PASS/FAIL |
-| ... | ... | ... | ... | ... |
-
-## Screenshots
-
-- `docs/screenshots/playwright-round-<N>-01-load.png`
-- `docs/screenshots/playwright-round-<N>-02-add-finding.png`
-- ...
-
-## Error messages observed
-
-<list any console errors or unexpected dialogs>
-
-## Final verdict
-
-**PASS** (all scenarios PASS) | **FAIL** (any scenario FAIL)
+```bash
+playwright-cli -s=r5 close
+playwright-cli close-all
+playwright-cli kill-all
+kill $MOCK_PID 2>/dev/null
+pkill -9 -f "mock-server.py 55006" 2>/dev/null || true
+pkill -9 -f "chrome.*--type=zygote" 2>/dev/null || true
+# Verify clean state
+ps aux | grep -c "chrome"  # should be 0-1
+ss -ltn | grep :55006 || echo "port 55006 free"
 ```
 
-Return value: `{ verdict: "PASS|FAIL", scenarios_total: <N>, scenarios_pass: <N>, scenarios_fail: <N>, screenshots_count: <N> }`.
+Output `.omo/round-N/playwright-report.md` (R5+ canonical structure):
 
-For this project, "FAIL" if ANY button click doesn't produce the documented behavior.
+```markdown
+# R5 Playwright Walkthrough Report
+
+> **Reviewer**: <role>
+> **Date**: YYYY-MM-DD
+> **Tool**: playwright-cli v0.1.x (NOT Playwright MCP)
+
+## Test environment
+- **playwright-cli**: <version>
+- **Mock server**: <port>
+- **Pre-test cleanup**: <done?>
+- **Pre-warm + goto**: <timings>
+
+## Scenarios (5/5 minimum)
+<each scenario: actions + screenshot + verdict>
+
+## Findings
+<severity-grouped findings>
+
+## Verdict
+**PASS** / **PARTIAL** / **FAIL**
+
+## Post-test cleanup verification
+<chrome count, port status, mock-server status>
+```
+
+Return value: `{ verdict: "PASS|FAIL", scenarios_total: <N>, scenarios_pass: <N>, screenshots_count: <N>, stall_detected: false|true }`.
+
+For this project, "FAIL" if ANY scenario doesn't produce the documented behavior.
 ```
 
 ---

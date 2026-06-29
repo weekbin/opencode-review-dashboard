@@ -272,6 +272,34 @@ Lead takes over:
 
 **Rationale**: v1 called this "rescue" and treated it as a failure mode. v2 reframes it as a designed feature because (a) Round 1 showed 3 of 7 phases required it, (b) the alternative — retrying subagents — had 0% success rate, (c) lead has full context to write the deliverable directly.
 
+## Stall detection and emergency lead takeover (R5 retro Gap 5 + Gap 4)
+
+**Why**: R5 Phase 3c subagent (`bg_d6504730`) stalled 12+ minutes — launched mock-server + Chrome + cliDaemon but produced 0 artifacts. Lead waited for system-reminder that never came (subagent was alive but not making progress). Without this rule, lead has no protocol for "subagent alive, no output, indefinitely".
+
+**Detection protocol** (mandatory for all `run_in_background=true` tasks):
+
+1. **5-minute heartbeat check**: After 5 minutes from task launch, lead should check for artifacts using `ls`, `git status`, or process inspection:
+   - For Playwright task: `ls .omo/round-N/playwright-report.md docs/screenshots/r5-*.png 2>&1`
+   - For 5-lens task: `ls .omo/round-N/review-*.md 2>&1`
+   - For Dev task: `git -C $WORKTREE_DIR log --oneline -5`
+2. **Process inspection**: `ps aux | grep -E "<task-pattern>" | grep -v grep` — if processes exist but no artifacts, that's a stall.
+3. **If stall detected**: Cancel via `background_cancel(taskId="bg_...")`, kill orphan processes (Chrome, mock-server, cliDaemon), and lead takes over using the established pattern (e.g., for Playwright: pre-warm + goto + walkthrough).
+
+**Pre-test cleanup before Playwright tasks** (R5 retro Gap 4):
+
+The Playwright Phase 3c prompt must include in its pre-test cleanup step:
+```bash
+# Kill orphan Playwright MCP processes from prior sessions (R5 retro evidence: 2 leftover npm-exec playwright-mcp processes from earlier sessions interfered with R5's cliDaemon)
+pkill -9 -f "playwright-mcp" 2>/dev/null || true
+pkill -9 -f "@playwright/mcp" 2>/dev/null || true
+# Then standard cleanup
+pkill -9 -f "chrome.*--type=zygote" 2>/dev/null || true
+pkill -9 -f "mock-server.py" 2>/dev/null || true
+ss -ltn | grep -q :55006 && echo "port 55006 in use" || echo "port 55006 free"
+```
+
+**R5 evidence**: bg_d6504730 stalled 12+ min, lead cancelled at 14:31, walked through 5 scenarios in ~2 min via direct `playwright-cli` calls. 5.7x speedup consistent with the established pre-warm + goto pattern.
+
 ## Standardized output formats (CANONICAL — must match exactly)
 
 **Rule**: Phase 4.5 (Retro), 4.6 (Post-exec), 4.7 (Self-check) outputs are **canonical** — they MUST follow the templates below verbatim. Different LLM models (Claude / GPT / Gemini / local) produce the same output format so the user can read them consistently across rounds.
