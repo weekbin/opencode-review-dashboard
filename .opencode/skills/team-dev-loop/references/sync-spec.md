@@ -77,6 +77,18 @@ git log HEAD..origin/main --oneline
 # Case E: both clean → normal
 
 # If rebase conflict → git rebase --abort → HARD STOP
+
+# 5.5 gh label pre-create (v5.2 — fixes Gap O from R10 retro)
+# PM Manager v5 calls `gh issue create --label pm-manager-approved,round-N` which
+# fails if labels don't exist on the repo. Pre-create idempotently here.
+if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+  for label in pm-manager-approved round-N; do
+    gh label create "$label" --color "0E8A16" --description "PM Manager v5 approved (Round N)" --force 2>/dev/null || true
+  done
+  echo "[sync] gh labels pre-created"
+else
+  echo "[sync] gh not available — skipping label pre-create (Phase 0.5 may fail to set labels)"
+fi
 ```
 
 ## Output template

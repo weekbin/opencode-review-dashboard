@@ -319,9 +319,9 @@ v5 has no automatic rollback trigger — only the hard-stop table fires automati
 - No resets — even if a round fails, its directory stays (with `decision.md` showing FAIL)
 - Skip numbers only when explicitly canceled by user
 
-## Decision template (Phase 4 — lead writes directly, v5)
+## Decision template (Phase 4 — lead writes directly, v5.2 — Gap Q refactor)
 
-Lead writes `.omo/round-N/decision.md` using this template. Replace `<...>` placeholders.
+Lead writes `.omo/round-N/decision.md` using this template. **v5.2 simplification** (Gap Q fix): Phase 0.25/0.75/2.5 inline sections REMOVED from template (those phases have their own dedicated `.md` files); decision.md now references `retro.md` for skill gaps and `post-exec-analysis.md` for call-flow details instead of duplicating.
 
 ```markdown
 # Decision — Round <N>: <one-line title>
@@ -331,6 +331,7 @@ Lead writes `.omo/round-N/decision.md` using this template. Replace `<...>` plac
 > **Lead**: sisyphus (primary chat)
 > **Branch**: <branch-name if applicable, else main>
 > **Commit**: <commit-sha after push>
+> **Worktree path**: <absolute path, e.g. `$HOME/.worktrees/team-dev-loop-round-N`>     (v5.2 — fixes Gap P from R10 retro: explicit reminder for lead inline edits)
 
 ---
 
@@ -340,7 +341,7 @@ Lead writes `.omo/round-N/decision.md` using this template. Replace `<...>` plac
 
 <1-2 sentence summary>
 
-## Phase -0 Sync (NEW v5)
+## Phase -0 Sync (NEW v5 — keep inline, it's the baseline)
 
 - Network: PASS / FAIL: <error>
 - Local state: clean / dirty: <files>
@@ -348,27 +349,9 @@ Lead writes `.omo/round-N/decision.md` using this template. Replace `<...>` plac
 - Action: none / rebase / pull / HARD STOP
 - Baseline main HEAD SHA: <sha>
 
-## Phase 0.25 PM Researcher (NEW v5)
-
-- Verified claims: N
-- Unverified claims: N
-- Mischaracterized claims: N
-- Candidates needing rewrite: <list>
-
-## Phase 0.75 Planner (NEW v5)
-
-- Verdict: PROCEED / STOP
-- Scope selected: feature_count=N, bugfix_count=N, total=N, profile=<type>
-- Polish quota used: 0 or 1
-- Candidates: <list with issue#>
-- Decision rationale: <2-3 paragraphs>
-
-## Phase 2.5 Pre-Commit Audit (NEW v5)
-
-- SHAs verified: <count> / <count> PASS
-- Claims reverse-verified: <count> / <count> PASS
-- Verdict: PASS / FAIL → audit-blocked.md
-- Audit timestamp: <ISO 8601>
+> Phase 0.25 PM Researcher verdict → see `competitor-landscape.md` ## Summary
+> Phase 0.75 Planner scope → see `planner.md` ## Scope selected
+> Phase 2.5 Pre-Commit Audit verdict → see inline ### Phase 2.5 Pre-Commit Audit Audit section below
 
 ## Per-phase verdicts (1 row per phase)
 
@@ -381,12 +364,19 @@ Lead writes `.omo/round-N/decision.md` using this template. Replace `<...>` plac
 | 0.75 | Planner v5 | <PROCEED/STOP> | `planner.md` (+ `planner-blocked.md` if STOP) |
 | 1 | Architect | <PASS/FAIL> | `plan.md` |
 | 2 | Dev | <PASS/FAIL/PARTIAL> | (worktree + diff) |
-| 2.5 | Pre-Commit Audit | <PASS/FAIL> | inline verdict above (+ `audit-blocked.md` if FAIL) |
+| 2.5 | Pre-Commit Audit | <PASS/FAIL> | `audit-blocked.md` if FAIL |
 | 3a | Tester Review (5 lens) | <PASS/FAIL> | `test-report.md` |
-| 3b | Tester Diff | <PASS/FAIL> | `diff-report.md` |
-| 3c | Tester Playwright | <PASS/FAIL> | `playwright-report.md` |
-| 3.5 | PM Doc Writer | <PASS/FAIL> | `doc-update-report.md` |
+| 3b | Tester Diff | <PASS/FAIL> | (embedded in `test-report.md`) |
+| 3c | Tester Playwright | <PASS/FAIL/PARTIAL> | `playwright-report.md` (or lead-takeover note) |
+| 3.5 | PM Doc Writer | <PASS/FAIL> | (embedded in `test-report.md`) |
 | 4 | Decision | <this doc> | `decision.md` |
+
+## Phase 2.5 Pre-Commit Audit (inline — essential for closure commit)
+
+- SHAs verified: <count> / <count> PASS
+- Claims reverse-verified: <count> / <count> PASS
+- Verdict: PASS / FAIL → audit-blocked.md
+- Audit timestamp: <ISO 8601>
 
 ## Dev Self-Check (AC1-ACN trace)
 
@@ -410,6 +400,9 @@ Lead writes `.omo/round-N/decision.md` using this template. Replace `<...>` plac
 ## Lead takeovers this round
 
 <list of roles lead took over, or "None">
+
+> **Detailed skill gaps + followup + action items** → see `retro.md`
+> **Call-flow timeline + wasted analysis + new skill gaps** → see `post-exec-analysis.md`
 
 ## Rollback (if applicable)
 

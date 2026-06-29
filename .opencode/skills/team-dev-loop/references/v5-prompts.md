@@ -318,11 +318,9 @@ TASK: Receive PM Manager's validated candidate list + GitHub issues + backlog, t
   **You do NOT ask the user. You decide autonomously. No escalation path.**
 
 Inputs:
-- `.omo/round-N/pm-manager-review.md` (validated list + opened issues)
-- `.omo/proposals.jsonl` (last 10 rounds' follow_up_candidates)
-- `.omo/backlog.md` (if exists)
-- `gh issue list --state open --limit 30 --json number,title,labels,createdAt`
-- `.omo/round-(N-1)/decision.md` + `.omo/round-(N-1)/brief.md` (for R3-fabrication defense + previous scope context)
+- **v5.3 PRIMARY**: `.omo/round-N/planner-input.md` (pre-synthesized by lead after Phase 0.5 — contains PM Manager validated list + PM Researcher verdict + filtered follow_up_candidates + prior round summary + hard caps reminder). Read this file as your main input.
+- For R3-fabrication defense ONLY (still needed): `.omo/round-(N-1)/decision.md` (to extract SHAs for `git cat-file -e` pre-check below)
+- `gh issue list --state open --limit 30 --json number,title,labels,createdAt` — only if planner-input.md ## Follow_up Candidates section is empty (cross-check live GH issues for completeness)
 
 ### Pre-check: Code commit verification (R3 fabrication defense, NEW v5)
 

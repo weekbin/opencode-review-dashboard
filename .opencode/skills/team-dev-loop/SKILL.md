@@ -148,12 +148,49 @@ const [pmResearcher, pmMgr] = await Promise.all([
 // v5: cross-check PM Researcher competitor-landscape.md (advisory only, not blocking)
 // v5: output ## Validated for next round section (Planner input)
 
+// === Phase 0.5 → 0.75: Planner pre-synthesized input (NEW v5.3) ===
+// Lead generates `.omo/round-N/planner-input.md` so Planner reads 1 file instead
+// of 4-5. Saves ~1-2 min Planner context + reduces stale information.
+// (R5 retro lens-context synthesis pattern, generalized to Planner.)
+const plannerInput = `---
+# Planner Input — Round N
+
+## PM Manager Validated List (Phase 0.5)
+| # | Title | Type | User-value | Issue# | File count | LOC est | Notes |
+|---|---|---|---|---|---|---|---|
+| ${validatedCandidates joined as markdown table rows}
+
+## PM Researcher verdict (Phase 0.25, advisory)
+${pmResearcher.verdict}: ${pmResearcher.reason}
+Verified: ${pmResearcher.verified_count}, Unverified: ${pmResearcher.unverified_count}, Mischaracterized: ${pmResearcher.mischaracterized_count}
+
+## Follow_up Candidates (filtered, aged_rounds ≤ 3)
+${filteredFollowUpCandidates from proposals.jsonl last 10 rounds, excluding closed issues}
+
+## Prior Round Summary (R-N artifacts)
+- brief.md: <1-line summary of N-1 candidates>
+- pm-manager-review.md verdict: <APPROVE/REJECT/CLARIFY for N-1>
+- planner.md scope: <N-1's chosen candidates, file:line>
+- decision.md verdict: <PASS/FAIL of N-1>
+- rollup base SHA: <N-1's final commit, used for git cat-file -e>
+
+## Hard Caps Reminder (v5.2)
+- feature ≤ 3
+- bugfix ≤ 5
+- total ≤ 8
+- polish quota ≤ 1
+- architecture ≤ 1
+---`
+writeFile(`${roundDir}/planner-input.md`, plannerInput)
+
 // === Phase 0.75: Planner (NEW v5 — autonomous scope selector) ===
 const planner = await task({
   category: "deep",  // autonomous multi-step planning + ranking
   prompt: PLANNER_PROMPT,  // from references/v5-prompts.md ## 2.5
 })
-// Inputs: pm-manager-review.md + proposals.jsonl + GH issues + prior round artifacts
+// **v5.3 input**: Planner reads `${roundDir}/planner-input.md` (pre-synthesized by lead)
+// — NOT pm-manager-review.md + proposals.jsonl + GH issues + prior round artifacts
+// (those are now consolidated into planner-input.md by lead inline step above)
 // Pre-check: git cat-file -e on prior round SHAs (R3 fabrication defense extended to Planner)
 // Backlog freshness check (moved from PM)
 // Ranking + scope selection with HARD CAPS: feature≤3 / bugfix≤5 / total≤8 / polish≤1 / arch≤1
