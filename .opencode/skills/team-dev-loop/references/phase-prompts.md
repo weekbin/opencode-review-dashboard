@@ -102,7 +102,7 @@ ANTI-PATTERNS to reject before emitting brief:
 - Candidate with no As/I want/So that → REJECT and rewrite
 - File:line evidence cited as "where the bug is" → RE-FRAME as "where the user-visible behavior lives"
 
-## Backlog freshness check (Round 3 lesson)
+### Backlog freshness check (Round 3 lesson)
 
 Before pulling candidates from `.omo/proposals.jsonl` follow_up_candidates, ask:
 1. When was the user last asked about direction? If the user has NOT been consulted in this session or recent rounds, you are probably re-treading stale backlog (Round 3 evidence: PM auto-retreaded Round 1+2's 3 leftover candidates without first asking "what direction does the user want NOW?")
@@ -291,7 +291,7 @@ Return value to lead: `{ verdict: "PASS|FAIL", per_lens: { goal: "PASS|FAIL", qa
 
 If any of the 5 lenses returns empty / BLOCKED / context-exhausted — write `.omo/round-N/lead-takeover-tester-review.md` with the failure note, then write the deliverable yourself based on the lenses that DID succeed. Lead will be notified via the proposals.jsonl `lead_takeovers` field.
 
-## Known harness limitations (Round 3 lesson — `ctx.client.app.log`)
+### Known harness limitations (Round 3 lesson — `ctx.client.app.log`)
 
 The lead sets up the test invocation with a mock `ctx` object because the real OpenCode runtime isn't available in subagent runs. Most plugins (including this dashboard's reviewer-diffs plugin) emit a `ctx.client.app.log(...)` call AFTER the server-side JSON response has already been written. In the mock environment that call throws (`undefined is not an object (evaluating 'ctx.client.app')`) and the JS return value is lost — only the side-effect (state.json on disk, browser session terminated) survives.
 
