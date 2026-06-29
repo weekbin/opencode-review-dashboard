@@ -786,11 +786,16 @@ TASK: Run the plugin's UI in a real browser via **playwright-cli** (NOT Playwrig
 ### Setup (R4 retro, MANDATORY)
 
 ```bash
-# 1. Pre-test cleanup (R5 retro Gap 4 — kill orphan Playwright MCP processes from prior sessions)
+# 1. Pre-test cleanup (R5 retro Gap 4 + Gap G — kill orphan Playwright MCP processes from prior sessions; AVOID pkill -f chrome on this system, hangs at 120s)
 pkill -9 -f "playwright-mcp" 2>/dev/null || true
 pkill -9 -f "@playwright/mcp" 2>/dev/null || true
-pkill -9 -f "chrome.*--type=zygote" 2>/dev/null || true
 pkill -9 -f "mock-server.py" 2>/dev/null || true
+# Use specific PIDs for cliDaemon + Chrome (avoids pkill -f chrome hang)
+CLI_PIDS=$(ps aux | grep -E "cliDaemon.*r5|playwright-cli" | grep -v grep | awk '{print $2}' | tr '\n' ' ')
+[ -n "$CLI_PIDS" ] && kill -9 $CLI_PIDS 2>/dev/null || true
+# Specific Chrome cleanup (only --type=zygote + --type=renderer)
+CHROME_PIDS=$(ps aux | grep -E "chrome.*--type=zygote|chrome.*--type=renderer|chrome.*--type=gpu" | grep -v grep | awk '{print $2}' | tr '\n' ' ')
+[ -n "$CHROME_PIDS" ] && kill -9 $CHROME_PIDS 2>/dev/null || true
 ss -ltn | grep -q :55006 && echo "port 55006 in use" || echo "port 55006 free"
 ps aux | grep -c "chrome" | head -1  # verify Chrome count < 3
 
@@ -856,7 +861,9 @@ playwright-cli close-all
 playwright-cli kill-all
 kill $MOCK_PID 2>/dev/null
 pkill -9 -f "mock-server.py 55006" 2>/dev/null || true
-pkill -9 -f "chrome.*--type=zygote" 2>/dev/null || true
+# Specific-PID Chrome cleanup (avoids pkill -f chrome 120s hang on this system)
+CHROME_PIDS=$(ps aux | grep -E "chrome.*--type=zygote|chrome.*--type=renderer|chrome.*--type=gpu" | grep -v grep | awk '{print $2}' | tr '\n' ' ')
+[ -n "$CHROME_PIDS" ] && kill -9 $CHROME_PIDS 2>/dev/null || true
 # Verify clean state
 ps aux | grep -c "chrome"  # should be 0-1
 ss -ltn | grep :55006 || echo "port 55006 free"
