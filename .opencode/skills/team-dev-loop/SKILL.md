@@ -188,9 +188,9 @@ For each phase, read `references/phase-prompts.md` for the exact prompt body. Ea
 |   | 3a-3 Lens Code | `ultrabrain` (parallel) | subagent | `review-code.md` | bugfix: **skip** / feature+architecture: run |
 |   | 3a-4 Lens Security | `ultrabrain` (parallel) | subagent | `review-security.md` | always if 3a runs |
 |   | 3a-5 Lens Context | `artistry` (parallel) | subagent | `review-context.md` | bugfix: **skip** / feature+architecture: run |
-| 3b | Tester Diff | `unspecified-high` | **lead by default** | `diff-report.md` | always run |
-| 3c | Tester Playwright | `visual-engineering` | **lead by default** (R4+R5 evidence: 2/2 subagent stalls — 7+ min and 12m+ min wasted. Lead takeover both times was 2-5 min. Subagent is unreliable in this environment) | `playwright-report.md` | bugfix: **skip unless UI changed** / feature+architecture: run |
-| 3.5 | PM Doc Writer | `writing` | **lead by default when work is small** (≤3 doc files, no screenshot, no Playwright MCP needed) / subagent for full README rewrite + screenshot capture | `doc-update-report.md` (side effect: README + screenshots) | bugfix: 1-para README / feature+architecture: full README + screenshot |
+| 3b | Tester Diff | `unspecified-high` | **lead by default; lead-parallel-after-3a with 3c + 3.5** (R5 retro Patch H: all 3 are lead tasks; lead writes all 3 in same response block after 3a synthesis) | `diff-report.md` | always run |
+| 3c | Tester Playwright | `visual-engineering` | **lead by default; lead-parallel-after-3a with 3b + 3.5** (R4+R5 evidence: 2/2 subagent stalls — 7+ min and 12m+ min wasted. Lead takeover both times was 2-5 min. Subagent is unreliable in this environment for browser walkthroughs) | `playwright-report.md` | bugfix: **skip unless UI changed** / feature+architecture: run |
+| 3.5 | PM Doc Writer | `writing` | **lead by default; lead-parallel-after-3a with 3b + 3c** (lead writes 3b+3c+3.5 in same response block — all 3 are lead tasks now) | `doc-update-report.md` (side effect: README + screenshots) | bugfix: 1-para README / feature+architecture: full README + screenshot |
 | 4 | Decision | (no subagent) | **lead always** | `decision.md` | always run |
 | 4.5 | **Round-end retrospective** | (no subagent) | **lead always** | `.omo/round-N/retro.md` | **always run** (mandatory) |
 | — | Skill-update patch (if retro surfaced skill gaps) | (no subagent) | **lead always** | `.opencode/skills/team-dev-loop/**` | **always run if retro surfaces skill gaps** |
