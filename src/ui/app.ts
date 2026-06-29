@@ -27,6 +27,8 @@ type Finding = {
   status?: "open" | "closed_auto" | "resolved";
   round?: number;
   created_at?: number;
+  manually_reopened?: boolean;
+  close_reason?: "file_removed" | "anchor_missing";
   comments?: FindingComment[];
 };
 
@@ -767,6 +769,47 @@ function endpoint(suffix: string) {
 function setStatus(text: string, error = false) {
   statusRoot.textContent = text;
   statusRoot.classList.toggle("error", error);
+}
+
+function showReopenReasonModal(_findingId: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    const dialog = document.createElement("div");
+    dialog.className = "modal-dialog conversation-drawer";
+    dialog.setAttribute("role", "dialog");
+    dialog.setAttribute("aria-modal", "true");
+    dialog.innerHTML = `
+      <h3>Force Reopen Finding</h3>
+      <p>Why are you re-opening this finding? (Optional but helps the agent understand your intent.)</p>
+      <textarea id="reopen-reason" rows="3" placeholder="e.g., 'The previous fix removed the symptom but the root cause is still there'"></textarea>
+      <div class="modal-actions">
+        <button id="reopen-cancel" type="button">Cancel</button>
+        <button id="reopen-submit" class="primary" type="button">Re-open</button>
+      </div>
+    `;
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+    const textarea = dialog.querySelector("#reopen-reason") as HTMLTextAreaElement | null;
+    const cancelBtn = dialog.querySelector("#reopen-cancel") as HTMLButtonElement | null;
+    const submitBtn = dialog.querySelector("#reopen-submit") as HTMLButtonElement | null;
+
+    const closeWith = (value: string | null) => {
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      resolve(value);
+    };
+
+    textarea?.focus();
+    cancelBtn?.addEventListener("click", () => closeWith(null));
+    submitBtn?.addEventListener("click", () => {
+      const trimmed = (textarea?.value ?? "").trim();
+      closeWith(trimmed || "(no reason provided)");
+    });
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) closeWith(null);
+    });
+  });
 }
 
 function side(input: unknown): Side {
@@ -1690,6 +1733,7 @@ type ConversationEntry = {
   kind?: string;
   origin: "existing" | "new";
   created_at: number;
+  manually_reopened?: boolean;
   comments?: FindingComment[];
 };
 
@@ -1847,13 +1891,22 @@ function renderConversationPanel(root: HTMLElement) {
         resolveFinding(entry.id);
       });
       actions.appendChild(resolveBtn);
-    } else if (isResolved && !isStale) {
+    } else if (isResolved || isStale) {
       const reopenBtn = document.createElement("button");
       reopenBtn.className = "primary";
-      reopenBtn.textContent = "Reopen";
-      reopenBtn.addEventListener("click", (event) => {
+      // R9 #1: on stale (closed_auto) findings the button is labeled
+      // "Force Reopen" to indicate the user is overriding the auto-close.
+      reopenBtn.textContent = isStale ? "Force Reopen" : "Reopen";
+      reopenBtn.addEventListener("click", async (event) => {
+        event.preventDefault();
         event.stopPropagation();
-        reopenFinding(entry.id);
+        if (isStale) {
+          const reason = await showReopenReasonModal(entry.id);
+          if (reason === null) return;
+          await reopenFinding(entry.id, reason, { manually_reopened: true });
+        } else {
+          await reopenFinding(entry.id);
+        }
       });
       actions.appendChild(reopenBtn);
     }
@@ -2353,11 +2406,16 @@ async function resolveFinding(id: string) {
   setStatus("Finding resolved");
 }
 
-async function reopenFinding(id: string) {
+async function reopenFinding(id: string, reason = "", opts: { manually_reopened?: boolean } = {}) {
+  const body: { finding_id: string; manually_reopened?: true; reason?: string } = {
+    finding_id: id,
+  };
+  if (opts.manually_reopened) body.manually_reopened = true;
+  if (reason) body.reason = reason.slice(0, 200);
   const response = await fetch(endpoint("/reopen"), {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ finding_id: id }),
+    body: JSON.stringify(body),
   }).catch(() => undefined);
 
   if (!response?.ok) {
@@ -2369,11 +2427,19 @@ async function reopenFinding(id: string) {
   const item = state.existing.find((f) => f.id === id);
   if (item) {
     item.status = "open";
+    if (opts.manually_reopened) {
+      item.manually_reopened = true;
+      item.close_reason = undefined;
+    }
   }
   renderFindings();
   renderConversationPane();
   syncAll();
-  setStatus("Finding reopened");
+  setStatus(
+    opts.manually_reopened
+      ? "Finding force-reopened — will be re-applied in the next round"
+      : "Finding reopened",
+  );
 }
 
 async function addComment(id: string, text: string) {
