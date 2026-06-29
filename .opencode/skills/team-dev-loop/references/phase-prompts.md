@@ -204,10 +204,14 @@ Inputs:
 
 ### Pre-check: Code commit verification (R4 retro lesson, MANDATORY)
 
+**R6 optimization**: PM Triage ALREADY runs the same code-commit verification (see § 1 PM Triage prompt "Pre-check" section). To avoid duplicate work, **PM Manager SHOULD reuse PM Triage's verification result** from `brief.md` ## Source or ## Pre-check section if it's there. Only run your own verification if PM Triage's result is missing or you suspect it's stale.
+
 Before evaluating the brief itself, verify the prior round's audit-trail integrity. If `.omo/round-(N-1)/` exists:
 
-1. **Extract every commit SHA cited in the prior round's audit-trail** (run `grep -oE '[0-9a-f]{7,40}' .omo/round-(N-1)/decision.md .omo/round-(N-1)/diff-report.md .omo/round-(N-1)/test-report.md | sort -u`).
-2. **Verify each SHA exists in git**: `for sha in <extracted>; do git cat-file -e "$sha" 2>/dev/null && echo "$sha OK" || echo "$sha MISSING"; done`.
+1. **Read PM Triage's pre-check result** from `brief.md` ## Source (look for lines like "R4 audit-trail code-commit verification: ALL X SHAs verified OK"). If present and PASS — proceed directly to pseudo-requirement markers check.
+2. **If PM Triage's result is missing or FAIL**: run your own verification:
+   - Extract every commit SHA cited in the prior round's audit-trail (run `grep -oE '[0-9a-f]{7,40}' .omo/round-(N-1)/decision.md .omo/round-(N-1)/diff-report.md .omo/round-(N-1)/test-report.md | sort -u`).
+   - Verify each SHA exists in git: `for sha in <extracted>; do git cat-file -e "$sha" 2>/dev/null && echo "$sha OK" || echo "$sha MISSING"; done`.
 3. **If any SHA is MISSING**: this is a CRITICAL pseudo-requirement marker (`AUDIT_TRAIL_FABRICATED`). The prior round's audit-trail is fabricated (claims a SHIP that didn't happen). Required actions:
    - Return verdict: `CLARIFY` with reason "Prior round audit-trail fabricated: SHAs <missing_list> do not exist in git. See .omo/round-(N-1)/AUDIT-TRAIL-INTEGRITY-NOTE.md pattern."
    - The lead will then re-run the prior round (or mark it DESIGN-ONLY) before the current brief can be approved.
@@ -492,6 +496,19 @@ TASK: Run the project's test suite + an ad-hoc smoke test of the feature.
 Inputs:
 - Worktree: `<worktree-path>`
 - `.omo/round-N/plan.md` (## Test plan section)
+- `.omo/round-N/lens-context.md` (R6 optimization — pre-synthesized context, read this FIRST instead of re-discovering)
+
+### QA scope (R5 optimization — saves 5-7 min on rounds with many existing scenarios)
+
+R5 evidence: full sweep of 9 e2e scenarios took 10m 33s — slowest of 5 lenses, blocked test-report synthesis. Existing scenarios (14+ previously passing) don't need re-verification if they passed in R(N-1).
+
+QA's actual scope:
+1. **All build/lint/typecheck/format gates** (full run — fast, ~30s)
+2. **Unit tests** (full run — fast, ~30s)
+3. **E2E tests**: ONLY spot-check **NEW scenarios added this round** (look at `git diff main...origin/<branch> -- scripts/test-review-ui/scenarios.mjs` to identify them). For a round with 0 new scenarios, skip e2e entirely.
+4. **Ad-hoc smoke test**: invoke the changed feature directly. For each AC in plan.md, verify it once via direct invocation.
+
+This typically takes 2-4 min instead of 10+ min for rounds with many existing scenarios.
 
 Steps:
 1. `cd <worktree>`
@@ -499,8 +516,8 @@ Steps:
 3. `bun run check` (format + lint + typecheck) — record pass/fail per gate
 4. `bun run build` — record pass/fail
 5. Unit tests: `bun test` or `bun run test:unit` — record pass/fail count
-6. E2E tests: `bun run test:ui` or `bun run test:e2e` — record pass/fail count
-7. Ad-hoc smoke test: invoke the changed feature directly (e.g., call the CLI command, load the UI), record pass/fail per assertion
+6. E2E tests: spot-check ONLY NEW scenarios (not full sweep)
+7. Ad-hoc smoke test: invoke the changed feature directly, record pass/fail per AC
 
 Output `.omo/round-N/review-qa.md`:
 
@@ -516,18 +533,18 @@ Output `.omo/round-N/review-qa.md`:
 | typecheck | `bun run typecheck` | pass/fail |
 | build | `bun run build` | pass/fail |
 | unit | `bun test` | <N>/<N> pass |
-| e2e | `bun run test:ui` | <N>/<N> pass |
+| e2e (NEW scenarios only) | `bun run test:ui --only <new-scenario>` | <N>/<N> pass |
 
 ## Ad-hoc smoke test
 
-<list of manual checks performed, each with PASS/FAIL>
+<list of manual checks per AC, each with PASS/FAIL>
 
 ## Verdict
 
 **PASS** (all gates pass + smoke test passes) | **FAIL** (any gate fails)
 ```
 
-Return value: `{ verdict: "PASS|FAIL", gates: { format: "pass|fail", lint: ..., typecheck: ..., build: ..., unit_pass: <N>, unit_total: <N>, e2e_pass: <N>, e2e_total: <N> } }`.
+Return value: `{ verdict: "PASS|FAIL", gates: { format: "pass|fail", lint: ..., typecheck: ..., build: ..., unit_pass: <N>, unit_total: <N>, e2e_new_pass: <N>, e2e_new_total: <N>, e2e_scope: "NEW-only" } }`.
 ```
 
 ---
