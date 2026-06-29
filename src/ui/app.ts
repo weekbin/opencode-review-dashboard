@@ -444,6 +444,7 @@ layoutToggle.addEventListener("click", (event) => {
 
 // ── Sidebar mode toggle ──
 const sidebarMode = document.querySelector("#sidebar-mode") as HTMLDivElement;
+const navbarTabs = document.querySelector("#navbar-tabs") as HTMLDivElement;
 
 function applySidebarMode() {
   for (const btn of sidebarMode.querySelectorAll("button")) {
@@ -467,8 +468,6 @@ sidebarMode.addEventListener("click", (event) => {
   if (!btn) return;
   setSidebarMode(btn.dataset.mode as SidebarMode);
 });
-
-const navbarTabs = document.querySelector("#navbar-tabs") as HTMLDivElement;
 
 function applyActiveTab() {
   const tabButtons = [...navbarTabs.querySelectorAll<HTMLButtonElement>("button")];
