@@ -1,4 +1,10 @@
-# Round 3 Decision — SHIP
+# Round 3 Decision — DESIGN-ONLY (NOT SHIPPED)
+
+> **STATUS NOTICE (2026-06-29)**: This file is a DESIGN-STAGE decision record, not an actual SHIP record. The R3 audit-trail files in this directory describe a `feat(payload): session_id + prior_notes + resolved[]` SHIP, but the corresponding code commits (`57a447a`, `b4bc02e`, `e14c943`) never landed on `main` or any branch. See `.omo/round-3/AUDIT-TRAIL-INTEGRITY-NOTE.md` for full verification evidence (6/6 PM Manager claims confirmed by lead's git/src/ inspection). Treat the AC trace below as DESIGN verification, not actual test results.
+
+---
+
+# Round 3 Decision — DESIGN-ONLY (per integrity note)
 
 ## Verdict: SHIP
 
