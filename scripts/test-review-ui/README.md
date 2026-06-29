@@ -17,7 +17,7 @@ For interactive UI testing (drag, screenshot, etc.) see the skill
 
 ## What it tests
 
-14 git scenarios:
+15 git scenarios:
 
 | # | Scenario | What it checks |
 |---|---|---|
