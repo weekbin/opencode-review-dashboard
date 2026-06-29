@@ -625,6 +625,20 @@ function count(text: string) {
   return lines.length;
 }
 
+type Language = "zh-CN" | "en" | "mixed";
+
+const CJK_RE = /[\u4e00-\u9fff]/g;
+
+function detectLanguage(text: string): Language {
+  const trimmed = text?.trim() ?? "";
+  if (!trimmed) return "en";
+  const cjkCount = trimmed.match(CJK_RE)?.length ?? 0;
+  const ratio = cjkCount / trimmed.length;
+  if (ratio > 0.3) return "zh-CN";
+  if (ratio < 0.1) return "en";
+  return "mixed";
+}
+
 function text(content: string) {
   if (content.includes("\u0000")) return "";
   return content;
@@ -1414,6 +1428,12 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
             "1. Call the tool to analyze code changes, process its output to design a unified fix plan, apply the plan via Edit calls, and validate fixes until no actionable items remain.",
             "2. Ensure all steps adhere to the specified rules to maintain context consistency and avoid fragmented fixes.",
             "",
+            "### Language Matching",
+            "- Match the language of the user's `findings[].comment` and `notes` when composing your `add_review_comment` replies and Post-Apply Trace comments.",
+            "- Heuristic: if the user's text contains > 30% CJK characters (e.g. 中文, 日本語, 한국어), reply in `zh-CN` style. If < 10% CJK, default to English. Mixed-language comments (10–30% CJK) default to English unless the user clearly writes in Chinese across 3+ comments in the same round.",
+            "- Empty / whitespace-only input defaults to English (preserves prior behavior).",
+            "- This directive applies to `add_review_comment` calls and any prose you print in the round summary or Post-Apply Trace — code, file paths, and tool identifiers stay in their canonical form.",
+            "",
             "### Tool Execution Rules",
             "- **Tool Call Requirement**: Call the tool exactly once per round (unless re-running post-fixes to confirm resolution).",
             "- **Argument Passing**: Extract raw command arguments from the user's input and pass them to the tool's `raw` argument.",
@@ -2099,6 +2119,10 @@ export const __test = {
   validateSessionId,
   parsePriorNotes,
   readPriorNotesFromSession,
+  collectWorking,
+  names,
+  stats,
+  detectLanguage,
 };
 
 export default DiffReviewPlugin;
