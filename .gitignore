@@ -7,6 +7,9 @@ dist/
 .opencode/state.json
 .opencode/magic-context/
 .playwright-mcp/
+# We use opencode, not Claude CLI — `playwright-cli install --skills` would
+# otherwise pollute the project with .claude/skills/. Global install is enough.
+.claude/
 *.tmp
 # .omo/ project-level design library IS tracked (.omo/round-N/, .omo/proposals.jsonl,
 # .omo/round-2-plan.md, etc.). Runtime/ephemeral subdirs from other skills stay ignored:

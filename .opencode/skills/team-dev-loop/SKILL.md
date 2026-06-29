@@ -166,12 +166,14 @@ For each phase, read `references/phase-prompts.md` for the exact prompt body. Ea
 
 **IMPORTANT**: phases marked with `bugfix` / `feature` / `architecture` are gated by the round profile — see "Round profile auto-classification" below. Lead should NOT call `task()` for phases that the profile says to skip.
 
-**Test environment policy (R4 loop meta-review lesson, MANDATORY)**:
-- **3a Tester Playwright** and **3.5 PM Doc Writer** (when capturing screenshots) use the `review-dashboard-ui-test` skill, which drives Playwright MCP against a mock server. Both must follow the **test session lifecycle**:
+**Test environment policy (R4 loop meta-review + playwright-cli integration, MANDATORY)**:
+- **3a Tester Playwright** and **3.5 PM Doc Writer** (when capturing screenshots) use the **`playwright-cli` global command** (installed via `npm install -g @playwright/cli@latest`, requires Node 18+ via nvm). The bash tool calls `playwright-cli` directly. **NOT Playwright MCP** — playwright-cli is token-efficient (no accessibility tree in LLM context), has built-in session management (`playwright-cli -s=name`, `list`, `close-all`, `kill-all`), and prevents the page-leak + Chrome-accumulation pattern that R4 retro found.
+- `playwright-cli` is at `$HOME/.nvm/versions/node/v22.21.1/bin/playwright-cli` (managed by nvm). Verify: `playwright-cli --version` → `0.1.x`.
+- **Test session lifecycle** (mandatory):
   1. **Pre-test cleanup** (mandatory): kill any orphan Chrome (`pkill -9 -f "chrome.*--type=zygote"`) + kill any orphan mock-server (`pkill -9 -f "mock-server.py"`) + verify port 8890 free (`ss -ltn | grep -q :8890`) + verify Chrome count < 3.
-  2. **Per-test cleanup**: between every test scenario, call `playwright_browser_close()` (idempotent). This is the #1 fix for the user-reported "Playwright tests are slow, unstable, cause CPU 100%" pattern.
-  3. **Post-test cleanup** (mandatory): kill mock server PID (record on start), kill orphan Chrome, verify clean state (Chrome count = 0, port 8890 free). **NEVER end a Playwright test session without this step** — that's how the user-reported "machine freezes" happens.
-- See `.opencode/skills/review-dashboard-ui-test/SKILL.md` Step 2 (pre-test), Step 4 (per-test close call), Step 5 (post-test) for the exact commands.
+  2. **Per-test cleanup**: at the end of every test scenario, `playwright-cli close` (or `playwright-cli -s=name close` for named sessions). This is the #1 fix for the user-reported "Playwright tests are slow, unstable, cause CPU 100%" pattern.
+  3. **Post-test cleanup** (mandatory): `playwright-cli close-all` + kill mock server PID (record on start), kill orphan Chrome, verify clean state (Chrome count = 0, port 8890 free). **NEVER end a Playwright test session without this step** — that's how the user-reported "machine freezes" happens.
+- See `.opencode/skills/review-dashboard-ui-test/SKILL.md` for the exact commands per scenario. The `playwright-cli kill-all` command is the new single-step replacement for the multi-pkill cleanup loop we used to do manually.
 
 | Phase | Role | Subagent type | Default executor | Output file(s) | Profile gating |
 |---|---|---|---|---|---|

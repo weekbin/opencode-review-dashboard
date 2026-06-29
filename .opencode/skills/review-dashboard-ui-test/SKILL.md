@@ -94,51 +94,55 @@ MOCK_PID=$(pgrep -f "mock-server.py.*8890" | head -1)
 echo "  mock server PID: $MOCK_PID"
 ```
 
-## Step 4 — Drive Playwright MCP
+## Step 4 — Drive `playwright-cli` (the global CLI, NOT Playwright MCP)
 
-Use the playwright MCP tools (already wired into your opencode config) to
-navigate, evaluate JS, drag, screenshot, etc. All tools work against
-`http://127.0.0.1:<port>/review/<id>?token=test`.
+We use the **`playwright-cli` global command** (installed via `npm install -g @playwright/cli@latest`, requires Node 18+ via nvm) instead of Playwright MCP. Reasons:
+- **Token-efficient** — `playwright-cli` does not force page accessibility tree into LLM context (per upstream README: "Does not force page data into LLM"). Playwright MCP does, which is the root cause of the "slow" symptom.
+- **Single active page** — `playwright-cli open` / `goto` / `click` etc. keep one active page per session by design. No page-leak from accumulated navigates.
+- **Built-in session management** — `playwright-cli -s=name`, `list`, `close-all`, `kill-all`. Replaces the manual pkill loop we used to do.
 
-**MANDATORY**: between every test scenario, call `playwright_browser_close` to release the page + renderer. If you navigate to a new URL, the previous page stays in the renderer process — accumulating pages is the #1 cause of CPU high in Playwright tests.
+The bash tool calls `playwright-cli` directly. Verify it's installed: `playwright-cli --version` → `0.1.x`. If not, install: `npm install -g @playwright/cli@latest` (requires Node 18+, nvm `nvm use 22` is fine).
 
-Common operations:
+Common operations (all against `http://127.0.0.1:<port>/review/<id>?token=test`):
 
-```js
-// Navigate
-playwright_browser_navigate({ url: "http://127.0.0.1:8890/review/test?token=test" })
-// ← ALWAYS do a teardown at the end of each scenario:
-//   playwright_browser_close()  (closes current page + Chrome instance)
+```bash
+# Open + navigate (one command, one Chrome instance)
+playwright-cli open http://127.0.0.1:8890/review/test?token=test
 
-// Get sidebar width
-playwright_browser_evaluate({ function: `() => ({
-  width: document.querySelector(".sidebar").offsetWidth,
-  cssVar: getComputedStyle(document.documentElement).getPropertyValue("--sidebar-width").trim()
-})` })
+# Snapshot (returns refs eN + accessibility yaml, file written to .playwright-cli/)
+playwright-cli snapshot
 
-// Native drag (the pointer-event path is unreliable via dispatchEvent)
-playwright_browser_run_code_unsafe({ code: `async (page) => {
-  const r = await page.evaluate(() => {
-    const rect = document.querySelector("#sidebar-resizer").getBoundingClientRect();
-    return { x: rect.left + rect.width/2, y: rect.top + rect.height/2 };
-  });
-  await page.mouse.move(r.x, r.y);
-  await page.mouse.down();
-  await page.mouse.move(r.x + 200, r.y, { steps: 10 });
-  await page.mouse.up();
-}` })
+# Get sidebar width via eval (--raw strips snapshot, returns just the value)
+playwright-cli --raw eval "() => ({ width: document.querySelector('.sidebar').offsetWidth })"
 
-// Screenshot
-playwright_browser_take_screenshot({ type: "png", filename: "review-test.png" })
+# Native drag (the pointer-event path is unreliable via dispatchEvent)
+# Use playwright-cli mousemove + mousedown + mouseup + mousewheel at coordinates
+# Get coordinates via snapshot, then:
+playwright-cli mousemove <x> <y>
+playwright-cli mousedown
+playwright-cli mousemove <x+200> <y>
+playwright-cli mouseup
+
+# Click by ref (from snapshot output)
+playwright-cli click e15
+
+# Screenshot
+playwright-cli screenshot --filename=docs/screenshots/review-test.png
+
+# Close the current page (between test scenarios)
+playwright-cli close
 ```
+
+**MANDATORY**: between every test scenario, run `playwright-cli close`. If you navigate to a new URL via `playwright-cli goto`, the previous page stays in the renderer process — accumulating pages is the #1 cause of CPU high in Playwright tests.
 
 ## Step 5 — Post-test environment cleanup (R4 loop meta-review lesson, MANDATORY)
 
 After ALL Playwright tests are done (regardless of pass/fail), run the full cleanup. This is the #1 fix for the "Chrome instances pile up, CPU hits 100%, machine freezes" pattern:
 
 ```bash
-# 1. Close any open Playwright pages / browsers
-playwright_browser_close()  # call the MCP tool; harmless if no page is open
+# 1. Close all playwright-cli sessions (replaces manual playwright_browser_close loop)
+playwright-cli close-all 2>/dev/null
+playwright-cli kill-all 2>/dev/null  # force-kill any leaked browser process
 
 # 2. Kill the mock server (use the PID you recorded in Step 3)
 if [ -n "$MOCK_PID" ]; then
@@ -147,7 +151,7 @@ fi
 pkill -9 -f "mock-server.py" 2>/dev/null  # belt + suspenders
 sleep 1
 
-# 3. Kill any orphan Chrome from this session
+# 3. Kill any orphan Chrome from prior sessions (not owned by playwright-cli)
 pkill -9 -f "chrome.*--type=zygote" 2>/dev/null
 sleep 1
 
@@ -156,6 +160,7 @@ echo "=== Post-test cleanup verification ==="
 echo "  Chrome instances: $(ps -ef | grep -c 'chrome.*--type=zygote' || echo 0)"
 echo "  mock-server processes: $(ps -ef | grep -c 'mock-server.py' || echo 0)"
 echo "  port 8890: $(ss -ltn 2>/dev/null | grep -q :8890 && echo 'IN USE (bad)' || echo 'free (good)')"
+echo "  playwright-cli sessions: $(playwright-cli list 2>/dev/null | wc -l)"
 ```
 
 If verification shows `Chrome instances > 3` or `port 8890 IN USE`, the cleanup didn't fully succeed. Repeat `pkill -9` and re-verify. **Do NOT end the test session leaving Chrome processes running** — that's how the user-reported "CPU 100%, machine freezes" happens (R4 evidence: 11+ Chrome processes from earlier sessions were running for 2+ hours with GPU process on Wayland fallback).
