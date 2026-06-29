@@ -444,4 +444,51 @@ export const SCENARIOS = {
   // R10 #2 (GH#11, architecture): Edit a finding in-place. Verifies the
   // launch path with 1 commit; full flow verified via Playwright walkthrough.
   "edit-finding": { setup: setupEditFinding, expect: { kind: "working-tree" } },
+  // R11 #1 (GH#15): `/trigger` typed-prefix expansion. localStorage CRUD +
+  // dropdown UI + insert into comment all existed in R10; R11 adds the
+  // keydown listener that fires on space/tab/Enter to expand typed
+  // `/<name>` prefixes. Verifies the launch path with 1 commit; full flow
+  // verified via Playwright walkthrough.
+  "saved-replies-trigger": { setup: setupSavedRepliesTrigger, expect: { kind: "working-tree" } },
+  // R11 #2 (GH#16): Per-finding permalink. id="finding-<id>" on every
+  // finding card + Copy-link button + #finding-<id> hash-scroll on
+  // page load. Verifies the launch path with 1 commit; full flow
+  // verified via Playwright walkthrough.
+  permalink: { setup: setupPermalink, expect: { kind: "working-tree" } },
+};
+
+/**
+ * Scenario 24: R11 #1 — Saved Replies `/trigger` typed-prefix expansion (GH#15).
+ * 1 commit so the dashboard is non-empty. Verifies the dashboard loads
+ * without errors when the textarea keydown handler is wired and reads
+ * `loadSavedReplies()` on space/tab/Enter. Runtime verification (type
+ * `/<template-name>` + space in a finding's comment textarea → expansion
+ * to the saved-reply body; unknown `/<name>` stays literal; bare `/`
+ * does not trigger) is done via Playwright walkthrough.
+ * Locks in the AC1.1 / AC1.2 / AC1.3 / AC1.4 / AC1.5 contract for #15.
+ */
+export async function setupSavedRepliesTrigger(dir) {
+  await emptyRepo(dir);
+  await sh("echo 'v1' > app.ts", dir);
+  await git(["add", "app.ts"], dir);
+  await git(["commit", "-q", "-m", "first"], dir);
+  return { branch: "main", worktrees: [] };
+}
+
+/**
+ * Scenario 25: R11 #2 — Per-finding permalink anchor (GH#16).
+ * 1 commit so the dashboard is non-empty. Verifies the dashboard loads
+ * without errors when finding cards carry `id="finding-<id>"` and the
+ * Copy-link button is wired into the actions row. Runtime verification
+ * (click Copy-link → clipboard contains `<url>#finding-<id>`; load
+ * `<url>#finding-<id>` → auto-scroll + flash highlight on matching card;
+ * unknown id → graceful fallback) is done via Playwright walkthrough.
+ * Locks in the AC2.1 / AC2.2 / AC2.3 / AC2.4 / AC2.5 contract for #16.
+ */
+export async function setupPermalink(dir) {
+  await emptyRepo(dir);
+  await sh("echo 'v1' > app.ts", dir);
+  await git(["add", "app.ts"], dir);
+  await git(["commit", "-q", "-m", "first"], dir);
+  return { branch: "main", worktrees: [] };
 };
