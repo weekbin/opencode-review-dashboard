@@ -518,6 +518,27 @@
         text-transform: none;
         letter-spacing: 0;
       }
+      /* R8 #1: in-tab search input rendered at the top of each pane */
+      .search-input {
+        width: 100%;
+        margin: 0 0 8px;
+        padding: 6px 10px;
+        font-size: 13px;
+        font-family: inherit;
+        color: light-dark(#222, #ddd);
+        background: light-dark(#fff, #181818);
+        border: 1px solid light-dark(#d0d0d0, #3a3a3a);
+        border-radius: var(--radius);
+        box-sizing: border-box;
+      }
+      .search-input:focus-visible {
+        outline: 2px solid light-dark(#1d5a96, #95c1e8);
+        outline-offset: 1px;
+        border-color: transparent;
+      }
+      .search-input::placeholder {
+        color: light-dark(#999, #666);
+      }
       .conversation-item {
         padding: 18px 20px;
         font-size: 14px;
