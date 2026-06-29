@@ -54,6 +54,9 @@ You do not need to do anything to get this — every existing `/diff-review-dash
 - **Previously discussed panel (4th sidebar tab)** — dedicated tab that surfaces prior-round context: per-round `notes` (read from the existing `round-NNN.md` exports) plus every prior finding with its full comment thread (open, resolved, and stale). Lets you re-orient to the conversation history before deciding what to do this round, without opening a terminal or scrolling 30+ entries in the Conversation tab. Complements the Conversation tab (which shows the current round).
 - **Auto-apply workflow** — agent plan-first applies actionable findings in one batch, then re-runs the review.
 - **Worktree auto-detection** — picks the worktree with the most commits ahead of `origin/main` when `--worktree` is omitted; an explicit `--worktree <path>` is always respected, even when the named worktree is empty (the auto-pickaround excludes the worktree it already tried, so it never silently overrides the user's flag).
+- **Saved Replies / Comment Templates** — save a current finding comment as a named template, insert it into a new finding with one click from a dropdown. Templates persist in localStorage and survive page reload. Closes the GitHub Saved Replies gap. Empty state when no templates saved.
+- **Export review as markdown or patch** — click "Export" in the header to download either a Markdown summary (round number, timestamp, findings table, notes) or a unified diff `.patch` file (same as `git diff`). Filenames: `review-<round>-<timestamp>.md` / `review-<round>-<timestamp>.patch`.
+- **Edit a finding in-place** — after submit, click "Edit" on any finding card to change its category, severity, or comment. The edit is server-validated, recorded with a `manually_edited` flag and `edited_at` timestamp (preserved across auto-close), and shows an "Edited <relative-time>" badge. Architecture profile — extends R9's `manually_reopened` server-widening pattern. **Unique**: GitHub does not allow editing submitted PR review comments.
 
 ---
 
@@ -259,7 +262,7 @@ Originally forked from [`oorestisime/opencode-diffs`](https://github.com/ooresti
 | `bun run check` | `format:check && lint && typecheck`. |
 | `bun run prepublishOnly` | Runs `check` then `build` before `npm publish`. |
 | `bun run test:unit` | Unit tests (`bun test src/`) — atomic-write invariant, corrupt-file recovery, concurrent saves. |
-| `bun run test:ui` | End-to-end browser tests (Playwright MCP) — 15 git scenarios with mock review server. |
+| `bun run test:ui` | End-to-end browser tests (Playwright MCP) — 23 git scenarios with mock review server. |
 
 ### Setup
 
