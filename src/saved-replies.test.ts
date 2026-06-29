@@ -114,3 +114,33 @@ describe("AC1.3 / AC1.5 / AC1.7 — Insert + persistence + soft cap UI", () => {
     expect(block![0]).toMatch(/return false/);
   });
 });
+
+describe("R11 #1 — `/trigger` typed-prefix expansion (GH#15)", () => {
+  it("T11.1a slugifyTriggerName + parseTriggerExpansion + tryApplyTrigger declared", async () => {
+    const src = await readSource(APP_TS);
+    expect(src).toMatch(/function\s+slugifyTriggerName\s*\(\s*name:\s*string\s*\)/);
+    expect(src).toMatch(/type\s+TriggerMatch\s*=/);
+    expect(src).toMatch(/function\s+parseTriggerExpansion\s*\(/);
+    expect(src).toMatch(/function\s+tryApplyTrigger\s*\(/);
+  });
+
+  it("T11.1b parseTriggerExpansion regex requires leading whitespace OR start-of-string before `/`", async () => {
+    const src = await readSource(APP_TS);
+    const block = src.match(/function\s+parseTriggerExpansion[\s\S]*?\n\}/);
+    expect(block).toBeTruthy();
+    expect(block![0]).toMatch(/\(\^|\\s\)\\\//);
+    expect(block![0]).toMatch(/\[a-z0-9\]/i);
+  });
+
+  it("T11.1c textarea keydown listener gates on Space/Tab/Enter + guards isComposing + preventDefault on success", async () => {
+    const src = await readSource(APP_TS);
+    const block = src.match(/textarea\.addEventListener\(\s*"keydown"[\s\S]*?\}\s*\)\s*;/);
+    expect(block).toBeTruthy();
+    expect(block![0]).toMatch(/event\.isComposing/);
+    expect(block![0]).toMatch(/event\.key !== " "/);
+    expect(block![0]).toMatch(/event\.key !== "Tab"/);
+    expect(block![0]).toMatch(/event\.key !== "Enter"/);
+    expect(block![0]).toMatch(/tryApplyTrigger/);
+    expect(block![0]).toMatch(/event\.preventDefault/);
+  });
+});
