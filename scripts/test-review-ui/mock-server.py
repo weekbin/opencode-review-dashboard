@@ -182,11 +182,59 @@ if __name__ == "__main__":
     if not os.path.isdir(DIST):
         print(f"ERROR: {DIST} not found. Run 'bun run build' first.", file=sys.stderr)
         sys.exit(1)
-    server = http.server.ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
-    print(f"review-dashboard mock server: http://127.0.0.1:{PORT}", flush=True)
-    print(f"  dist: {DIST}", flush=True)
-    print(f"  override mock data: MOCK_DATA_FILE=/path/to/data.json", flush=True)
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        server.shutdown()
+
+    daemon_mode = "--daemon" in sys.argv
+    if daemon_mode:
+        sys.argv.remove("--daemon")
+        PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8890
+        pid_file = os.path.join(ROOT, f".mock-server-{PORT}.pid")
+        log_file = os.path.join(ROOT, f".mock-server-{PORT}.log")
+
+        if os.path.exists(pid_file):
+            try:
+                with open(pid_file) as f:
+                    old_pid = int(f.read().strip())
+                os.kill(old_pid, 0)
+                print(f"mock server already running (PID {old_pid}, port {PORT})", flush=True)
+                sys.exit(0)
+            except (OSError, ValueError):
+                os.remove(pid_file)
+
+        if os.fork() > 0:
+            sys.exit(0)
+        os.setsid()
+        if os.fork() > 0:
+            sys.exit(0)
+
+        sys.stdin = open(os.devnull, "r")
+        sys.stdout = open(log_file, "a", buffering=1)
+        sys.stderr = sys.stdout
+
+        with open(pid_file, "w") as f:
+            f.write(str(os.getpid()))
+
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
+        print(f"mock server daemonized: http://127.0.0.1:{PORT} (PID {os.getpid()})", flush=True)
+
+        def cleanup():
+            try:
+                os.remove(pid_file)
+            except OSError:
+                pass
+
+        import atexit
+        atexit.register(cleanup)
+
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            server.shutdown()
+    else:
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
+        print(f"review-dashboard mock server: http://127.0.0.1:{PORT}", flush=True)
+        print(f"  dist: {DIST}", flush=True)
+        print(f"  override mock data: MOCK_DATA_FILE=/path/to/data.json", flush=True)
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            server.shutdown()

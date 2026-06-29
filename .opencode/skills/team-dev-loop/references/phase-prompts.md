@@ -272,6 +272,15 @@ The plan MUST contain:
 6. ## Risk register (3-5 risks with mitigation)
 7. ## Worker hand-off checklist (15-30 items, copy-paste ready)
 
+**HARD CAPS — v5.2 (R10 retro)**:
+- `plan.md` ≤ **100 lines total** (was 250 lines in R10, bloated). Lead rejects plan.md > 100 lines.
+- `AC count` ≤ **20** (was 32 in R10). Combine related ACs into single line.
+- `Risk register` ≤ **5 risks** (was 12 in R10). Pick top 5, not exhaustive.
+- `Worker hand-off checklist` ≤ **15 items** (was 28 in R10). Dev knows how to commit; don't repeat obvious steps.
+- If scope genuinely exceeds these caps, Architect MUST split the work into multiple rounds OR escalate to lead inline.
+
+**Rationale** (R10 evidence): 250-line plan.md forced Dev to re-read context multiple times. 32 ACs meant Dev spent too long tracing each. Hard caps save ~3-5 min Dev implementation time per round.
+
 **Multi-round AC check (mandatory, Round 3 lesson)** — BEFORE writing the plan, for each AC classify it as one of:
 - **round-1 ground truth** (verifiable in a single e2e run, e.g. "agent reads state.json") → design an e2e scenario
 - **multi-round** (asserts "what round N>1 sees", e.g. "round 2's payload includes prior-round resolved findings") → design a **direct unit test** on the function that builds the round-N output (e.g. `format()`). The e2e harness runs each scenario as a single round, so multi-round ACs are **structurally impossible to verify e2e** — see `loop-decision.md` § "Multi-round AC test-design rule" + Round 3 evidence (AC6 was originally written as e2e and silently asserted nothing; caught only because the Goal lens inspected the test mechanically).

@@ -55,7 +55,7 @@ The full v5 pipeline design lives in `docs/team-dev-loop.md` (tracked) and the s
 For each round `N` (v5 cron-style):
 1. **Phase -0 Sync** (lead inline): `git fetch origin` + status + conflict resolution → `sync-report.md`. HARD STOP if sync fails.
 2. Read `.omo/round-N/brief.md` (PM's proposal with ranked candidates + competitor analysis + product-value gate)
-3. Run the 11 phases sequentially as `task()` calls: Phase 0 PM → Phase 0.25 PM Researcher → Phase 0.5 PM Manager → Phase 0.75 Planner → Phase 1 Architect → Phase 2 Dev → Phase 2.5 Pre-Commit Audit → Phase 3a-c Tester → Phase 3.5 PM Doc Writer → Phase 4 Decision
+3. Run the phases as `task()` calls. **v5.2 optimization**: Phase 0.25 PM Researcher + Phase 0.5 PM Manager run **in parallel** via `Promise.all` (no data dependency; PM Manager gates on brief.md alone; Researcher verdict is advisory). Phase 0 PM Triage → **Phase 0.25 + 0.5 (parallel)** → Phase 0.75 Planner → Phase 1 Architect → Phase 2 Dev (timeout = 45min arch / 30min otherwise) → Phase 2.5 Pre-Commit Audit → Phase 3a-c Tester → Phase 3.5 PM Doc Writer → Phase 4 Decision. Saves ~3 min per round vs fully sequential.
 4. Phase 3a (Tester Review) internally fans out 5 parallel `run_in_background=true` lenses
 5. Write `.omo/round-N/decision.md` (lead writes directly, no separate task)
 6. Append one line to `.omo/proposals.jsonl` (cross-round decision log)
@@ -118,28 +118,35 @@ const brief = await task({
 // PM does NOT estimate lines of code or file counts — that's lead's job.
 // Backlog freshness check REMOVED from PM (moved to Planner Phase 0.75).
 
-// === Phase 0.25: PM Researcher (NEW v5 — web-verifier of competitive claims) ===
-const pmResearcher = await task({
-  category: "unspecified-high",
-  subagent_type: "librarian",  // external-doc + web-search specialist
-  prompt: PM_RESEARCHER_PROMPT,  // from references/v5-prompts.md ## 1.5
-})
-// Writes: ${roundDir}/competitor-landscape.md
-//   - Verified / Unverified / Mischaracterized claim matrix
-//   - Candidates needing rewrite (≥2 unverified OR ≥1 mischaracterized)
-// Uses: MiniMax_web_search, context7_query-docs, webfetch, gh search_repositories, grep_app_searchGitHub
-// BLOCKER fix: PM hallucinating competitor features was a R3-style risk; this layer catches it.
-
-// === Phase 0.5: PM Manager gate v5 ===
-const pmMgr = await task({
-  category: "ultrabrain",  // critical anti-pseudo-requirement reasoning
-  prompt: PM_MANAGER_V5_PROMPT,  // from references/v5-prompts.md ## 2
-})
+// === Phase 0.25 + 0.5: PARALLEL (v5.2 — R10 retro optimization) ===
+// PM Researcher (verify competitor claims) and PM Manager (gate + auto-issue-open)
+// have no data dependency on each other. Both consume brief.md. PM Manager can
+// independently do pseudo-requirement checks + open GH issues without waiting for
+// Researcher verification (Researcher verdict is advisory, not blocking).
+// Saves ~3 min per round vs sequential.
+const [pmResearcher, pmMgr] = await Promise.all([
+  // === Phase 0.25: PM Researcher (NEW v5 — web-verifier of competitive claims) ===
+  task({
+    category: "unspecified-high",
+    subagent_type: "librarian",  // external-doc + web-search specialist
+    prompt: PM_RESEARCHER_PROMPT,  // from references/v5-prompts.md ## 1.5
+  }),
+  // === Phase 0.5: PM Manager gate v5 ===
+  task({
+    category: "ultrabrain",  // critical anti-pseudo-requirement reasoning
+    prompt: PM_MANAGER_V5_PROMPT,  // from references/v5-prompts.md ## 2
+  }),
+])
+// Writes (parallel):
+//   ${roundDir}/competitor-landscape.md (PM Researcher)
+//   ${roundDir}/pm-manager-review.md (PM Manager)
+// PM Manager does NOT wait for Researcher's verdict — it gates based on brief.md alone.
+// Researcher's competitor-landscape.md is consumed by Planner Phase 0.75 + Lead Phase 4 audit.
+// If PM Researcher fails / times out, Planner still works (considers Researcher verdict as "missing" and proceeds conservatively).
 // v5: NO askUser on REJECT / CLARIFY. REJECT → candidate removed. CLARIFY → PM Manager writes inline inference; if still CLARIFY after 2 attempts → REJECT.
-// v5: NEW — auto-open gh issue create for APPROVED candidates
-// v5: NEW — cross-check PM Researcher competitor-landscape.md
-// v5: NEW — output ## Validated for next round section (Planner input)
-// Writes: ${roundDir}/pm-manager-review.md
+// v5: auto-open gh issue create for APPROVED candidates (lead pre-creates labels in Phase -0 Sync — see sync-spec.md step 1.5)
+// v5: cross-check PM Researcher competitor-landscape.md (advisory only, not blocking)
+// v5: output ## Validated for next round section (Planner input)
 
 // === Phase 0.75: Planner (NEW v5 — autonomous scope selector) ===
 const planner = await task({
@@ -164,8 +171,11 @@ const plan = await task({
 // Writes: ${roundDir}/plan.md (decision-complete, ACs, file structure, worker checklist)
 
 // === Phase 2: Dev ===
+// v5.2: Per-profile timeout (R9 retro Gap L — actually applied v5.2, was a stale spec in v5.0/v5.1)
+const devTimeoutMin = profile === "architecture" ? 45 : 30;
 const dev = await task({
   category: "deep",  // autonomous end-to-end (worktree + tests + commit)
+  timeout: `${devTimeoutMin}m`,  // v5.2: 45min for architecture, 30min for feature/bugfix
   prompt: DEV_PROMPT,        // includes brief + PM Manager review + plan
 })
 // Internal: creates worktree per project memory 372
@@ -336,28 +346,70 @@ Total = sum of all 8 → 0-16 range, typical 0-8.
    → bugfix
 ```
 
-### Per-profile Phase 2 (Dev) timeout guidance (R9 retro Gap L)
+### Per-profile Phase 2 (Dev) timeout guidance (R9 retro Gap L — APPLIED in v5.2)
 
 **Why**: R9 Dev timed out at 30 min despite partial commits being intact. Architecture profile with 3 file surfaces + Gap J mandatory walkthrough naturally takes longer than feature profile.
 
-**Per-profile guidance** (lead uses when launching Phase 2):
+**Per-profile guidance** (lead APPLIES via `timeout` parameter when launching Phase 2):
 
-| Profile | Expected Phase 2 wall-clock | Recommended timeout | Rationale |
+| Profile | Expected Phase 2 wall-clock | Recommended timeout | Status in v5.2 |
 |---|---|---|---|
-| **bugfix** | 5-15 min | 20 min | Small scope, single file, no walkthrough |
-| **feature** | 15-25 min | 30 min | Medium scope, 1-2 files, Gap J walkthrough |
-| **architecture** | 30-45 min | **45 min** | Large scope, 3+ files, server-contract + agent-prompt + Gap J walkthrough |
+| **bugfix** | 5-15 min | 20 min | applied (`timeout: "20m"`) |
+| **feature** | 15-25 min | 30 min | applied (`timeout: "30m"`) |
+| **architecture** | 30-45 min | **45 min** | **applied** (`timeout: "45m"`) — was stale in v5.0/v5.1 |
 
-**Default orchestrator timeout is 30 min** (per `task()` config). For architecture rounds, lead SHOULD:
-1. Pre-architect the round into smaller Dev sub-tasks if expected to exceed 45 min
-2. Or split into multiple rounds (e.g., R9a server + R9b UI + R9c tests) — but this violates single-commit-per-round
-3. Or accept partial Dev completion + lead recovery (what happened in R9)
+**v5.2 implementation**: SKILL.md Phase 2 code pattern now uses:
+```typescript
+const devTimeoutMin = profile === "architecture" ? 45 : (profile === "feature" ? 30 : 20);
+const dev = await task({ category: "deep", timeout: `${devTimeoutMin}m`, prompt: DEV_PROMPT, ... });
+```
 
-**R9 evidence**: 30-min timeout hit with 2 product commits intact + partial Commit 3. Lead completed remaining work in ~5 min. Net: R9 still shipped but with lead assistance. Net cost: ~5 min extra (vs. clean 35-40 min Dev round).
+**R9 evidence** (before fix): 30-min timeout hit with 2 product commits intact + partial Commit 3. Lead completed remaining work in ~5 min. Net: R9 still shipped but with lead assistance. Net cost: ~5 min extra (vs. clean 35-40 min Dev round).
 
-**Apply to R10+**: When launching Phase 2 for architecture profile, lead should:
-- Expect ~30-45 min wall-clock
-- Pre-architect into 2-3 sub-tasks if scope is large
+**R10 evidence** (after fix): architecture round used 30min timeout (v5.1 still didn't honor 45min). Dev completed 3 candidates but no commits before timeout. Lead recovered cleanly. v5.2 fix prevents this.
+
+## Lightweight round mode (NEW v5.2 — for trivial changes)
+
+**Why**: v5 SKILL.md requires 11-phase pipeline for every round. For trivial changes (1-line README typo, .opencode/skills/ internal tweak, doc-only update), this is overkill (~30-50 min overhead).
+
+**When to use**: lead detects ANY of:
+- `git diff main...HEAD --stat` shows <10 lines changed across <3 files
+- Profile is bugfix with 1-file surface
+- Change is documentation-only (README, CHANGELOG, .opencode/skills/, docs/)
+- No src/ files touched
+- No schema change
+- No new dependency
+
+**Lightweight protocol** (skip PM Triage + Planner + 5 lens):
+
+```typescript
+if (lightweightEligible) {
+  // Phase -0 Sync (5 min) — baseline
+  // Phase 2 Dev (1 subagent, 10 min) — single commit
+  // Phase 2.5 Pre-Commit Audit (1 min)
+  // Phase 4 Decision + 4.8 Loop Summary (5 min)
+  // Phase 5 push (1 min)
+  // Total: ~20 min instead of 50-80 min
+}
+```
+
+**Lead inline marker** in decision.md:
+```markdown
+## Lightweight round
+
+- Trigger: <why this round qualifies for lightweight>
+- Skipped phases: PM Triage (0), PM Researcher (0.25), PM Manager (0.5), Planner (0.75), Architect (1), Tester Review (3a), Tester Diff (3b), Playwright (3c), Doc Writer (3.5)
+- Single commit: <sha>
+- Lightweight acceptance criteria: <1-2 bullets>
+```
+
+**Guard rails**: even in lightweight mode, lead MUST:
+- Run Phase -0 Sync (baseline + tool pre-flight)
+- Run Phase 2.5 Pre-Commit Audit (R3-fabrication defense)
+- Emit Phase 4.8 Loop Summary (R7 Gap J)
+- Apply hard STOP on failure (sync, audit)
+
+**Cannot use lightweight for**: architecture profile / new dependency / multi-file feature / schema change.
 - Or use the lead-recovery pattern (R9) which proved robust
 
 **Override rule**: lead MAY override auto-classification if user chat explicitly states scope (e.g. "treat as architecture review"). Document the override in `decision.md` ## Round profile section.
