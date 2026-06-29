@@ -272,6 +272,42 @@ Lead takes over:
 
 **Rationale**: v1 called this "rescue" and treated it as a failure mode. v2 reframes it as a designed feature because (a) Round 1 showed 3 of 7 phases required it, (b) the alternative — retrying subagents — had 0% success rate, (c) lead has full context to write the deliverable directly.
 
+## Standardized output formats (CANONICAL — must match exactly)
+
+**Rule**: Phase 4.5 (Retro), 4.6 (Post-exec), 4.7 (Self-check) outputs are **canonical** — they MUST follow the templates below verbatim. Different LLM models (Claude / GPT / Gemini / local) produce the same output format so the user can read them consistently across rounds.
+
+**Why this rule**:
+- The user reviews `.omo/round-N/{retro.md, post-exec-analysis.md, self-check.md}` every round. If section names or table formats drift between rounds (or between models), the user's mental model breaks
+- Templates are **fields of data**, not narrative essays. Each section has a specific role:
+  - **Retro** = "what we learned about the CONTENT we shipped" (TL;DR, Successes, Failures, Skill gaps, Followup, Action items)
+  - **Post-exec** = "what we learned about the CALL FLOW we ran" (TL;DR, Call-flow timeline, Task invocations summary, Per-task review, Wasted analysis, New skill gaps)
+  - **Self-check** = "did every required step actually run" (Per-phase verification, Profile-gated checks, Closure sequence gates, Verdict)
+- **Enforcement**:
+  - Do NOT add new sections (the user reviews every round; new sections = noise)
+  - Do NOT rename sections (different LLMs use different synonyms; canonical names prevent this)
+  - Do NOT skip sections (if a section has no content, write "N/A" or "None — ..." rather than omitting)
+  - Do NOT add prose paragraphs to table-only sections (stay in the table format)
+  - Bullet lists in "Successes" / "Failures" / "Wasted analysis" must each have file:line evidence (no "we did X well" without showing where to verify)
+
+**The 3 canonical templates** (all marked `<!-- CANONICAL TEMPLATE — DO NOT MODIFY -->` below):
+- **Phase 4.5 Retro template** → see "Round-end retrospective" section below
+- **Phase 4.6 Post-exec template** → see "Post-execution call-flow analysis" section below
+- **Phase 4.7 Self-check template** → see "Loop self-check" section below
+
+**Verification command** (lead runs this at the end of each round to verify the output is canonical):
+```bash
+# Each file should have these section markers in this exact order
+grep -c "^## TL;DR$"        .omo/round-N/retro.md  # = 1
+grep -c "^## Successes"     .omo/round-N/retro.md  # = 1
+grep -c "^## Failures"      .omo/round-N/retro.md  # = 1
+grep -c "^## Skill gaps"    .omo/round-N/retro.md  # = 1
+grep -c "^## Followup"      .omo/round-N/retro.md  # = 1
+grep -c "^## Action items"  .omo/round-N/retro.md  # = 1
+# Same checks for post-exec-analysis.md (6 sections) and self-check.md (3 sections + verdict)
+```
+
+If any count is 0 or > 1, the output is non-canonical — the lead rewrites the file to match the template exactly.
+
 ## Closure sequence (every round)
 
 When all 7 phases terminal (each `task()` either returned or was taken over):
@@ -302,7 +338,9 @@ The loop is not closed until the lead writes `.omo/round-N/retro.md` AND (if the
 - Without it, the same loop frictions repeat across rounds. Round 1 spent 90+ min on the Bun.write mocking problem; Round 2 had the React wrong-command-C pitfall; Round 3 had the `ctx.client.app.log` harness limitation. Each was a one-round discovery with no in-band propagation.
 - The loop's purpose is to compound improvements, not just to ship features. Without retro, the skill becomes a snapshot of the Round 0 design and never improves.
 
-**Output `.omo/round-N/retro.md` (no blank sections)**:
+**Output `.omo/round-N/retro.md` (no blank sections, canonical template below)**:
+
+<!-- CANONICAL TEMPLATE — DO NOT MODIFY (Phase 4.5 Retro) -->
 
 ```markdown
 # Round <N> Retrospective
@@ -344,7 +382,9 @@ The retro (Phase 4.5) is content-focused: what did we ship, what worked, what fa
   - Doc edits in main workdir then cp'd to R4 worktree (because workflow didn't specify R4 worktree for product work) — wasted ~1 min
 - The retro's "Skill gaps found" was overloaded — content gaps got priority over call-flow gaps. Separating the two ensures both get attention.
 
-**Output `.omo/round-N/post-exec-analysis.md` (no blank sections)**:
+**Output `.omo/round-N/post-exec-analysis.md` (no blank sections, canonical template below)**:
+
+<!-- CANONICAL TEMPLATE — DO NOT MODIFY (Phase 4.6 Post-exec) -->
 
 ```markdown
 # Round <N> Post-execution Call-Flow Analysis
