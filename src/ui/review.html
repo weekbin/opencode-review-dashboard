@@ -1653,6 +1653,52 @@
       .jump-highlight {
         animation: jump-highlight 2s ease-out forwards;
       }
+
+      /* ── Notes surface (always-visible, collapsible) ── */
+      .notes-surface {
+        padding: 0.5rem 1rem;
+        border-bottom: 1px solid light-dark(#e5e7eb, #1f2937);
+        background: light-dark(#fafbfc, #0f1419);
+      }
+      .notes-surface summary {
+        cursor: pointer;
+        font-weight: 600;
+        user-select: none;
+        list-style: none;
+        padding: 0.25rem 0;
+      }
+      .notes-surface summary::marker,
+      .notes-surface summary::-webkit-details-marker {
+        display: none;
+      }
+      .notes-surface summary::before {
+        content: "▸";
+        display: inline-block;
+        margin-right: 0.4rem;
+        transition: transform 0.15s ease-out;
+      }
+      .notes-surface details[open] summary::before {
+        content: "▾";
+      }
+      .notes-surface label {
+        display: block;
+        font-size: 0.85rem;
+        margin: 0.5rem 0 0.25rem;
+        color: light-dark(#4b5563, #9ca3af);
+      }
+      .notes-surface textarea {
+        width: 100%;
+        min-height: 4.5rem;
+        max-height: 12rem;
+        padding: 0.5rem 0.6rem;
+        resize: vertical;
+        font-family: inherit;
+        font-size: 0.9rem;
+        border: 1px solid light-dark(#d1d5db, #374151);
+        border-radius: 4px;
+        background: light-dark(#fff, #1a1f24);
+        color: inherit;
+      }
     </style>
   </head>
   <body>
@@ -1691,7 +1737,7 @@
           class="btn btn-primary"
           id="submit"
           type="button"
-          title="Submit this review round (notes can be added in the drawer)"
+          title="Submit this review round (your round notes are above)"
         >
           Submit Review
         </button>
@@ -1722,6 +1768,20 @@
     </nav>
 
     <div id="range-banner" class="range-banner" hidden></div>
+
+    <section class="notes-surface" data-testid="notes-surface">
+      <details open>
+        <summary>Round notes</summary>
+        <label for="notes"
+          >Round notes (always visible — appear in next round's "Previously discussed" panel)</label
+        >
+        <textarea
+          id="notes"
+          data-testid="notes-textarea"
+          placeholder="Optional global notes for this round"
+        ></textarea>
+      </details>
+    </section>
 
     <div class="layout">
       <div class="pane pane-files" data-pane="files">
@@ -1810,13 +1870,6 @@
         <div class="btn-row">
           <button class="btn" id="clear" type="button">Clear</button>
           <button class="btn btn-primary" id="add" type="button">Add Finding</button>
-        </div>
-
-        <div class="separator"></div>
-
-        <div>
-          <label for="notes">Notes for this round</label>
-          <textarea id="notes" placeholder="Optional global notes"></textarea>
         </div>
 
         <div class="separator"></div>
