@@ -17,7 +17,7 @@ For interactive UI testing (drag, screenshot, etc.) see the skill
 
 ## What it tests
 
-23 git scenarios:
+25 git scenarios:
 
 | # | Scenario | What it checks |
 |---|---|---|
@@ -41,6 +41,11 @@ For interactive UI testing (drag, screenshot, etc.) see the skill
 | 18 | `in-tab-search` | In-tab search input filters active panel content (R8 MINOR #1) — search input renders + filter + Escape-clear verified via Playwright walkthrough |
 | 19 | `sidebar-keyboard-nav` | Sidebar tabs keyboard navigation (R8 MINOR #2, WAI-ARIA tablist) — Arrow/Home/End + roving tabindex + aria-selected cycle verified via Playwright walkthrough |
 | 20 | `reopen-stale-finding` | Manually re-open stale findings (R9 #1) — Force Reopen button on `closed_auto` + reason modal + `manually_reopened: true` POST payload + state.json update verified via Playwright walkthrough |
+| 21 | `saved-replies` | R10's Saved Replies localStorage CRUD + dropdown UI + insert into comment — full flow verified via Playwright walkthrough |
+| 22 | `export-review` | R10's Export review (markdown + patch download) — header Export button + modal + download trigger verified via Playwright walkthrough |
+| 23 | `edit-finding` | R10's in-place edit (category/severity/comment) + `manually_edited` flag + "Edited <relative-time>" badge verified via Playwright walkthrough |
+| 24 | `saved-replies-trigger` | R11 #1 `/trigger` typed-prefix expansion (GH#15) — textarea keydown handler + `loadSavedReplies()` lookup wired; full flow (type `/<name>` + space → expand; unknown stays literal; bare `/` doesn't trigger) verified via Playwright walkthrough |
+| 25 | `permalink` | R11 #2 per-finding permalink (GH#16) — `id="finding-<id>"` attribute + Copy-link button + `#finding-<id>` hash-scroll + flash highlight; full flow verified via Playwright walkthrough |
 
 ## Files
 

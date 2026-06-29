@@ -213,6 +213,140 @@ function insertAtCursor(textarea: HTMLTextAreaElement, text: string): void {
   textarea.setSelectionRange(caret, caret);
 }
 
+// R11 #1: `/trigger` typed-prefix expansion (GH#15).
+function slugifyTriggerName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-");
+}
+
+type TriggerMatch = {
+  name: string;
+  prefixLength: number;
+  body: string;
+};
+
+function parseTriggerExpansion(beforeCaret: string, replies: SavedReply[]): TriggerMatch | null {
+  // Bare `/` (no chars) never matches; leading whitespace or start-of-string
+  // required so substring slashes inside text don't trigger.
+  const match = beforeCaret.match(/(^|\s)\/([a-z0-9][a-z0-9._-]*)$/i);
+  if (!match) return null;
+  const name = (match[2] ?? "").toLowerCase();
+  if (!name || !replies.length) return null;
+  const bySlug = new Map<string, SavedReply>();
+  for (const r of replies) {
+    const slug = slugifyTriggerName(r.name);
+    if (slug && !bySlug.has(slug)) bySlug.set(slug, r);
+  }
+  const hit = bySlug.get(name);
+  if (!hit) return null;
+  const prefixLength = match[0].length - (match[1] ?? "").length;
+  return { name, prefixLength, body: hit.body };
+}
+
+function tryApplyTrigger(textarea: HTMLTextAreaElement, replies: SavedReply[]): boolean {
+  const caret = textarea.selectionStart;
+  const beforeCaret = textarea.value.slice(0, caret);
+  const m = parseTriggerExpansion(beforeCaret, replies);
+  if (!m) return false;
+  const newBefore = textarea.value.slice(0, caret - m.prefixLength);
+  textarea.value = newBefore + m.body + textarea.value.slice(caret);
+  const newCaret = newBefore.length + m.body.length;
+  textarea.focus();
+  textarea.setSelectionRange(newCaret, newCaret);
+  return true;
+}
+
+// R11 #2: per-finding permalink anchors (GH#16).
+function buildFindingPermalink(findingId: string): string {
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+  return `${origin}${pathname}#finding-${findingId}`;
+}
+
+function parseFindingHash(hash: string): string | null {
+  const m = hash.match(/^#finding-(.+)$/);
+  return m ? (m[1] ?? null) : null;
+}
+
+async function copyFindingPermalinkToClipboard(
+  findingId: string,
+  button: HTMLButtonElement,
+): Promise<void> {
+  const url = buildFindingPermalink(findingId);
+  const fallbackCopy = () => {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = url;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  let ok = false;
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(url);
+      ok = true;
+    } catch {
+      ok = fallbackCopy();
+    }
+  } else {
+    ok = fallbackCopy();
+  }
+  if (ok) {
+    const original = button.textContent;
+    button.textContent = "✓ Copied";
+    button.disabled = true;
+    setTimeout(() => {
+      button.textContent = original;
+      button.disabled = false;
+    }, 1200);
+    setStatus(`Copied permalink for ${findingId}`);
+  } else {
+    setStatus("Could not copy permalink — clipboard blocked", true);
+  }
+}
+
+function flashFindingPermaHighlight(findingId: string): boolean {
+  const el = document.getElementById(`finding-${findingId}`);
+  if (!el) return false;
+  el.scrollIntoView({ behavior: "smooth", block: "center" });
+  el.classList.remove("finding-permalink-flash");
+  // Force reflow so the animation restarts even on rapid re-triggers.
+  void el.offsetWidth;
+  el.classList.add("finding-permalink-flash");
+  setTimeout(() => el.classList.remove("finding-permalink-flash"), 1600);
+  return true;
+}
+
+function resolveHashOnLoad(): void {
+  if (typeof window === "undefined") return;
+  const target = parseFindingHash(window.location.hash);
+  if (!target) return;
+  const tryScroll = () => {
+    if (flashFindingPermaHighlight(target)) return;
+    if (state.activeTab !== "conversation") {
+      setActiveTab("conversation");
+    }
+    requestAnimationFrame(tryScroll);
+  };
+  requestAnimationFrame(tryScroll);
+}
+
+window.addEventListener("hashchange", () => {
+  const target = parseFindingHash(window.location.hash);
+  if (target) flashFindingPermaHighlight(target);
+});
+
 // ── File-type icon table ──
 //
 // The icon table is a curated subset of vscode-material-icon-theme (Apache-2.0),
@@ -2144,6 +2278,8 @@ function renderConversationPanel(root: HTMLElement) {
     item.className = "conversation-item";
     item.dataset.status = entry.status;
     item.dataset.origin = entry.origin;
+    // R11 #2: stable element-id for permalink deep-linking.
+    if (entry.id) item.id = `finding-${entry.id}`;
 
     const head = document.createElement("div");
     head.className = "conversation-head";
@@ -2262,6 +2398,19 @@ function renderConversationPanel(root: HTMLElement) {
       });
     });
     actions.appendChild(jumpBtn);
+
+    if (entry.id) {
+      const copyLinkBtn = document.createElement("button");
+      copyLinkBtn.type = "button";
+      copyLinkBtn.className = "finding-copy-link";
+      copyLinkBtn.textContent = "Copy link";
+      copyLinkBtn.title = `Copy permalink: ${buildFindingPermalink(entry.id)}`;
+      copyLinkBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        void copyFindingPermalinkToClipboard(entry.id, copyLinkBtn);
+      });
+      actions.appendChild(copyLinkBtn);
+    }
     head.appendChild(actions);
     item.appendChild(head);
 
@@ -2339,6 +2488,19 @@ function renderConversationPanel(root: HTMLElement) {
     textarea.addEventListener("input", () => {
       counter.textContent = `${textarea.value.length}/500`;
     });
+    // R11 #1: `/trigger` typed-prefix expansion.
+    textarea.addEventListener("keydown", (event) => {
+      if (event.isComposing) return;
+      if (event.key !== " " && event.key !== "Tab" && event.key !== "Enter") {
+        return;
+      }
+      const replies = loadSavedReplies();
+      if (!replies.length) return;
+      if (tryApplyTrigger(textarea, replies)) {
+        event.preventDefault();
+        counter.textContent = `${textarea.value.length}/500`;
+      }
+    });
     const submitBtn = document.createElement("button");
     submitBtn.className = "primary";
     submitBtn.textContent = "Comment";
@@ -2357,7 +2519,7 @@ function renderConversationPanel(root: HTMLElement) {
     const savedRepliesBtn = document.createElement("button");
     savedRepliesBtn.type = "button";
     savedRepliesBtn.className = "saved-replies-toggle";
-    savedRepliesBtn.title = "Saved Replies (R10)";
+    savedRepliesBtn.title = "Saved Replies (R10) — type /<name>+space to expand";
     const initialReplies = loadSavedReplies();
     const overCap = initialReplies.length > 100;
     savedRepliesBtn.textContent = `📋${initialReplies.length ? ` ${initialReplies.length}` : ""}${overCap ? " ⚠️" : ""}`;
@@ -2629,6 +2791,8 @@ function renderPreviouslyDiscussedPanel(root: HTMLElement) {
         const findingItem = document.createElement("div");
         findingItem.className = "previously-finding";
         findingItem.dataset.status = finding.status;
+        // R11 #2: stable element-id for permalink deep-linking.
+        if (finding.id) findingItem.id = `finding-${finding.id}`;
 
         const head = document.createElement("div");
         head.className = "previously-finding-head";
@@ -3486,6 +3650,7 @@ async function init() {
   renderFindings();
   renderSelection();
   syncAll();
+  resolveHashOnLoad();
 }
 
 init();

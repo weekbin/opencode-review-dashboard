@@ -57,6 +57,8 @@ You do not need to do anything to get this — every existing `/diff-review-dash
 - **Saved Replies / Comment Templates** — save a current finding comment as a named template, insert it into a new finding with one click from a dropdown. Templates persist in localStorage and survive page reload. Closes the GitHub Saved Replies gap. Empty state when no templates saved.
 - **Export review as markdown or patch** — click "Export" in the header to download either a Markdown summary (round number, timestamp, findings table, notes) or a unified diff `.patch` file (same as `git diff`). Filenames: `review-<round>-<timestamp>.md` / `review-<round>-<timestamp>.patch`.
 - **Edit a finding in-place** — after submit, click "Edit" on any finding card to change its category, severity, or comment. The edit is server-validated, recorded with a `manually_edited` flag and `edited_at` timestamp (preserved across auto-close), and shows an "Edited <relative-time>" badge. Architecture profile — extends R9's `manually_reopened` server-widening pattern. **Unique**: GitHub does not allow editing submitted PR review comments.
+- **Saved Replies `/trigger` typed-prefix expansion** — type `/<template-name>` followed by space, Tab, or Enter inside a finding's comment textarea to expand to the saved-reply body in place. Trigger names are slugified from the template name (so "Missing Err Handling" expands via `/missing-err-handling`). Unknown `/<name>` stays literal (no silent corruption), and bare `/` never triggers — leaves room for future OpenCode slash-commands. Extends the R10 Saved Replies click-to-insert dropdown with a keyboard path. Complements (not replaces) GitHub's positional `Ctrl+.`+number saved-reply shortcut by offering name-prefix expansion instead of number-index lookup.
+- **Per-finding permalink anchor** — every finding card in the Conversation and Previously discussed panels carries `id="finding-<id>"`, and a "Copy link" button writes `<base-url>#finding-<id>` to the clipboard. Visiting a `#finding-<id>` URL auto-scrolls to that finding and applies a brief 1.5s flash highlight. If the referenced finding isn't in either panel (e.g., it was auto-closed in a later round), a small toast surfaces so you don't silently drop the link. Closes the GitHub `#discussion_r<id>` / Gerrit line-number permalink gap with a simpler W3C element-id hash.
 
 ---
 
@@ -262,7 +264,7 @@ Originally forked from [`oorestisime/opencode-diffs`](https://github.com/ooresti
 | `bun run check` | `format:check && lint && typecheck`. |
 | `bun run prepublishOnly` | Runs `check` then `build` before `npm publish`. |
 | `bun run test:unit` | Unit tests (`bun test src/`) — atomic-write invariant, corrupt-file recovery, concurrent saves. |
-| `bun run test:ui` | End-to-end browser tests (Playwright MCP) — 23 git scenarios with mock review server. |
+| `bun run test:ui` | End-to-end browser tests (Playwright MCP) — 25 git scenarios with mock review server. |
 
 ### Setup
 
