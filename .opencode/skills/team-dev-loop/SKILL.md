@@ -1,37 +1,66 @@
 ---
 name: team-dev-loop
-description: "Use this skill for running a 7-role dev loop (PM/PM Manager/Architect/Dev/Tester/PM Doc Writer/Decision) on this repo, with 5 parallel review-work lenses, deterministic round-profile auto-classification into bugfix/feature/architecture, and a tracked .omo/round-N/ design library. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
+description: "v5 fully-automated cron-style dev loop — 11 phases (Phase -0 Sync / Phase 0 PM Triage v5 / Phase 0.25 PM Researcher / Phase 0.5 PM Manager v5 / Phase 0.75 Planner / Phase 1 Architect / Phase 2 Dev / Phase 2.5 Pre-Commit Audit / Phase 3a-c Tester / Phase 3.5 PM Doc Writer / Phase 4 Decision + 4.5-4.9 lead-owned). PM is competitor-driven, PM Manager auto-opens GH issues, Planner selects scope autonomously (≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round), no User Pick gate, hard STOP on sync/audit failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
 ---
 
-# /team-dev-loop Command (v2)
+# /team-dev-loop Command (v5)
 
-> **Last Updated**: 2026-06-28 (v2 redesign: removed team_create, added per-role category, added round profile auto-classification)
-> **Status**: stable — Round 1 ran on v1 (commit `708a6fc`), Round 2+ will run on v2.
+> **Last Updated**: 2026-06-29 (v5: fully-automated cron-style loop. PM competitor-driven + PM Researcher web-verifier + Planner (Phase 0.75) autonomous scope selector + Phase -0 Sync entry-point + Phase 2.5 Pre-Commit Audit. User Pick gate removed; PM Manager auto-opens GH issues; zero user intervention by design.)
+> **Status**: R10+ will run on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..9}/`).
+> **Migration from v2**: see `## Migration v2 → v5` section below.
 
-## What changed from v1
+## Migration v2 → v5
 
-v1 (Round 1) used `team_create` to spin up 7 chat sessions per round, with `team_send_message` / `team_task_list` / `team_shutdown_request` coordination. **v2 removes the entire team_* lifecycle** and runs the same 7 roles as sequential `task(category=...)` calls. The 5 review-work lenses (Goal / QA / Code / Security / Context) that ran in parallel inside v1's `tester-review` member now run via `Promise.all([5 run_in_background=true])` inside the v2 `tester-review` task.
+**Removed in v5**:
+- `User Pick` phase (PM Manager CLARIFY no longer asks user; Planner selects autonomously)
+- `AskUser` calls (all replaced with Planner self-debate or hard-stop)
+- `auto-pick policy` after N non-response turns (no user to be non-responsive in v5)
+- `Phase 0 backlog freshness check` (moved to Planner Phase 0.75)
+- `Phase 0.5 askUser on CLARIFY` (PM Manager writes inline inference; lead calls task() ONCE more as feedback loop; after 2 attempts → REJECT)
 
-**Why**: v1 used 7 chat sessions + ~7 wakeups + ~12 polls + 3 lead inline takeovers (43% rescue rate) for one round. v2 eliminates all session-management overhead while keeping the 5-lens parallel value. Evidence: `.omo/round-1/` (tracked, see Section 6) + `.omo/round-2-plan.md` (this redesign's plan).
+**Added in v5**:
+- `Phase -0 Lead Sync` — `git fetch` + status + conflict resolution (always run)
+- `Phase 0.25 PM Researcher` — `librarian` subagent, `MiniMax_web_search` + `context7_query-docs` verifies PM's competitor claims, writes `competitor-landscape.md`
+- `Phase 0.75 Planner` — `deep` subagent, receives PM Manager-validated list, does backlog freshness + ranking + scope selection (hard caps: feature≤3 / bugfix≤5 / total≤8 / polish≤1) + STOP protocol + tie-breaker, writes `planner.md` with `## Decision rationale`
+- `Phase 2.5 Lead Pre-Commit Audit` — lead inline `git cat-file -e` SHAs + reverse-grep PM Researcher competitor claims, HARD STOP on FAIL
+- `competitor-landscape.md` artifact — PM Researcher verification matrix
+- `planner.md` artifact — Planner's autonomous scope selection
+- `sync-report.md` artifact — Phase -0 Sync output
+- `audit-blocked.md` / `sync-blocked.md` / `planner-blocked.md` — hard-stop outputs
+- PM `## Competitor analysis` + `## Product-value gate` 3-test (README 缺段 / 非开发者可见 / 竞品已有) — defensive against R6 polish rounds
+
+**Kept from v2**:
+- `team_create`-less sequential `task()` execution pattern
+- Per-role category mapping (ultrabrain / deep / quick / etc.)
+- Round profile auto-classification (bugfix / feature / architecture from 8 U_* signals)
+- 5 parallel review-work lenses (Goal / QA / Code / Security / Context)
+- Lead inline takeover protocol (R3 was 5/7 lead; v5 target: 40-50%)
+- `.omo/round-N/` tracked artifact library
+- `git cat-file -e` R3-fabrication defense (PM Triage + PM Manager + now Planner)
 
 ## Quick start
 
-The full 7-role pipeline design lives in `docs/team-dev-loop.md` (tracked) and the skill body lives in this directory. Read them in this order:
+The full v5 pipeline design lives in `docs/team-dev-loop.md` (tracked) and the skill body lives in this directory. Read them in this order:
 
 1. **`docs/team-dev-loop.md`** — design + usage doc (~700 lines, tracked)
 2. **`SKILL.md` (this file)** — orchestrator stub with execution pattern
-3. **`references/phase-prompts.md`** — exact prompts to send each role (12 prompts total: 7 sequential + 5 parallel lenses)
-4. **`references/loop-decision.md`** — fail-mode handling matrix + lead takeover protocol
+3. **`references/sync-spec.md`** — Phase -0 Sync protocol (NEW v5)
+4. **`references/v5-prompts.md`** — Phase 0 PM Triage v5 + Phase 0.25 PM Researcher + Phase 0.5 PM Manager v5 + Phase 0.75 Planner prompts (NEW v5)
+5. **`references/phase-prompts.md`** — Phase 1 Architect + Phase 2 Dev + 5 lens prompts (unchanged from v2)
+6. **`references/pre-commit-audit-spec.md`** — Phase 2.5 Pre-Commit Audit protocol (NEW v5)
+7. **`references/loop-decision.md`** — fail-mode handling matrix + lead takeover protocol (updated v5)
 
 ## What this skill does
 
-For each round `N`:
-1. Read `.omo/round-N/brief.md` (PM's proposal with ranked candidates)
-2. Run the 7 phases sequentially as `task()` calls (Phase 0 PM → Phase 0.5 PM Manager → user pick gate → Phase 1 Architect → Phase 2 Dev → Phase 3a-c Tester → Phase 3.5 PM Doc Writer → Phase 4 Decision)
-3. Phase 3a (Tester Review) internally fans out 5 parallel `run_in_background=true` lenses
-4. Write `.omo/round-N/decision.md` (lead writes directly, no separate task)
-5. Append one line to `.omo/proposals.jsonl` (cross-round decision log)
-6. `git add` + `git commit` + `git push origin main` (one commit per round, no PR — user reviews the round directly on main)
+For each round `N` (v5 cron-style):
+1. **Phase -0 Sync** (lead inline): `git fetch origin` + status + conflict resolution → `sync-report.md`. HARD STOP if sync fails.
+2. Read `.omo/round-N/brief.md` (PM's proposal with ranked candidates + competitor analysis + product-value gate)
+3. Run the 11 phases sequentially as `task()` calls: Phase 0 PM → Phase 0.25 PM Researcher → Phase 0.5 PM Manager → Phase 0.75 Planner → Phase 1 Architect → Phase 2 Dev → Phase 2.5 Pre-Commit Audit → Phase 3a-c Tester → Phase 3.5 PM Doc Writer → Phase 4 Decision
+4. Phase 3a (Tester Review) internally fans out 5 parallel `run_in_background=true` lenses
+5. Write `.omo/round-N/decision.md` (lead writes directly, no separate task)
+6. Append one line to `.omo/proposals.jsonl` (cross-round decision log)
+7. `git add` + `git commit` + `git push origin main` (one commit per round, no PR — fully automated push)
+8. **Rollback support**: lead can run `git revert <round-sha>` if invoked externally; this is documented in `references/loop-decision.md` § Rollback protocol
 
 ## Agent architecture
 
@@ -63,41 +92,69 @@ const roundDir = `.omo/round-${round}`
 // Use the profile to gate which phases run (see Per-phase execution table below).
 // Skip phases are recorded in decision.md ## Skipped phases with reason.
 
-// === Phase 0: PM Triage (user-story advocate, NOT developer) ===
+// === Phase -0: Lead Sync (always run, cron-style entry-point hardening) ===
+// Reference: references/sync-spec.md
+// Run inline (no subagent):
+//   1. git fetch origin
+//   2. git status --porcelain (note dirty files)
+//   3. git log origin/main..HEAD (note local ahead)
+//   4. git log HEAD..origin/main (note remote ahead)
+//   5. If remote ahead AND local clean → git pull --rebase origin main
+//   6. If conflict / dirty+remote / diverged → HARD STOP, write .omo/round-N/sync-blocked.md, emit chat "[team-dev-loop] Round N sync blocked", exit round
+//   7. Write .omo/round-N/sync-report.md with baseline main HEAD SHA
+// After sync-report.md exists, continue to Phase 0.
+
+// === Phase 0: PM Triage v5 (user-story advocate + competitor-driven) ===
 const brief = await task({
   category: "unspecified-high",  // product judgment
-  prompt: PM_TRIAGE_PROMPT,   // from references/phase-prompts.md
+  prompt: PM_TRIAGE_V5_PROMPT,   // from references/v5-prompts.md ## 1
 })
 // Writes: ${roundDir}/brief.md
-//   - ## Candidates ranked (3-5 user-stories: As / I want / So that)
+//   - ## Competitor analysis  (NEW v5 — table of GitHub PR / GitLab MR / Gerrit / Phabricator / Sourcetree / etc.)
+//   - ## Candidates ranked (3-5 user-stories: As / I want / So that + Product-value gate 3-test result + file:line evidence)
 //   - ## User-impact profile (U_* fields: U_size, U_files, U_new_capability,
 //     U_behavior_shift, U_user_visible, U_data_shape_breaking,
 //     U_data_safety, U_installs_new_dep)
 // PM does NOT estimate lines of code or file counts — that's lead's job.
+// Backlog freshness check REMOVED from PM (moved to Planner Phase 0.75).
 
-// === Phase 0.5: PM Manager gate ===
+// === Phase 0.25: PM Researcher (NEW v5 — web-verifier of competitive claims) ===
+const pmResearcher = await task({
+  category: "unspecified-high",
+  subagent_type: "librarian",  // external-doc + web-search specialist
+  prompt: PM_RESEARCHER_PROMPT,  // from references/v5-prompts.md ## 1.5
+})
+// Writes: ${roundDir}/competitor-landscape.md
+//   - Verified / Unverified / Mischaracterized claim matrix
+//   - Candidates needing rewrite (≥2 unverified OR ≥1 mischaracterized)
+// Uses: MiniMax_web_search, context7_query-docs, webfetch, gh search_repositories, grep_app_searchGitHub
+// BLOCKER fix: PM hallucinating competitor features was a R3-style risk; this layer catches it.
+
+// === Phase 0.5: PM Manager gate v5 ===
 const pmMgr = await task({
   category: "ultrabrain",  // critical anti-pseudo-requirement reasoning
-  prompt: PM_MANAGER_PROMPT,
+  prompt: PM_MANAGER_V5_PROMPT,  // from references/v5-prompts.md ## 2
 })
-if (pmMgr.verdict === "REJECT" || pmMgr.verdict === "CLARIFY") {
-  askUser(`PM Manager ${pmMgr.verdict}: ${pmMgr.reason}. Override or skip?`)
-}
+// v5: NO askUser on REJECT / CLARIFY. REJECT → candidate removed. CLARIFY → PM Manager writes inline inference; if still CLARIFY after 2 attempts → REJECT.
+// v5: NEW — auto-open gh issue create for APPROVED candidates
+// v5: NEW — cross-check PM Researcher competitor-landscape.md
+// v5: NEW — output ## Validated for next round section (Planner input)
 // Writes: ${roundDir}/pm-manager-review.md
 
-// === User pick candidate (HARD GATE — auto-pick policy below) ===
-// Ask user to pick 1 of PM's candidates. WAIT for answer.
-//
-// **R4 loop meta-review auto-pick policy** (mandatory):
-// 1. Present all candidates + recommendation in one batched message.
-// 2. Wait for user pick.
-// 3. If user has not picked after **3 consecutive lead turns** (i.e., 3 "Continue from the previous assistant state" or similar non-response messages), lead MUST auto-pick the **highest user-value candidate that has passed PM Manager review** (typically the PM-recommended one).
-// 4. Document the auto-pick explicitly in the audit trail:
-//    - Add a "## Auto-pick (R4 loop meta-review policy)" section to `.omo/round-N/decision.md` explaining: how many non-response turns preceded the auto-pick, which candidate was auto-picked, why that candidate (consistency with user's prior picks + highest user value), and the user's right to override.
-//    - Add a "lead_takeovers" entry to `.omo/proposals.jsonl` recording the auto-pick: `{"phase": "user-pick", "auto_picked": "#<N> <title>", "non_response_turns": <N>}`.
-// 5. **DO NOT** block the loop indefinitely. The user-pick gate is to gate significant decisions, not to gate progress when the user is unavailable. The system-directive "do not stop until all tasks are done" + the user-profile's "explicit confirmation" preference are both legitimate but the latter cannot block the former indefinitely. Auto-pick resolves the conflict.
-//
-// **R4 evidence for this policy**: 4 user-non-response turns preceded the auto-pick. User's prior "1" picks (R3 retro + path forward) + the PM-recommended candidate (#1 "Previously discussed" panel, 5/5 user value) were used as the auto-pick rationale. After R4 shipped, the user reviewed the commit and could override by reverting the merge commit if desired.
+// === Phase 0.75: Planner (NEW v5 — autonomous scope selector) ===
+const planner = await task({
+  category: "deep",  // autonomous multi-step planning + ranking
+  prompt: PLANNER_PROMPT,  // from references/v5-prompts.md ## 2.5
+})
+// Inputs: pm-manager-review.md + proposals.jsonl + GH issues + prior round artifacts
+// Pre-check: git cat-file -e on prior round SHAs (R3 fabrication defense extended to Planner)
+// Backlog freshness check (moved from PM)
+// Ranking + scope selection with HARD CAPS: feature≤3 / bugfix≤5 / total≤8 / polish≤1 / arch≤1
+// Tie-breaker: aged_rounds ASC → user_value DESC → est_loc ASC
+// STOP protocol: if 0 candidates → write .omo/round-N/planner-blocked.md, return verdict STOP
+// Writes: ${roundDir}/planner.md
+// Returns: { verdict: "PROCEED" | "STOP", scope: {...}, rationale, fresh_signal_triggered }
+// v5: NO user pick. Planner decides autonomously. No escalation path.
 
 // === Phase 1: Architect ===
 const plan = await task({
@@ -162,7 +219,13 @@ gitPush("origin", "main")   // no PR — this is a single-commit-per-round workf
 
 ## Per-phase execution
 
-For each phase, read `references/phase-prompts.md` for the exact prompt body. Each prompt is copy-paste ready. Order is fixed: PM → PM Manager → user pick → Architect → Dev → Tester (3 lanes) → PM Doc Writer → Decision.
+For each phase, read the appropriate reference file for the exact prompt body:
+- Phase -0 → `references/sync-spec.md`
+- Phase 0/0.25/0.5/0.75 → `references/v5-prompts.md`
+- Phase 1/2 + 5 lens → `references/phase-prompts.md` (v2 prompts, still valid)
+- Phase 2.5 → `references/pre-commit-audit-spec.md`
+
+Order is fixed (v5): **Phase -0 Sync → Phase 0 PM Triage v5 → Phase 0.25 PM Researcher → Phase 0.5 PM Manager v5 → Phase 0.75 Planner → Phase 1 Architect → Phase 2 Dev → Phase 2.5 Pre-Commit Audit → Phase 3a-c Tester → Phase 3.5 PM Doc Writer → Phase 4 Decision → Phase 4.5-4.9 lead-owned**. **No User Pick phase.**
 
 **IMPORTANT**: phases marked with `bugfix` / `feature` / `architecture` are gated by the round profile — see "Round profile auto-classification" below. Lead should NOT call `task()` for phases that the profile says to skip.
 
@@ -177,11 +240,15 @@ For each phase, read `references/phase-prompts.md` for the exact prompt body. Ea
 
 | Phase | Role | Subagent type | Default executor | Output file(s) | Profile gating |
 |---|---|---|---|---|---|
-| 0 | PM Triage | `unspecified-high` | subagent | `brief.md` | bugfix: **skip** / feature: run / architecture: run |
-| 0.5 | PM Manager (gate) | `ultrabrain` | subagent | `pm-manager-review.md` | bugfix: **skip** / feature: run / architecture: run |
-| — | User pick candidate | (no subagent) | lead | (lead asks user) | bugfix: **skip** / feature: run / architecture: run |
+| **-0** | **Lead Sync** (NEW v5) | (no subagent) | **lead inline** | `sync-report.md` (+ `sync-blocked.md` on HARD STOP) | **always run** (bugfix+feature+architecture) |
+| 0 | **PM Triage v5** (competitor-driven) | `unspecified-high` | subagent | `brief.md` (## Competitor analysis + ## Product-value gate 3-test) | bugfix: **skip** / feature: run / architecture: run |
+| **0.25** | **PM Researcher** (NEW v5 — web-verifier) | `unspecified-high` + `subagent_type: "librarian"` | subagent | `competitor-landscape.md` (verified/unverified/mischaracterized matrix) | bugfix: **skip** / feature: run / architecture: run |
+| 0.5 | **PM Manager v5** (gate + auto-issue-opener) | `ultrabrain` | subagent | `pm-manager-review.md` + `gh issue create` calls + `## Validated for next round` | bugfix: **skip** / feature: run / architecture: run |
+| **0.75** | **Planner** (NEW v5 — autonomous scope selector) | `deep` | subagent | `planner.md` (+ `planner-blocked.md` on STOP) | bugfix: **skip** / feature: run / architecture: run |
+| ~~—~~ | ~~User pick candidate~~ (REMOVED v5) | — | — | — | — |
 | 1 | Architect | `ultrabrain` | subagent (or lead for bugfix 1-para) | `plan.md` | bugfix: 1-para plan / feature: full plan / architecture: full plan + hyperplan |
 | 2 | Dev | `deep` | subagent (or lead for trivial bugfix) | (worktree + code + tests; inline AC trace in return) | always run |
+| **2.5** | **Lead Pre-Commit Audit** (NEW v5) | (no subagent) | **lead inline** | inline verdict in `decision.md`; `audit-blocked.md` on HARD STOP | **always run** (bugfix+feature+architecture) |
 | 3a | Tester Review (5 lens parallel) | `deep` (orchestrator) + 5 internal lenses | **lead by default** (R4 retro: orchestrator subagent stalled 7+ min with 5 lens tasks idle; lead synthesizing `test-report.md` directly was faster and just as accurate) | `review-{goal,qa,code,security,context}.md` + `test-report.md` | bugfix: 3 lens (Goal+QA+Security) / feature+architecture: 5 lens |
 |   | 3a-1 Lens Goal | `quick` (parallel) | subagent | `review-goal.md` | always if 3a runs |
 |   | 3a-2 Lens QA | `quick` (parallel) | subagent | `review-qa.md` | always if 3a runs |
@@ -195,12 +262,23 @@ For each phase, read `references/phase-prompts.md` for the exact prompt body. Ea
 | 4.5 | **Round-end retrospective** | (no subagent) | **lead always** | `.omo/round-N/retro.md` | **always run** (mandatory, R4 retro lesson — content-focused: what shipped, what worked, skill gaps) |
 | 4.6 | **Post-execution call-flow analysis** | (no subagent) | **lead always** | `.omo/round-N/post-exec-analysis.md` | **always run** (mandatory, R4 retro lesson — call-flow-focused: stalled subagents, lead takeovers, wasted time/tokens, NEW call-flow gaps not in retro) |
 | 4.7 | **Loop self-check** (HARD GATE) | (no subagent) | **lead always** | `.omo/round-N/self-check.md` | **always run** (mandatory, hard gate before closure commit — verifies per-phase artifacts + closure sequence gates; MUST be PASS) |
-| 4.8 | **Loop Summary Output** | (no subagent) | **lead always** | (chat response, NOT a file) | **always run** (mandatory, R7 retro Gap J — lead outputs 5-section summary to user as chat response BEFORE closure commit; user MUST see what shipped without asking) |
+| 4.8 | **Loop Summary Output** | (no subagent) | **lead always** | (chat response, NOT a file) | **always run** (mandatory, R7 retro Gap J — lead outputs 5-section summary as chat response BEFORE closure commit) |
 | 4.9 | **Issue Auto-Close** | (no subagent) | **lead always** | (gh issue close calls) | **always run** (mandatory, R7 retro Gap K — lead scans open issues referenced in commit messages + decision.md, closes with comment referencing commits; uses `gh issue close <N> --comment "<text>"`) |
 | — | Skill-update patch (if retro OR post-exec surfaced skill gaps) | (no subagent) | **lead always** | `.opencode/skills/team-dev-loop/**` | **always run if retro or post-exec surfaces skill gaps** |
 | — | Append audit log | (no subagent) | **lead always** | `.omo/proposals.jsonl` (1 line) | always run |
 
-**Default executor rationale (Round 3 lesson + R4+R5)**: R3 had 5/7 lead takeovers (71%), R1 had 3/7 (43%). The skill already framed takeovers as "DESIGN FEATURE, not rescue", but didn't say which phases are "typically lead-written" by default. The new `Default executor` column makes it transparent: **3b Tester Diff is `git diff main` + write report, no fresh subagent context needed → lead by default**. **3c Playwright is lead by default** (R4+R5 evidence: 2/2 subagent stalls — 7+ min and 12m+ min wasted. Lead takeover both times was 2-5 min. Subagent is unreliable in this environment for browser walkthroughs). 0/0.5/1/2 stay as subagents because the work is non-trivial; 3a (lead by default since R4 retro Gap 2), 4/4.5/patches/audit stay as lead because they need full context. Lead can always override the default (per the existing "Lead inline takeover protocol" section).
+**v5 hard-stop table** (replaces v2 askUser):
+
+| Failure | Hard-stop file | Round outcome |
+|---|---|---|
+| Phase -0 Sync failure (network / conflict / divergence) | `.omo/round-N/sync-blocked.md` | Round N ends; next round retries sync |
+| PM Researcher finds ≥1 MISCHARACTERIZED + Planner rejects | `.omo/round-N/planner-blocked.md` | Round N ends; PM Triage re-run next round |
+| Planner cannot select any candidate (validated list empty / all STALE / all capped) | `.omo/round-N/planner-blocked.md` | Round N ends; explore() fresh-investigation next round |
+| Phase 2.5 Pre-Commit Audit FAIL (SHA missing OR claim unverified) | `.omo/round-N/audit-blocked.md` | Round N ends; closure commit BLOCKED |
+
+**Rollback protocol** (NEW v5): Lead can run `git revert <round-sha>` from chat (manual operator action). Document the revert in next round's `decision.md` ## Rollback section.
+
+**Default executor rationale (v3 lesson + R4+R5 + v5 updates)**: R3 had 5/7 lead takeovers (71%), R1 had 3/7 (43%). The skill already framed takeovers as "DESIGN FEATURE, not rescue", but didn't say which phases are "typically lead-written" by default. The new `Default executor` column makes it transparent: **3b Tester Diff is `git diff main` + write report, no fresh subagent context needed → lead by default**. **3c Playwright is lead by default** (R4+R5 evidence: 2/2 subagent stalls — 7+ min and 12m+ min wasted. Lead takeover both times was 2-5 min. Subagent is unreliable in this environment for browser walkthroughs). 0/0.25/0.5/0.75/1/2 stay as subagents because the work is non-trivial; 3a (lead by default since R4 retro Gap 2), 4/4.5/4.6/4.7/4.8/4.9/patches/audit stay as lead because they need full context. **NEW v5**: Phase -0 Sync + Phase 2.5 Pre-Commit Audit are lead inline (no subagent) — they are mechanical gate-keeper checks (git fetch / git cat-file -e) that require shell context. Lead can always override the default (per the existing "Lead inline takeover protocol" section).
 
 **3b + 3.5 parallel after 3a** (R5 retro optimization, lead-only): Both 3b (Tester Diff) and 3.5 (PM Doc Writer) are now lead tasks by default. They do NOT depend on 3c (Playwright). **Lead SHOULD write 3b and 3.5 in the same response block after 3a completes** — saving 3-4 min per round vs. sequential execution. The phase order in skill text is still 3a → 3b → 3c → 3.5 for documentation purposes; in actual execution, lead can produce 3b and 3.5 artifacts immediately after 3a synthesis without waiting for 3c.
 
@@ -208,7 +286,7 @@ For each phase, read `references/phase-prompts.md` for the exact prompt body. Ea
 
 **Lead pre-task context synthesis for 5 lens** (R5 retro optimization): Each of the 5 lens tasks re-reads the same context (brief.md, plan.md, file diff, AC list, commit SHAs). With 5 lenses each doing ~30s of context warm-up, total ~2.5 min is wasted on duplicate reads. **Lead MAY pre-synthesize a context doc** (`.omo/round-N/lens-context.md`) before firing lenses, containing: (a) sub-candidate summary with file:line evidence, (b) AC list grouped by sub-candidate, (c) commit SHAs to verify, (d) the key files to inspect (collectWorking, detectLanguage, drawer HTML, etc.). Each lens prompt then references this doc instead of re-discovering context. Saves ~2 min per round.
 
-**Backlog-freshness gate (Round 3 lesson)**: Before Phase 0 PM Triage, lead checks `.omo/proposals.jsonl` `follow_up_candidates`. If 3+ candidates are all small bugfixes (e.g. R1-3 backlog had 3 bugfixes: #3 Reopen end_line, #4 E2E coverage gap, #5 take-screenshots dead code), lead MUST instruct PM to surface **at least 1 fresh user-story via self-investigation** (read README + recent code + recent commits, NOT just re-rank the bugfix backlog). See `references/phase-prompts.md` PM Triage prompt § "Backlog freshness check" for the full check. Without this gate, PM auto-retreads stale bugfix backlog (R1-2 evidence) instead of surfacing new user value (R3 evidence: PM self-investigated and found the prior-round context gap, correctly classified as feature).
+**Backlog-freshness gate (Round 3 lesson, MOVED to Planner in v5)**: In v2, this check ran in PM Triage. In v5, **the backlog-freshness check moved to Phase 0.75 Planner** — PM Triage now does competitor analysis (## Competitor analysis + ## Product-value gate 3-test) instead. The check itself is unchanged: if 3+ candidates in `follow_up_candidates` have `aged_rounds >= 3` (i.e. they have appeared in 3+ previous rounds' follow-up lists without being selected), Planner triggers a **fresh-investigation signal**: lead spawns `explore` subagent for self-investigation (read README + recent code + recent commits + GH issues) before Planner's final scope selection. See `references/v5-prompts.md` ## 2.5 Planner prompt § Backlog freshness check for the full spec.
 
 **Why different categories per role** (per user feedback on category-specialization): each role has a different work shape — product judgment (`unspecified-high`), critical reasoning (`ultrabrain`), autonomous end-to-end (`deep`), mechanical checks (`quick`), soft/uncoventional judgment (`artistry`), UI walkthrough (`visual-engineering`), documentation (`writing`). Picking the right sub-model per role gives better quality per token than a one-size-fits-all `unspecified-high` for everything.
 
@@ -520,15 +598,19 @@ Both are mandatory. Both are lead-written. Both can surface skill patches. The t
 
 | Phase | Required artifact | Required | Status | Evidence (file:line / value) |
 |---|---|---|---|---|
-| 0 PM Triage | `.omo/round-N/brief.md` | yes | PASS/FAIL | file exists, has Candidates ranked, has Scope buckets (R5+), has ## Self-Critique, has U_* profile |
-| 0.5 PM Manager | `.omo/round-N/pm-manager-review.md` | yes | PASS/FAIL | verdict APPROVE / REJECT / CLARIFY (with pre_check PASS) |
+| **-0 Sync (NEW v5)** | `.omo/round-N/sync-report.md` | **yes (always run)** | PASS/FAIL | sync-report.md has Network PASS + Local state + Remote state + Action taken + Baseline main HEAD SHA |
+| 0 PM Triage | `.omo/round-N/brief.md` | yes | PASS/FAIL | file exists, has ## Competitor analysis (v5), has ## Candidates ranked (3-5), has ## Product-value gate 3-test (v5), has ## Self-Critique, has U_* profile |
+| **0.25 PM Researcher (NEW v5)** | `.omo/round-N/competitor-landscape.md` | feature/arch only | PASS/N/A/FAIL | verified/unverified/mischaracterized matrix per candidate, ≥1 verification source cited per claim |
+| 0.5 PM Manager | `.omo/round-N/pm-manager-review.md` | yes | PASS/FAIL | verdict APPROVE / REJECT / CLARIFY (with pre_check PASS), gh issue create calls recorded, ## Validated for next round table |
+| **0.75 Planner (NEW v5)** | `.omo/round-N/planner.md` | feature/arch only | PASS/N/A/FAIL | ## Ranking table, ## Scope selected (≤3f+5b+8t+polish≤1), ## Decision rationale, tie-breaker applied |
 | 1 Architect | `.omo/round-N/plan.md` | feature/arch only | PASS/N/A/FAIL | 7 sections present (Goal, ACs, File changes, Steps, Test plan, Risk register, Hand-off) |
 | 2 Dev | worktree commit + AC trace in decision.md | yes | PASS/FAIL | commit SHA exists in worktree, AC trace has all N ACs with PASS/FAIL evidence |
+| **2.5 Pre-Commit Audit (NEW v5)** | inline verdict in decision.md | **yes (always run)** | PASS/FAIL | SHAs verified (≥N PASS), claims reverse-verified (≥N PASS); on FAIL → audit-blocked.md exists |
 | 3a Tester Review | `.omo/round-N/test-report.md` + 5 review-*.md or lead-takeover note | yes | PASS/FAIL | test-report.md has 5/5 lens verdicts, 5 review-*.md files OR `.omo/round-N/lead-takeover-tester-review.md` exists |
 | 3b Tester Diff | `.omo/round-N/diff-report.md` | yes | PASS/FAIL | diff-report.md has no CRITICAL findings, file:line evidence for each change |
 | 3c Tester Playwright | `.omo/round-N/playwright-report.md` OR lead-takeover note OR profile-skipped justification | UI changed OR feature+arch profile | PASS/N/A/FAIL | walkthrough + screenshot + verdict, OR lead-takeover note, OR explicit skip justification |
 | 3.5 PM Doc Writer | `.omo/round-N/doc-update-report.md` | yes | PASS/FAIL | sections added/modified, screenshots captured, walkthrough validated |
-| 4 Decision | `.omo/round-N/decision.md` | yes | PASS/FAIL | SHIP/CONTINUE/STOP verdict, AC trace, lead takeovers list, dev self-check |
+| 4 Decision | `.omo/round-N/decision.md` | yes | PASS/FAIL | SHIP/CONTINUE/STOP verdict, AC trace, lead takeovers list, dev self-check, ## Sync section, ## Planner section, ## Pre-Commit Audit section |
 | 4.5 Retro | `.omo/round-N/retro.md` | yes (mandatory) | PASS/FAIL | all 6 sections present (TL;DR, Successes, Failures, Skill gaps, Followup, Action items), no blank sections |
 | 4.6 Post-exec | `.omo/round-N/post-exec-analysis.md` | yes (mandatory, R4 retro) | PASS/FAIL | all 6 sections present (TL;DR, Call-flow timeline, Task invocations summary, Per-task review, Wasted analysis, New skill gaps) |
 
@@ -548,11 +630,14 @@ Both are mandatory. Both are lead-written. Both can surface skill patches. The t
 
 | Step | Status | Evidence |
 |---|---|---|
-| All expected output files exist for the profile (≥3/14 bugfix, ≥8/14 feature, 14/14 arch) | PASS/FAIL | `ls .omo/round-N/ | wc -l` |
-| `decision.md` SHIP verdict | PASS/FAIL | grep "## Verdict" decision.md |
+| All expected output files exist for the profile (≥4/17 bugfix, ≥10/17 feature, 17/17 arch) — v5 added sync-report.md + competitor-landscape.md + planner.md | PASS/FAIL | `ls .omo/round-N/ | wc -l` |
+| `decision.md` SHIP verdict (or STOP / BLOCKED with reason) | PASS/FAIL | grep "## Verdict" decision.md |
 | `.omo/proposals.jsonl` R-N line appended | PASS/FAIL | `tail -1 .omo/proposals.jsonl` parses + has correct round number |
 | Skill patches applied (if retro OR post-exec surfaced gaps) | PASS/FAIL/N/A | git log of skill-update commits |
+| **Phase 4.8 Loop Summary** emitted as chat response BEFORE the closure commit (R7 Gap J) | PASS/FAIL | visible in lead's chat response before `git commit` |
+| **Phase 4.9 Issue Auto-Close** — if any open issue is referenced in commit messages + decision.md, lead runs `gh issue close <N> --comment "<text>"` (R7 Gap K) | PASS/N/A/FAIL | `gh issue list --state closed` shows the closed issue |
 | Closure commit (this self-check passes BEFORE the commit) | PENDING → DONE | git log of the round's closure commit |
+| **v5 hard-stop check**: NO `sync-blocked.md` / `audit-blocked.md` / `planner-blocked.md` exists (if any exists, round was blocked — closure commit should NOT have happened) | PASS/FAIL | `ls .omo/round-N/ | grep -E "(sync\|audit\|planner)-blocked"` returns empty |
 
 ## Self-check verdict
 
@@ -565,15 +650,19 @@ If FAIL: **the closure commit is BLOCKED**. Fix the missing artifact(s) (re-run 
 
 ## Self-check checklist the lead must verify
 
-- [ ] Phase 0 brief.md exists + has all 6+ required sections (Title, Source, User pain, Candidates ranked, Scope buckets (R5+), Recommended candidate, Self-Critique, U_* profile)
-- [ ] Phase 0.5 pm-manager-review.md exists + has APPROVE/REJECT/CLARIFY verdict + pre_check PASS
+- [ ] **Phase -0 sync-report.md** exists + has Network PASS + Baseline main HEAD SHA (v5)
+- [ ] Phase 0 brief.md exists + has all 7 required sections (Title, Source, User pain, **Competitor analysis** (v5), Candidates ranked, Recommended candidate, Self-Critique, U_* profile)
+- [ ] **Phase 0.25 competitor-landscape.md** exists IF profile is feature/architecture (v5)
+- [ ] Phase 0.5 pm-manager-review.md exists + has APPROVE/REJECT/CLARIFY verdict + pre_check PASS + gh issue create calls + ## Validated for next round
+- [ ] **Phase 0.75 planner.md** exists IF profile is feature/architecture + has ## Ranking + ## Scope selected (caps respected) + ## Decision rationale (v5)
 - [ ] Phase 1 plan.md exists IF profile is feature/architecture (skip for bugfix)
 - [ ] Phase 2: worktree commit exists in git, AC trace in decision.md has all N ACs with PASS/FAIL evidence
+- [ ] **Phase 2.5 Pre-Commit Audit** PASS (inline verdict in decision.md; SHAs verified; claims reverse-verified) — if FAIL, audit-blocked.md exists and closure commit should be BLOCKED (v5)
 - [ ] Phase 3a test-report.md exists + 5/5 lens verdicts + per-lens source (lens-task or LEAD_SYNTHESIZED)
 - [ ] Phase 3b diff-report.md exists + no CRITICAL findings
 - [ ] Phase 3c playwright-report.md OR lead-takeover-tester-playwright.md OR profile-skipped justification
 - [ ] Phase 3.5 doc-update-report.md exists + sections + walkthrough validated
-- [ ] Phase 4 decision.md exists + SHIP/CONTINUE/STOP verdict + AC trace + lead takeovers + dev self-check
+- [ ] Phase 4 decision.md exists + SHIP/CONTINUE/STOP verdict + AC trace + lead takeovers + dev self-check + ## Sync section + ## Planner section + ## Pre-Commit Audit section
 - [ ] Phase 4.5 retro.md exists + all 6 sections, no blanks
 - [ ] Phase 4.6 post-exec-analysis.md exists + all 6 sections, no blanks
 - [ ] `.omo/proposals.jsonl` R-N line appended (5 fields: round, timestamp, pm_source, brief_excerpt, final_outcome)
@@ -750,8 +839,13 @@ Every round produces a directory `.omo/round-N/` with these 14 files (all tracke
 
 ```text
 .omo/round-N/
-├── brief.md                    # PM's proposal + ranked candidates + ## Scope buckets (R5+) + ## Self-Critique
-├── pm-manager-review.md        # PM Manager gate verdict (APPROVE / REJECT / CLARIFY)
+├── sync-report.md              # Phase -0 Sync output (NEW v5 — always run)
+├── sync-blocked.md             # Phase -0 Sync HARD STOP marker (NEW v5 — if exists, round ends)
+├── brief.md                    # PM's proposal + ## Competitor analysis (v5) + ## Product-value gate 3-test (v5) + ranked candidates + ## Self-Critique
+├── competitor-landscape.md     # Phase 0.25 PM Researcher verification matrix (NEW v5 — feature/arch only)
+├── pm-manager-review.md        # PM Manager v5 gate verdict + ## Validated for next round (Planner input) + gh issue create log
+├── planner.md                  # Phase 0.75 Planner autonomous scope selection (NEW v5 — feature/arch only)
+├── planner-blocked.md          # Phase 0.75 Planner HARD STOP marker (NEW v5 — if exists, round ends)
 ├── plan.md                     # Architect's decision-complete plan
 ├── review-goal.md              # Lens #1: Goal/AC verifier
 ├── review-qa.md                # Lens #2: QA hands-on tester
@@ -762,7 +856,8 @@ Every round produces a directory `.omo/round-N/` with these 14 files (all tracke
 ├── diff-report.md              # /diff-review-dashboard output (or lead-takeover note)
 ├── playwright-report.md        # Playwright UI walkthrough
 ├── doc-update-report.md        # PM Doc Writer verdict (README + screenshots)
-├── decision.md                 # Lead's Phase 4 verdict (PASS/FAIL/CONTINUE/STOP)
+├── decision.md                 # Lead's Phase 4 verdict (PASS/FAIL/CONTINUE/STOP) + ## Sync + ## Planner + ## Pre-Commit Audit sections
+├── audit-blocked.md            # Phase 2.5 Pre-Commit Audit HARD STOP marker (NEW v5 — if exists, closure commit BLOCKED)
 ├── retro.md                    # Phase 4.5 round-end retrospective (mandatory, R4 retro)
 ├── post-exec-analysis.md       # Phase 4.6 post-execution call-flow analysis (mandatory, R4 retro)
 └── self-check.md               # Phase 4.7 loop self-check (mandatory hard gate)
