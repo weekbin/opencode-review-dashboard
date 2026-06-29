@@ -179,6 +179,13 @@ The plan MUST contain:
 6. ## Risk register (3-5 risks with mitigation)
 7. ## Worker hand-off checklist (15-30 items, copy-paste ready)
 
+**Multi-round AC check (mandatory, Round 3 lesson)** — BEFORE writing the plan, for each AC classify it as one of:
+- **round-1 ground truth** (verifiable in a single e2e run, e.g. "agent reads state.json") → design an e2e scenario
+- **multi-round** (asserts "what round N>1 sees", e.g. "round 2's payload includes prior-round resolved findings") → design a **direct unit test** on the function that builds the round-N output (e.g. `format()`). The e2e harness runs each scenario as a single round, so multi-round ACs are **structurally impossible to verify e2e** — see `loop-decision.md` § "Multi-round AC test-design rule" + Round 3 evidence (AC6 was originally written as e2e and silently asserted nothing; caught only because the Goal lens inspected the test mechanically).
+- **payload-shape / static** (asserts the JSON structure regardless of round) → design an e2e scenario that stashes `state.json` content onto `setupInfo` BEFORE cleanup (see Tester Review prompt "Known harness limitations" for the pattern).
+
+The plan MUST call out which ACs are multi-round and what unit test design exercises them. If the plan doesn't, lead must rewrite the plan before delegating to Dev.
+
 If trivial (single file, <30 lines, no architectural decision) — write a 1-paragraph plan directly. No need for the full 7-section structure.
 
 Return value to lead: `{ plan_path: ".omo/round-N/plan.md", ac_count: <N>, estimated_files: <N> }`.
@@ -193,7 +200,7 @@ TASK: Execute this plan.
 
 PLAN: `.omo/round-N/plan.md`
 ROUND: <round number>
-WORKTREE: per project memory 372 — create one at `/Users/yangweibin/.worktrees/team-dev-loop-round-<N>` before any src/ edits. The worktree branch should be `team-dev-loop-round-<N>-<short-slug>`.
+WORKTREE: per the SKILL.md "worktree path" note. Default: `mkdir -p $HOME/.worktrees && git worktree add $HOME/.worktrees/team-dev-loop-round-<N> -b team-dev-loop-round-<N>-<short-slug>`. The `$HOME` env var works on macOS, Linux, WSL — fixes the Round 3 `/Users/yangweibin/...` portability bug. **Commit strategy** (also per SKILL.md): use worktree for `feature` / `architecture` profiles, commit direct to `main` for `bugfix` profile (small fixes don't need isolation).
 
 CONTEXT:
 <full content of .omo/round-N/brief.md>
@@ -319,6 +326,7 @@ Inputs:
 - Dev's commit: `<commit-sha>`
 
 For each AC:
+- **First classify** the AC (round-1 ground truth / multi-round / payload-shape). See Architect prompt "Multi-round AC check" for definitions. If multi-round, look for the unit test file (e.g. `src/format.test.ts` in this repo) — not just the e2e harness. Round 3 evidence: AC6 was multi-round but the plan only added an e2e scenario that asserted nothing; Goal lens caught this by reading the test file mechanically.
 - Search the worktree for evidence: `grep -r "<keyword>" <worktree>/src/`
 - Read the relevant code section
 - Determine: PASS (implemented as specified) / FAIL (not implemented) / PARTIAL (implemented but with deviation)

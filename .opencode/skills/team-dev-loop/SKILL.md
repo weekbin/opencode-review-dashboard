@@ -155,26 +155,30 @@ For each phase, read `references/phase-prompts.md` for the exact prompt body. Ea
 
 **IMPORTANT**: phases marked with `bugfix` / `feature` / `architecture` are gated by the round profile — see "Round profile auto-classification" below. Lead should NOT call `task()` for phases that the profile says to skip.
 
-| Phase | Role | Subagent type | Output file(s) | Profile gating |
-|---|---|---|---|---|
-| 0 | PM Triage | `unspecified-high` | `brief.md` | bugfix: **skip** / feature: run / architecture: run |
-| 0.5 | PM Manager (gate) | `ultrabrain` | `pm-manager-review.md` | bugfix: **skip** / feature: run / architecture: run |
-| — | User pick candidate | (no subagent) | (lead asks user) | bugfix: **skip** / feature: run / architecture: run |
-| 1 | Architect | `ultrabrain` | `plan.md` | bugfix: 1-para plan / feature: full plan / architecture: full plan + hyperplan |
-| 2 | Dev | `deep` | (worktree + code + tests; inline AC trace in return) | always run |
-| 3a | Tester Review (5 lens parallel) | `deep` (orchestrator) + 5 internal lenses | `review-{goal,qa,code,security,context}.md` + `test-report.md` | bugfix: 3 lens (Goal+QA+Security) / feature+architecture: 5 lens |
-|   | 3a-1 Lens Goal | `quick` (parallel) | `review-goal.md` | always if 3a runs |
-|   | 3a-2 Lens QA | `quick` (parallel) | `review-qa.md` | always if 3a runs |
-|   | 3a-3 Lens Code | `ultrabrain` (parallel) | `review-code.md` | bugfix: **skip** / feature+architecture: run |
-|   | 3a-4 Lens Security | `ultrabrain` (parallel) | `review-security.md` | always if 3a runs |
-|   | 3a-5 Lens Context | `artistry` (parallel) | `review-context.md` | bugfix: **skip** / feature+architecture: run |
-| 3b | Tester Diff | `unspecified-high` | `diff-report.md` | always run |
-| 3c | Tester Playwright | `visual-engineering` | `playwright-report.md` | bugfix: **skip unless UI changed** / feature+architecture: run |
-| 3.5 | PM Doc Writer | `writing` | `doc-update-report.md` (side effect: README + screenshots) | bugfix: 1-para README / feature+architecture: full README + screenshot |
-| 4 | Decision | (lead writes directly) | `decision.md` | always run |
-| 4.5 | **Round-end retrospective** | (lead writes directly) | `.omo/round-N/retro.md` | **always run** (mandatory) |
-| — | Skill-update patch (if retro surfaced skill gaps) | (lead writes directly) | `.opencode/skills/team-dev-loop/**` | **always run if retro surfaces skill gaps** |
-| — | Append audit log | (lead writes directly) | `.omo/proposals.jsonl` (1 line) | always run |
+| Phase | Role | Subagent type | Default executor | Output file(s) | Profile gating |
+|---|---|---|---|---|---|
+| 0 | PM Triage | `unspecified-high` | subagent | `brief.md` | bugfix: **skip** / feature: run / architecture: run |
+| 0.5 | PM Manager (gate) | `ultrabrain` | subagent | `pm-manager-review.md` | bugfix: **skip** / feature: run / architecture: run |
+| — | User pick candidate | (no subagent) | lead | (lead asks user) | bugfix: **skip** / feature: run / architecture: run |
+| 1 | Architect | `ultrabrain` | subagent (or lead for bugfix 1-para) | `plan.md` | bugfix: 1-para plan / feature: full plan / architecture: full plan + hyperplan |
+| 2 | Dev | `deep` | subagent (or lead for trivial bugfix) | (worktree + code + tests; inline AC trace in return) | always run |
+| 3a | Tester Review (5 lens parallel) | `deep` (orchestrator) + 5 internal lenses | subagent | `review-{goal,qa,code,security,context}.md` + `test-report.md` | bugfix: 3 lens (Goal+QA+Security) / feature+architecture: 5 lens |
+|   | 3a-1 Lens Goal | `quick` (parallel) | subagent | `review-goal.md` | always if 3a runs |
+|   | 3a-2 Lens QA | `quick` (parallel) | subagent | `review-qa.md` | always if 3a runs |
+|   | 3a-3 Lens Code | `ultrabrain` (parallel) | subagent | `review-code.md` | bugfix: **skip** / feature+architecture: run |
+|   | 3a-4 Lens Security | `ultrabrain` (parallel) | subagent | `review-security.md` | always if 3a runs |
+|   | 3a-5 Lens Context | `artistry` (parallel) | subagent | `review-context.md` | bugfix: **skip** / feature+architecture: run |
+| 3b | Tester Diff | `unspecified-high` | **lead by default** | `diff-report.md` | always run |
+| 3c | Tester Playwright | `visual-engineering` | subagent for UI-heavy / lead for small UI changes | `playwright-report.md` | bugfix: **skip unless UI changed** / feature+architecture: run |
+| 3.5 | PM Doc Writer | `writing` | subagent (or lead for bugfix 1-para README) | `doc-update-report.md` (side effect: README + screenshots) | bugfix: 1-para README / feature+architecture: full README + screenshot |
+| 4 | Decision | (no subagent) | **lead always** | `decision.md` | always run |
+| 4.5 | **Round-end retrospective** | (no subagent) | **lead always** | `.omo/round-N/retro.md` | **always run** (mandatory) |
+| — | Skill-update patch (if retro surfaced skill gaps) | (no subagent) | **lead always** | `.opencode/skills/team-dev-loop/**` | **always run if retro surfaces skill gaps** |
+| — | Append audit log | (no subagent) | **lead always** | `.omo/proposals.jsonl` (1 line) | always run |
+
+**Default executor rationale (Round 3 lesson)**: R3 had 5/7 lead takeovers (71%), R1 had 3/7 (43%). The skill already framed takeovers as "DESIGN FEATURE, not rescue", but didn't say which phases are "typically lead-written" by default. The new `Default executor` column makes it transparent: **3b Tester Diff is `git diff main` + write report, no fresh subagent context needed → lead by default**. **3c Playwright is subagent for UI-heavy rounds, lead for small UI changes** (R3's 3c was a small change → lead-written). 0/0.5/1/2/3a stay as subagents because the work is non-trivial; 4/4.5/patches/audit stay as lead because they need full context. Lead can always override the default (per the existing "Lead inline takeover protocol" section).
+
+**Backlog-freshness gate (Round 3 lesson)**: Before Phase 0 PM Triage, lead checks `.omo/proposals.jsonl` `follow_up_candidates`. If 3+ candidates are all small bugfixes (e.g. R1-3 backlog had 3 bugfixes: #3 Reopen end_line, #4 E2E coverage gap, #5 take-screenshots dead code), lead MUST instruct PM to surface **at least 1 fresh user-story via self-investigation** (read README + recent code + recent commits, NOT just re-rank the bugfix backlog). See `references/phase-prompts.md` PM Triage prompt § "Backlog freshness check" for the full check. Without this gate, PM auto-retreads stale bugfix backlog (R1-2 evidence) instead of surfacing new user value (R3 evidence: PM self-investigated and found the prior-round context gap, correctly classified as feature).
 
 **Why different categories per role** (per user feedback on category-specialization): each role has a different work shape — product judgment (`unspecified-high`), critical reasoning (`ultrabrain`), autonomous end-to-end (`deep`), mechanical checks (`quick`), soft/uncoventional judgment (`artistry`), UI walkthrough (`visual-engineering`), documentation (`writing`). Picking the right sub-model per role gives better quality per token than a one-size-fits-all `unspecified-high` for everything.
 
@@ -452,7 +456,8 @@ Every round produces a directory `.omo/round-N/` with these 13 files (all tracke
 
 ## Notes
 
-- **worktree**: per project memory 372, Phase 2 (Dev) MUST create worktree at `/Users/yangweibin/.worktrees/team-dev-loop-round-N` before any src/ edits
+- **worktree path** (Round 3 lesson — fixes `/Users/yangweibin/...` portability bug): `WORKTREE_DIR="${WORKTREE_DIR:-$HOME/.worktrees/team-dev-loop-round-$N}"` — environment-templated. The default `$HOME` works on macOS, Linux, WSL. Override via `export WORKTREE_DIR=/custom/path` if you need a different location. `phase-prompts.md` Dev prompt uses the same template.
+- **commit strategy** (Round 3 lesson — fixes the worktree-vs-direct-to-main convention drift between R1+R2 vs R3): **bugfix profile** → commit directly to `main` (1-line fix, no isolation needed, R3 pattern); **feature / architecture profile** → use worktree (multi-commit, risky, needs isolation, R1+R2 pattern). Lead records the chosen strategy in `decision.md` ## Commit strategy section.
 - **Push strategy**: v2 commits go directly to `main` (no PR). User reviews commits on main. If user prefers PR flow, add a flag and use `gh pr create` instead.
 - **5 review lens parallelism**: works because each lens writes to its OWN file (`review-goal.md` etc), so there's no shared write contention. The synthesis `test-report.md` is written by the tester-review subagent AFTER `Promise.all([5 lenses])` resolves.
 - **Memory budget**: v1 consumed ~150KB of artifacts per round. v2 keeps the same artifact budget — the saving is in orchestration overhead, not artifact volume.
