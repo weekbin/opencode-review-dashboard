@@ -162,7 +162,7 @@ For each phase, read `references/phase-prompts.md` for the exact prompt body. Ea
 | — | User pick candidate | (no subagent) | lead | (lead asks user) | bugfix: **skip** / feature: run / architecture: run |
 | 1 | Architect | `ultrabrain` | subagent (or lead for bugfix 1-para) | `plan.md` | bugfix: 1-para plan / feature: full plan / architecture: full plan + hyperplan |
 | 2 | Dev | `deep` | subagent (or lead for trivial bugfix) | (worktree + code + tests; inline AC trace in return) | always run |
-| 3a | Tester Review (5 lens parallel) | `deep` (orchestrator) + 5 internal lenses | subagent | `review-{goal,qa,code,security,context}.md` + `test-report.md` | bugfix: 3 lens (Goal+QA+Security) / feature+architecture: 5 lens |
+| 3a | Tester Review (5 lens parallel) | `deep` (orchestrator) + 5 internal lenses | **lead by default** (R4 retro: orchestrator subagent stalled 7+ min with 5 lens tasks idle; lead synthesizing `test-report.md` directly was faster and just as accurate) | `review-{goal,qa,code,security,context}.md` + `test-report.md` | bugfix: 3 lens (Goal+QA+Security) / feature+architecture: 5 lens |
 |   | 3a-1 Lens Goal | `quick` (parallel) | subagent | `review-goal.md` | always if 3a runs |
 |   | 3a-2 Lens QA | `quick` (parallel) | subagent | `review-qa.md` | always if 3a runs |
 |   | 3a-3 Lens Code | `ultrabrain` (parallel) | subagent | `review-code.md` | bugfix: **skip** / feature+architecture: run |
@@ -170,7 +170,7 @@ For each phase, read `references/phase-prompts.md` for the exact prompt body. Ea
 |   | 3a-5 Lens Context | `artistry` (parallel) | subagent | `review-context.md` | bugfix: **skip** / feature+architecture: run |
 | 3b | Tester Diff | `unspecified-high` | **lead by default** | `diff-report.md` | always run |
 | 3c | Tester Playwright | `visual-engineering` | subagent for UI-heavy / lead for small UI changes | `playwright-report.md` | bugfix: **skip unless UI changed** / feature+architecture: run |
-| 3.5 | PM Doc Writer | `writing` | subagent (or lead for bugfix 1-para README) | `doc-update-report.md` (side effect: README + screenshots) | bugfix: 1-para README / feature+architecture: full README + screenshot |
+| 3.5 | PM Doc Writer | `writing` | **lead by default when work is small** (≤3 doc files, no screenshot, no Playwright MCP needed) / subagent for full README rewrite + screenshot capture | `doc-update-report.md` (side effect: README + screenshots) | bugfix: 1-para README / feature+architecture: full README + screenshot |
 | 4 | Decision | (no subagent) | **lead always** | `decision.md` | always run |
 | 4.5 | **Round-end retrospective** | (no subagent) | **lead always** | `.omo/round-N/retro.md` | **always run** (mandatory) |
 | — | Skill-update patch (if retro surfaced skill gaps) | (no subagent) | **lead always** | `.opencode/skills/team-dev-loop/**` | **always run if retro surfaces skill gaps** |
