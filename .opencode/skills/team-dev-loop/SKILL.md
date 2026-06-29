@@ -196,6 +196,7 @@ For each phase, read `references/phase-prompts.md` for the exact prompt body. Ea
 | 4.6 | **Post-execution call-flow analysis** | (no subagent) | **lead always** | `.omo/round-N/post-exec-analysis.md` | **always run** (mandatory, R4 retro lesson — call-flow-focused: stalled subagents, lead takeovers, wasted time/tokens, NEW call-flow gaps not in retro) |
 | 4.7 | **Loop self-check** (HARD GATE) | (no subagent) | **lead always** | `.omo/round-N/self-check.md` | **always run** (mandatory, hard gate before closure commit — verifies per-phase artifacts + closure sequence gates; MUST be PASS) |
 | 4.8 | **Loop Summary Output** | (no subagent) | **lead always** | (chat response, NOT a file) | **always run** (mandatory, R7 retro Gap J — lead outputs 5-section summary to user as chat response BEFORE closure commit; user MUST see what shipped without asking) |
+| 4.9 | **Issue Auto-Close** | (no subagent) | **lead always** | (gh issue close calls) | **always run** (mandatory, R7 retro Gap K — lead scans open issues referenced in commit messages + decision.md, closes with comment referencing commits; uses `gh issue close <N> --comment "<text>"`) |
 | — | Skill-update patch (if retro OR post-exec surfaced skill gaps) | (no subagent) | **lead always** | `.opencode/skills/team-dev-loop/**` | **always run if retro or post-exec surfaces skill gaps** |
 | — | Append audit log | (no subagent) | **lead always** | `.omo/proposals.jsonl` (1 line) | always run |
 
