@@ -123,6 +123,55 @@ Before pulling candidates from `.omo/proposals.jsonl` follow_up_candidates, ask:
 This checkpoint is what kept Round 3 from auto-falling into the same bugfix profile Rounds 1+2 produced. Without it, PM v3 design is incomplete — user-story framing alone doesn't prevent stale backlog burn-down.
 
 If all input sources empty OR every candidate fails the freshness check → return "backlog empty or stale, stopping — ask user for direction" — lead will surface a question to the user.
+
+### Brainstorming + scope bucket (R5 layer-1 enhancement)
+
+R1-R4 each shipped 1 small fix per round, running a full 7-phase loop for every tiny change. This is expensive. **PM Triage should do broad brainstorming to expand the requirement boundary, then group related candidates into scope buckets** so the user can pick a bigger scope per round.
+
+After listing 3-5 candidates in `## Candidates ranked`, do this additional step:
+
+**Brainstorming questions** (answer each, then expand candidate list if you find more):
+1. "What adjacent user pain does each candidate suggest but not state?" — e.g., a "drawer refactor" candidate also implies "notes should be visible elsewhere" + "submit button needs new home" → surface these as additional candidates
+2. "Which candidates share the same code path / file / schema?" — e.g., 2 candidates both touch `src/index.ts:format()` → they should be 1 bucket
+3. "If we shipped 2 candidates together, would the user notice any benefit they wouldn't get from shipping them separately?" — if yes, they're a bucket
+
+**Then propose scope buckets** (2-3 buckets, each containing 1+ candidates):
+
+```markdown
+## Scope buckets
+
+### Bucket A: <short name> [recommended]
+- Contains: candidate #1, candidate #2
+- Combined user value: <5/5>
+- Files touched: <1-3>
+- Combined LOC: <~150>
+- Why this bucket: <1 sentence — strongest cross-candidate synergy>
+
+### Bucket B: <short name>
+- Contains: candidate #3
+- Combined user value: <3/5>
+- Files touched: <1-2>
+- Combined LOC: <~50>
+- Why this bucket: <1 sentence — separate because it touches a different code path>
+
+### Bucket C: <short name> [optional, opt-in only]
+- Contains: candidate #1 + candidate #3
+- Combined user value: <5/5>
+- Files touched: <2-4>
+- Combined LOC: <~200>
+- Why this bucket: <1 sentence — bigger but still bounded>
+```
+
+**Hard limits** (HARD CAPS — flag if any bucket exceeds them):
+- **LOC cap**: 300 LOC per bucket (any single bucket > 300 LOC = split or trim)
+- **File count cap**: 3 src/ files per bucket (any bucket touching > 3 files = split or trim)
+- **No core + UI mixing**: a bucket cannot contain BOTH `src/index.ts` core logic changes AND `src/ui/*` UI changes (different review fatigue profile, different risk)
+- **No architecture + bugfix mixing**: a bucket that needs schema/state changes cannot also contain trivial bugfixes (architectural review is heavier than bugfix review)
+
+**Default user pick** = smallest bucket that contains the highest combined user value (= 1 bucket that delivers the strongest cross-candidate synergy). Lead presents these to user; user can pick 1 bucket OR explicitly say "expand to 2 buckets" if they want bigger scope.
+
+**R4 evidence this would have helped**: R4's brief had 5 candidates, lead auto-picked #1 (the "Previously discussed" panel). #3 (Agent payload fix — add `comments[]` + `resolved[]` to `format()` output) was a 60-LOC change to the SAME `src/index.ts:format()` function. These 2 should have been 1 bucket. PM Triage at the time didn't propose the merge, so 2 full loops were needed (R4 did #1, R5 would have done #3 separately). With scope buckets, R4 could have shipped both in 1 round.
+
 ```
 
 ---
