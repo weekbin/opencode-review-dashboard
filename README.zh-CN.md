@@ -51,6 +51,7 @@ bun run test:unit
 - **浏览器审查 UI** — 文件树、语法高亮 diff（可折叠未改动区域）、finding 抽屉（分类/等级/评论）。见 [审查界面](#审查界面)。
 - **Diff 范围 + 跨轮 drift banner** — 报告实际审查的 diff 范围；跨轮范围变化时显示黄色 banner。见 [Diff 范围](#diff-范围)。
 - **多轮审查** — finding 在轮次间保留，锚点代码变更时自动标记为 stale。
+- **"Previously discussed" 面板（第 4 个 sidebar tab）** — 独立 tab，专门展示历史轮次上下文：每轮的 `notes`（从已存在的 `round-NNN.md` 导出读取）、每轮的 finding（open / resolved / stale）以及每条 finding 的完整评论线程。让你在决定这一轮怎么动之前能快速 re-orient 到对话历史，不必开终端或在 Conversation tab 翻 30+ 条记录。与 Conversation tab 互补（Conversation 关注当前轮）。
 - **自动应用工作流** — Agent 先统一规划，再一次性应用可操作 finding，然后重跑 review 确认。
 - **Worktree 自动检测** — 未传 `--worktree` 时自动选取 ahead-of-`origin/main` 最多的 worktree。
 
@@ -104,6 +105,8 @@ bun run test:unit
 ### 多轮审查
 
 每个会话会跟踪 review 轮次。再次运行 `/diff-review-dashboard` 时，之前轮次的 finding 会保留；如果文件被删除或锚定代码发生变化，旧 finding 会自动标记为 `stale`（过期）。
+
+第 4 个 sidebar tab "Previously discussed" 提供同会话内每个历史轮次的可一眼看完的总览：每轮的 `notes`（从 `round-NNN.md` 读取）、每轮的 finding（open / resolved / stale）、以及每条 finding 的完整评论线程（按时间顺序排列的 user / agent 回复）。数据从已存在的 `state.findings[]` 数组和 `round-NNN.md` 导出读取——没有新 state 文件、没有新 payload 字段、没有新依赖。当前轮次刻意不包含（用 Conversation tab 看当前轮）。如果当前在第 1 轮，tab 会显示"第 1 轮——还没有历史"空状态。
 
 ### 状态与导出
 
@@ -202,12 +205,13 @@ bun run test:unit
 
 ## 审查界面
 
-浏览器界面分为三个区域：
+浏览器界面分为四个区域（左侧 sidebar 含 4 个 tab）：
 
 - **左侧边栏**（可拖动调整宽度，宽度会保存到 localStorage）：
   - **Files Changed** — 列出所有变更文件，支持 tree/flat 切换。文件级 finding 会显示 📄 徽章。
   - **Commits** — 每个文件涉及的提交列表，含短 SHA 和提交信息。
   - **Conversation** — 所有 finding（行级/文件级），含状态徽章和按 finding 回复的评论；支持 Resolve、Remove、Reopen、Jump 操作。
+  - **Previously discussed** — 历史轮次上下文：每轮的 `notes`、每轮的 finding（open / resolved / stale）以及每条 finding 的完整评论线程。不含当前轮。第 1 轮显示空状态。
 - **中间 diff 卡片** — 语法高亮 diff。点击行号选择范围，点击文件卡片上的 + 按钮添加文件级 finding。大段未改动代码默认折叠，点击展开按钮每次显示 20 行。
 - **Review 抽屉** — 选择分类（`bug`/`style`/`perf`/`question`/`recommend`）和等级（`high`/`medium`/`low`），填写评论后点击 "Add Finding"。底部可填写本轮整体 notes。
 
