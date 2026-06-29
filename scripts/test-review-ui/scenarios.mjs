@@ -311,6 +311,24 @@ export async function setupSidebarKeyboardNav(dir) {
   return { branch: "main", worktrees: [] };
 }
 
+/**
+ * Scenario 20: R9 #1 — Reopen stale findings (manual override).
+ * 1 commit so the dashboard is non-empty. Verifies the dashboard loads
+ * without errors when a stale (closed_auto) finding exists in
+ * existing_findings and the UI renders the "Force Reopen" button on it.
+ * Runtime verification (click Force Reopen → reason modal opens → enter
+ * reason → submit → state.json updates with manually_reopened: true +
+ * user-author system comment) is done via Playwright walkthrough.
+ * Locks in the AC9-1.10 / AC9-1.11 / AC9-1.12 / AC9-1.13 / AC9-1.14 contract.
+ */
+export async function setupReopenStaleFinding(dir) {
+  await emptyRepo(dir);
+  await sh("echo 'v1' > app.ts && echo 'v2' >> app.ts", dir);
+  await git(["add", "app.ts"], dir);
+  await git(["commit", "-q", "-m", "first"], dir);
+  return { branch: "main", worktrees: [] };
+}
+
 export const SCENARIOS = {
   "no-worktree-clean": { setup: setupNoWorktreeClean, expect: { kind: "diagnostic" } },
   "has-worktree-unpushed": { setup: setupHasWorktreeUnpushed, expect: { kind: "auto-worktree" } },
@@ -352,4 +370,10 @@ export const SCENARIOS = {
   // navigation behavior (Arrow keys, Home, End, focus ring, aria-selected
   // cycling) is verified via Playwright walkthrough.
   "sidebar-keyboard-nav": { setup: setupSidebarKeyboardNav, expect: { kind: "working-tree" } },
+  // R9 candidate #1: manually re-open stale findings (manual override).
+  // The e2e harness verifies the launch path with 1 commit. The full UI
+  // flow (Force Reopen button on stale → reason modal → POST with
+  // manually_reopened:true → state.json updates) is verified via
+  // Playwright walkthrough.
+  "reopen-stale-finding": { setup: setupReopenStaleFinding, expect: { kind: "working-tree" } },
 };
