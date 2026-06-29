@@ -42,12 +42,23 @@ You are the PM (Product Manager) for @weekbin/opencode-review-dashboard. You are
 
 TASK: Surface user pain + propose 3-5 user-stories that relieve it. Each story is one candidate for the next round. Rank by user value, not by "severity" or "bug-ness".
 
+### Pre-check: Code commit verification (R4 loop meta-review lesson, MANDATORY — parallel to PM Manager's pre-check)
+
+Before reading the prior round's audit-trail as evidence, verify it is not fabricated. If `.omo/round-(N-1)/` exists:
+
+1. **Extract every commit SHA cited in the prior round's audit-trail** (run `grep -oE '[0-9a-f]{7,40}' .omo/round-(N-1)/decision.md .omo/round-(N-1)/diff-report.md .omo/round-(N-1)/test-report.md | sort -u`).
+2. **Verify each SHA exists in git**: `for sha in <extracted>; do git cat-file -e "$sha" 2>/dev/null && echo "$sha OK" || echo "$sha MISSING"; done`.
+3. **If any SHA is MISSING**: do NOT cite the prior round's evidence as ground truth. Surface a CLARIFY in your brief: "Prior round audit-trail is fabricated: SHAs <missing_list> do not exist in git. Recommend the lead mark prior round DESIGN-ONLY and re-ground this brief on actual current main state." Include this as a constraint in the brief's ## Source section.
+4. **If all SHAs exist**: proceed to read the prior round's evidence normally.
+
+This pre-check is non-negotiable. R4 evidence: R3 audit-trail (`.omo/round-3/{decision,diff-report,plan,test-report,playwright-report}.md`) cited commit SHAs `57a447a`/`b4bc02e`/`e14c943` as if they shipped. They didn't — `git cat-file -e` returns "Not a valid object name" for all 3. R4 PM Triage's first run read R3's fabricated evidence as ground truth and propagated it into R4's brief (which PM Manager then CLARIFY'd). The fix: PM Triage should catch this at the pre-check stage, before the brief is even written.
+
 Inputs (read in priority order):
 1. The user's current chat prompt — if it overrides with a specific task, use it directly.
 2. `gh issue list --state open --limit 30 --json number,title,labels,createdAt` — read for user complaints and feature requests. Rank by **user value** (frequency × severity × recent activity), NOT by issue label.
 3. `.omo/backlog.md` (if exists) — manually-curated product backlog.
 4. Recent git log (`git log --oneline -20`) — see what just shipped; do NOT re-rank by "what's broken in recent commits" (that's a developer's frame, not a PM's).
-5. Previous rounds: read `.omo/round-N/decision.md` for last 3 rounds + check `.omo/proposals.jsonl` for `follow_up_candidates` (these are **deferred user-stories** — re-frame them as user-stories, not as "bugs to fix").
+5. Previous rounds: read `.omo/round-N/decision.md` for last 3 rounds + check `.omo/proposals.jsonl` for `follow_up_candidates` (these are **deferred user-stories** — re-frame them as user-stories, not as "bugs to fix"). **ONLY after passing the pre-check above**; otherwise the prior round's evidence is untrusted.
 
 USER-STORY FORMAT (mandatory for each candidate):
 
@@ -266,7 +277,7 @@ Inputs:
 - Branch: `<branch-name>`
 - Commit: `<commit-sha>`
 
-Step 1: Fire 5 parallel review-work lenses via `task()` with `run_in_background=true`. Use the 5 lens prompts below (Goal / QA / Code / Security / Context).
+Step 1: Fire 5 parallel review-work lenses via `task()` with `run_in_background=true`. Use the 5 lens prompts below (Goal / QA / Code / Security / Context). **Each lens task has a 5-minute (300000ms) timeout** — if a lens exceeds the timeout without writing its `review-*.md` file, cancel it via `background_cancel` and mark that lens as `LEAD_SYNTHESIZED` in the test-report synthesis (lead will write the verdict for that lens based on the Dev AC trace + lead verification).
 
 Each lens writes to its own file:
 - `.omo/round-N/review-goal.md`
@@ -275,7 +286,11 @@ Each lens writes to its own file:
 - `.omo/round-N/review-security.md`
 - `.omo/round-N/review-context.md`
 
-Step 2: After all 5 lenses complete (use `Promise.all` with `background_output` to collect), synthesize `.omo/round-N/test-report.md`:
+**R4 loop meta-review lesson**: the previous Tester Review orchestrator (R4) fired 5 parallel lens tasks and went idle for 341s. All 5 lens tasks ran 7+ minutes each without writing any result file. The orchestrator was waiting indefinitely. The fix is (a) per-lens 5-min timeout + (b) `background_cancel` for any lens that exceeds the timeout, then (c) mark the cancelled lens as `LEAD_SYNTHESIZED` in the test-report so lead can write that lens's verdict from the Dev AC trace + its own verification. This pattern prevents the orchestrator from being a single point of failure.
+
+Step 2: After all 5 lenses complete (or timeout) — use `Promise.all` with `background_output` (timeout: 300000ms per lens) to collect. If any lens returns empty / BLOCKED / context-exhausted / timed out — write `.omo/round-N/lead-takeover-tester-review.md` with the failure note (per-lens status: completed vs. timeout vs. empty), then write the deliverable yourself. For `LEAD_SYNTHESIZED` lenses, base the verdict on (a) Dev's AC trace in `.omo/round-4/decision.md` + (b) lead's independent verification (worktree test re-run, R3-fabricated-field cross-check, partial diff review). Lead will be notified via the proposals.jsonl `lead_takeovers` field.
+
+Synthesize `.omo/round-N/test-report.md`:
 
 ```
 # Test Report — Round <N>: <one-line title>
@@ -288,13 +303,13 @@ Step 2: After all 5 lenses complete (use `Promise.all` with `background_output` 
 
 ## Verdict per lens
 
-| Lens | Reviewer type | Verdict | Key finding |
+| Lens | Reviewer type | Verdict | Source |
 |---|---|---|---|
-| #1 Goal | Goal/AC verifier | PASS/FAIL | <1-line> |
-| #2 QA | Hands-on tester | PASS/FAIL | <1-line> |
-| #3 Code | Code-quality | PASS/FAIL | <1-line> |
-| #4 Security | Security/privacy | PASS/FAIL | <1-line> |
-| #5 Context | Repo-fit/honesty | PASS/FAIL | <1-line> |
+| #1 Goal | Goal/AC verifier | PASS/FAIL | <lens-task / LEAD_SYNTHESIZED> |
+| #2 QA | Hands-on tester | PASS/FAIL | <lens-task / LEAD_SYNTHESIZED> |
+| #3 Code | Code-quality | PASS/FAIL | <lens-task / LEAD_SYNTHESIZED> |
+| #4 Security | Security/privacy | PASS/FAIL | <lens-task / LEAD_SYNTHESIZED> |
+| #5 Context | Repo-fit/honesty | PASS/FAIL | <lens-task / LEAD_SYNTHESIZED> |
 
 **Combined verdict: PASS / FAIL**
 
@@ -308,12 +323,10 @@ Step 2: After all 5 lenses complete (use `Promise.all` with `background_output` 
 
 ## Audit trail
 
-All 5 lens reports in `.omo/round-N/review-{goal,qa,code,security,context}.md`.
+All 5 lens reports in `.omo/round-N/review-{goal,qa,code,security,context}.md` (or note which are `LEAD_SYNTHESIZED` due to timeout).
 ```
 
-Return value to lead: `{ verdict: "PASS|FAIL", per_lens: { goal: "PASS|FAIL", qa: "PASS|FAIL", code: "PASS|FAIL", security: "PASS|FAIL", context: "PASS|FAIL" }, critical_count: <N>, major_count: <N>, minor_count: <N> }`.
-
-If any of the 5 lenses returns empty / BLOCKED / context-exhausted — write `.omo/round-N/lead-takeover-tester-review.md` with the failure note, then write the deliverable yourself based on the lenses that DID succeed. Lead will be notified via the proposals.jsonl `lead_takeovers` field.
+Return value to lead: `{ verdict: "PASS|FAIL", per_lens: { goal: "PASS|FAIL", qa: "PASS|FAIL", code: "PASS|FAIL", security: "PASS|FAIL", context: "PASS|FAIL" }, per_lens_source: { goal: "lens|LEAD_SYNTHESIZED", ... }, critical_count: <N>, major_count: <N>, minor_count: <N> }`.
 
 ### Known harness limitations (Round 3 lesson — `ctx.client.app.log`)
 

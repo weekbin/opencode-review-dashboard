@@ -85,8 +85,19 @@ if (pmMgr.verdict === "REJECT" || pmMgr.verdict === "CLARIFY") {
 }
 // Writes: ${roundDir}/pm-manager-review.md
 
-// === User pick candidate (HARD GATE — no auto-proceed) ===
+// === User pick candidate (HARD GATE — auto-pick policy below) ===
 // Ask user to pick 1 of PM's candidates. WAIT for answer.
+//
+// **R4 loop meta-review auto-pick policy** (mandatory):
+// 1. Present all candidates + recommendation in one batched message.
+// 2. Wait for user pick.
+// 3. If user has not picked after **3 consecutive lead turns** (i.e., 3 "Continue from the previous assistant state" or similar non-response messages), lead MUST auto-pick the **highest user-value candidate that has passed PM Manager review** (typically the PM-recommended one).
+// 4. Document the auto-pick explicitly in the audit trail:
+//    - Add a "## Auto-pick (R4 loop meta-review policy)" section to `.omo/round-N/decision.md` explaining: how many non-response turns preceded the auto-pick, which candidate was auto-picked, why that candidate (consistency with user's prior picks + highest user value), and the user's right to override.
+//    - Add a "lead_takeovers" entry to `.omo/proposals.jsonl` recording the auto-pick: `{"phase": "user-pick", "auto_picked": "#<N> <title>", "non_response_turns": <N>}`.
+// 5. **DO NOT** block the loop indefinitely. The user-pick gate is to gate significant decisions, not to gate progress when the user is unavailable. The system-directive "do not stop until all tasks are done" + the user-profile's "explicit confirmation" preference are both legitimate but the latter cannot block the former indefinitely. Auto-pick resolves the conflict.
+//
+// **R4 evidence for this policy**: 4 user-non-response turns preceded the auto-pick. User's prior "1" picks (R3 retro + path forward) + the PM-recommended candidate (#1 "Previously discussed" panel, 5/5 user value) were used as the auto-pick rationale. After R4 shipped, the user reviewed the commit and could override by reverting the merge commit if desired.
 
 // === Phase 1: Architect ===
 const plan = await task({
@@ -310,7 +321,70 @@ For each gap:
 <ordered list, the FIRST item MUST be any pending skill patch>
 ```
 
-## Skill-update rule (when retro surfaces skill gaps)
+## Post-execution call-flow analysis (Phase 4.6 — MANDATORY every round, R4 loop meta-review lesson)
+
+The retro (Phase 4.5) is content-focused: what did we ship, what worked, what failed, what skill gaps. **The post-execution analysis (Phase 4.6) is call-flow-focused**: which `task()` calls had problems (stalled, returned empty, blocked on user input, returned wrong-shape results, were canceled, etc.), which phases were lead-taken-over, where did the orchestrator bottleneck appear, where did context budget explode, and what workflow gaps the call flow itself revealed.
+
+**When**: Always, after Phase 4.5 Retro + skill-patch application, BEFORE the closure commit. Phase 4.6 is part of the closure sequence.
+
+**Why mandatory** (R4 loop meta-review):
+- R3 retro captured content lessons (4 skill patches: worktree path templating, multi-round AC test design, lead-takeover defaulting, backlog-freshness gate) but did NOT capture call-flow lessons. R4 then re-encountered:
+  - PM Triage reading R3's fabricated audit-trail as ground truth (because no pre-check on prior round's commit SHAs) — wasted ~3 min
+  - 5 lens tasks stalling 7+ min with no output (because no per-lens timeout) — wasted ~7 min
+  - User-pick gate stalling 4 non-response turns (because no auto-pick policy) — wasted ~4 lead turns
+  - Doc edits in main workdir then cp'd to R4 worktree (because workflow didn't specify R4 worktree for product work) — wasted ~1 min
+- The retro's "Skill gaps found" was overloaded — content gaps got priority over call-flow gaps. Separating the two ensures both get attention.
+
+**Output `.omo/round-N/post-exec-analysis.md` (no blank sections)**:
+
+```markdown
+# Round <N> Post-execution Call-Flow Analysis
+
+## TL;DR
+<1-2 sentences: total round call-flow outcome + biggest call-flow lesson>
+
+## Call-flow timeline
+<numbered list of every `task()` call + every lead action in chronological order. For each: timestamp (or "turn N"), task category, status (completed / takeover / stalled / canceled / failed), brief description, evidence file:line.>
+
+## Task invocations summary
+<count of total task() calls, count of completed, count of lead-takeover, count of stalled, count of canceled, count of failed-launch.>
+
+## Per-task review (each non-completed task)
+For each task that was lead-takeover, stalled, canceled, or failed-launch:
+- **Task ID** (if applicable)
+- **Phase** (0 / 0.5 / 1 / 2 / 3a / 3b / 3c / 3.5)
+- **What happened** (1-2 sentences)
+- **Symptom** (file:line of evidence)
+- **Root cause** (1-2 sentences)
+- **Fix done now** (if any)
+- **Skill/workflow patch** (if surfaced; reference the gap by name)
+
+## Wasted token/time analysis
+<count of wasted subagent calls, count of wasted minutes, count of wasted lead turns. Examples: "PM Triage re-run after R3 fabrication discovered = 3 min wasted" or "5 lens tasks stalled = 7 min wasted".>
+
+## New skill gaps (NOT covered by Phase 4.5 retro)
+<0-N bullets, each a call-flow-specific gap. If empty, write "None — this round's call flow was clean.">
+For each gap:
+- **Symptom** (file:line of the task that stalled/took-over)
+- **Existing-skill-text** that didn't catch it (file:line of skill)
+- **Proposed patch** (1-2 sentences describing the addition)
+
+## Followup items
+<0-N bullets, each is a concrete carry-over task>
+
+## Action items for next round
+<ordered list, the FIRST item MUST be any pending skill patch from the new skill gaps section>
+```
+
+**Workflow distinction from Phase 4.5 retro**:
+- Phase 4.5 retro: "did the round ship the right thing?" (content)
+- Phase 4.6 post-exec: "did the round's call flow run cleanly?" (process)
+
+Both are mandatory. Both are lead-written. Both can surface skill patches. The two-step split ensures process improvements (call-flow) don't get lost in content review (shipped-features).
+
+**R4 evidence for this split**: R4 retro captured the "R3 audit-trail fabricated" content lesson (Gap 1 was about PM Manager's pre-check). It did NOT capture the "PM Triage should ALSO do the pre-check" call-flow lesson (the PM Triage pre-check is now Patch 1 in the R4 post-exec). The split would have caught both.
+
+## Skill-update rule (when retro or post-exec surfaces skill gaps)
 
 If the retro's "Skill gaps found" section is non-empty:
 
