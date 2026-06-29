@@ -497,7 +497,7 @@ Every round produces a directory `.omo/round-N/` with these 13 files (all tracke
 
 ```text
 .omo/round-N/
-├── brief.md                    # PM's proposal + ranked candidates + ## Self-Critique
+├── brief.md                    # PM's proposal + ranked candidates + ## Scope buckets (R5+) + ## Self-Critique
 ├── pm-manager-review.md        # PM Manager gate verdict (APPROVE / REJECT / CLARIFY)
 ├── plan.md                     # Architect's decision-complete plan
 ├── review-goal.md              # Lens #1: Goal/AC verifier
