@@ -24,3 +24,6 @@ dist/
 # Test artifacts and screenshots are ephemeral; regenerate via e2e tests
 scripts/test-review-ui/*.png
 scripts/test-review-ui/*-mock.json
+
+# playwright-cli local state (created on first playwright-cli open)
+.playwright-cli/

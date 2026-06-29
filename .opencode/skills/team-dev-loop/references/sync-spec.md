@@ -27,6 +27,36 @@ cd <main worktree>
 # 1. Fetch latest from origin
 git fetch origin
 
+# 1.5 Tool pre-flight (NEW v5.1 — added after R10 retro discovered missing playwright-cli)
+# Reference: references/environment-setup.md
+echo "[sync] Tool pre-flight check..."
+
+MISSING_TOOLS=()
+for tool in git node bun playwright-cli gh python3; do
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    MISSING_TOOLS+=("$tool")
+    echo "[sync] MISSING: $tool"
+  else
+    echo "[sync] OK: $tool ($(command -v $tool))"
+  fi
+done
+
+# Chrome check (not in PATH on most systems)
+if [ ! -f "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ] && \
+   [ ! -f "/usr/bin/google-chrome" ] && \
+   [ ! -f "/usr/bin/chromium-browser" ] && \
+   [ -z "$(ls ~/.cache/ms-playwright/chromium-* 2>/dev/null)" ]; then
+  MISSING_TOOLS+=("chrome")
+  echo "[sync] MISSING: chrome (no system browser AND no playwright-bundled chromium)"
+fi
+
+if [ ${#MISSING_TOOLS[@]} -gt 0 ]; then
+  echo "[sync] WARNING: Missing tools: ${MISSING_TOOLS[*]}"
+  echo "[sync] See references/environment-setup.md for install instructions"
+  echo "[sync] Phase 3c Playwright will be N/A if playwright-cli missing"
+  # Do NOT HARD STOP — missing tools degrade gracefully per phase dependency map
+fi
+
 # 2. Check local working tree state
 git status --porcelain
 # If non-empty: working tree dirty → skip step 4 (mark as conflict)
@@ -53,6 +83,16 @@ git log HEAD..origin/main --oneline
 
 ```markdown
 # Phase -0 Sync Report — Round N
+
+## Tool pre-flight (NEW v5.1)
+- git: OK at <path>
+- node: OK at <path> v<X>
+- bun: OK at <path> v<X>
+- playwright-cli: OK/MISSING
+- gh: OK/MISSING
+- python3: OK/MISSING
+- chrome: OK (at <path>) / MISSING
+- Overall: PASS / WARNING (missing tools: <list>)
 
 ## Network
 - git fetch origin: PASS / FAIL: <error>
