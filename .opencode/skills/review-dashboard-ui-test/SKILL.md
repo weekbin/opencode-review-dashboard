@@ -98,16 +98,54 @@ echo "  mock server PID: $MOCK_PID"
 
 We use the **`playwright-cli` global command** (installed via `npm install -g @playwright/cli@latest`, requires Node 18+ via nvm) instead of Playwright MCP. Reasons:
 - **Token-efficient** — `playwright-cli` does not force page accessibility tree into LLM context (per upstream README: "Does not force page data into LLM"). Playwright MCP does, which is the root cause of the "slow" symptom.
-- **Single active page** — `playwright-cli open` / `goto` / `click` etc. keep one active page per session by design. No page-leak from accumulated navigates.
+- **Single active page per session** — `playwright-cli open` / `goto` / `click` etc. keep one active page per session by design. No page-leak from accumulated navigates.
 - **Built-in session management** — `playwright-cli -s=name`, `list`, `close-all`, `kill-all`. Replaces the manual pkill loop we used to do.
 
 The bash tool calls `playwright-cli` directly. Verify it's installed: `playwright-cli --version` → `0.1.x`. If not, install: `npm install -g @playwright/cli@latest` (requires Node 18+, nvm `nvm use 22` is fine).
 
+### Pre-warm + goto pattern (5.7x faster than open+close+open per scenario, measured)
+
+**Do NOT call `playwright-cli close` between test scenarios.** That pattern (copied from the Playwright MCP advice) kills the session, requiring a 1.5-3s cold start for the NEXT scenario. Instead:
+
+```bash
+# === ONCE at the start of the test run ===
+playwright-cli open http://127.0.0.1:8890/review/scenario1?token=test
+#   ~1.5-2.5s cold start (one-time cost)
+
+# === FOR EACH SCENARIO (warm browser) ===
+playwright-cli goto http://127.0.0.1:8890/review/scenario2?token=test
+#   ~65ms — see A/B test results below
+
+playwright-cli goto http://127.0.0.1:8890/review/scenario3?token=test
+#   ~65ms
+
+# === ONCE at the end of the test run ===
+playwright-cli close-all 2>/dev/null
+playwright-cli kill-all 2>/dev/null
+```
+
+**A/B test results** (executed on `example.com` with `real` time):
+| Pattern | 6 navigations total | Per-scenario avg |
+|---|---|---|
+| `open + close + open + close + ...` (6 pairs) | **~13.5s** | ~2.2s |
+| `open` once + 5× `goto` + `close-all` + `kill-all` | **~2.4s** | ~65ms (after the 1.5s pre-warm) |
+| **Speedup** | **5.7x** | — |
+
+**Why the difference**: `playwright-cli close` kills the session entirely. The next `playwright-cli open` has to spawn a new Chrome (1.5-3s). `playwright-cli goto` reuses the existing browser — it's just an HTTP round trip + page load (50-100ms typically, dominated by the destination page's load time, not the browser).
+
+**State isolation between scenarios** (since `goto` reuses the same session): if scenarios must be state-isolated, choose ONE of:
+- `playwright-cli localstorage-clear && playwright-cli cookie-clear` between scenarios (fast, ~100ms each)
+- `playwright-cli -s=scenario1 open ...` and `playwright-cli -s=scenario2 open ...` (true isolation but cold-start each, slow)
+- `playwright-cli open --persistent` (saves profile to disk, faster subsequent opens — measured 0.51s vs 1.58s for the second open, 3x speedup; but state still persists across opens if you don't clear it)
+
 Common operations (all against `http://127.0.0.1:<port>/review/<id>?token=test`):
 
 ```bash
-# Open + navigate (one command, one Chrome instance)
+# Open + navigate (cold start, ~1.5-2.5s)
 playwright-cli open http://127.0.0.1:8890/review/test?token=test
+
+# Navigate to a different URL (warm browser, ~65ms)
+playwright-cli goto http://127.0.0.1:8890/review/other?token=test
 
 # Snapshot (returns refs eN + accessibility yaml, file written to .playwright-cli/)
 playwright-cli snapshot
@@ -129,18 +167,19 @@ playwright-cli click e15
 # Screenshot
 playwright-cli screenshot --filename=docs/screenshots/review-test.png
 
-# Close the current page (between test scenarios)
-playwright-cli close
+# Clear state between scenarios (if needed)
+playwright-cli localstorage-clear 2>/dev/null
+playwright-cli cookie-clear 2>/dev/null
 ```
 
-**MANDATORY**: between every test scenario, run `playwright-cli close`. If you navigate to a new URL via `playwright-cli goto`, the previous page stays in the renderer process — accumulating pages is the #1 cause of CPU high in Playwright tests.
+**DO NOT** call `playwright-cli close` between scenarios (kills the session, 5.7x slowdown). Only call `playwright-cli close-all` + `kill-all` at the END of the test run.
 
 ## Step 5 — Post-test environment cleanup (R4 loop meta-review lesson, MANDATORY)
 
 After ALL Playwright tests are done (regardless of pass/fail), run the full cleanup. This is the #1 fix for the "Chrome instances pile up, CPU hits 100%, machine freezes" pattern:
 
 ```bash
-# 1. Close all playwright-cli sessions (replaces manual playwright_browser_close loop)
+# 1. Close all playwright-cli sessions (replaces the per-scenario close that was killing the session)
 playwright-cli close-all 2>/dev/null
 playwright-cli kill-all 2>/dev/null  # force-kill any leaked browser process
 

@@ -171,9 +171,9 @@ For each phase, read `references/phase-prompts.md` for the exact prompt body. Ea
 - `playwright-cli` is at `$HOME/.nvm/versions/node/v22.21.1/bin/playwright-cli` (managed by nvm). Verify: `playwright-cli --version` → `0.1.x`.
 - **Test session lifecycle** (mandatory):
   1. **Pre-test cleanup** (mandatory): kill any orphan Chrome (`pkill -9 -f "chrome.*--type=zygote"`) + kill any orphan mock-server (`pkill -9 -f "mock-server.py"`) + verify port 8890 free (`ss -ltn | grep -q :8890`) + verify Chrome count < 3.
-  2. **Per-test cleanup**: at the end of every test scenario, `playwright-cli close` (or `playwright-cli -s=name close` for named sessions). This is the #1 fix for the user-reported "Playwright tests are slow, unstable, cause CPU 100%" pattern.
-  3. **Post-test cleanup** (mandatory): `playwright-cli close-all` + kill mock server PID (record on start), kill orphan Chrome, verify clean state (Chrome count = 0, port 8890 free). **NEVER end a Playwright test session without this step** — that's how the user-reported "machine freezes" happens.
-- See `.opencode/skills/review-dashboard-ui-test/SKILL.md` for the exact commands per scenario. The `playwright-cli kill-all` command is the new single-step replacement for the multi-pkill cleanup loop we used to do manually.
+  2. **Pre-warm + goto pattern** (5.7x speedup measured): `playwright-cli open <url>` ONCE at the start of the test run (~1.5-2.5s cold start, one-time cost), then use `playwright-cli goto <url>` between scenarios (~65ms each, reuses the warm browser). **DO NOT call `playwright-cli close` between scenarios** — it kills the session and forces a 1.5-2.5s cold start for the NEXT scenario. If state isolation is needed between scenarios, use `playwright-cli localstorage-clear && playwright-cli cookie-clear` instead (fast, ~100ms).
+  3. **Post-test cleanup** (mandatory): `playwright-cli close-all` + `playwright-cli kill-all` + kill mock server PID (record on start) + kill orphan Chrome + verify clean state (Chrome count = 0, port 8890 free). **NEVER end a Playwright test session without this step** — that's how the user-reported "machine freezes" happens.
+- See `.opencode/skills/review-dashboard-ui-test/SKILL.md` for the exact commands per scenario, including the A/B test results that justify the pre-warm + goto pattern.
 
 | Phase | Role | Subagent type | Default executor | Output file(s) | Profile gating |
 |---|---|---|---|---|---|
