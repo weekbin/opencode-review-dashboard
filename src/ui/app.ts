@@ -574,6 +574,7 @@ let resizerDragging = false;
 let dragPreviewWidth = 0;
 let activeScrollSpyFile: string | null = null;
 let scrollSpyObserver: IntersectionObserver | null = null;
+let priorNotesController: AbortController | null = null;
 
 sidebarResizer.addEventListener("pointerdown", (event: PointerEvent) => {
   event.preventDefault();
@@ -1331,7 +1332,9 @@ function renderActivePane() {
   } else if (state.activeTab === "conversation") {
     renderConversationPane();
   } else if (state.activeTab === "previously") {
-    void loadPriorNotes().then(() => {
+    priorNotesController?.abort();
+    priorNotesController = new AbortController();
+    void loadPriorNotes(priorNotesController.signal).then(() => {
       if (state.activeTab === "previously") renderPreviouslyPane();
     });
   }
@@ -1891,11 +1894,13 @@ function buildPriorRoundEntries(
     });
 }
 
-async function loadPriorNotes(): Promise<void> {
+async function loadPriorNotes(signal?: AbortSignal): Promise<void> {
   if (state.priorNotesLoaded) return;
+  if (signal?.aborted) return;
   state.priorNotesLoaded = true;
   try {
-    const response = await fetch(endpoint("/prior-notes"));
+    const response = await fetch(endpoint("/prior-notes"), { signal });
+    if (signal?.aborted) return;
     if (!response?.ok) {
       state.priorNotes = [];
       return;
@@ -1905,6 +1910,7 @@ async function loadPriorNotes(): Promise<void> {
     };
     state.priorNotes = Array.isArray(data.rounds) ? data.rounds : [];
   } catch {
+    if (signal?.aborted) return;
     state.priorNotes = [];
   }
 }
@@ -1932,6 +1938,13 @@ function renderPreviouslyDiscussedPanel(root: HTMLElement) {
     empty.textContent = "No prior discussion yet. Submit a round to start the history.";
     root.appendChild(empty);
     return;
+  }
+
+  if (currentRound > 1) {
+    const hint = document.createElement("p");
+    hint.className = "previously-panel-hint";
+    hint.textContent = `Showing prior rounds only (round ${currentRound - 1} and earlier). The current round's findings are in the Conversation tab.`;
+    root.appendChild(hint);
   }
 
   for (const roundEntry of grouped) {

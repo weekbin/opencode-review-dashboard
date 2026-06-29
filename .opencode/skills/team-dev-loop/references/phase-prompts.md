@@ -351,6 +351,21 @@ Specifically for the common case of scenario/test count changes:
 Apply this checklist as part of Step 7 (commit strategy) for any Doc-change task.
 ```
 
+### New behavior e2e scenario requirement (R7 retro Gap I — MANDATORY for git-state-based new behavior)
+
+**Why**: R7's Dev shipped AbortController for `loadPriorNotes` + UI hint for the "Previously discussed" panel. The new behavior is **browser-runtime** (AbortController + DOM hint), not git-state. Lead added 2 e2e scenarios in closure commit as a workaround, but the right place was Dev scope.
+
+**Mandatory checklist before pushing** (apply when implementing new user-visible behavior in `src/`):
+
+1. **If new behavior is git-state-based** (e.g., new file detection, new commit-mode, new diff range): **ADD a new scenario to `scripts/test-review-ui/scenarios.mjs`** + add entry to the `SCENARIOS` export + update `scripts/test-review-ui/README.md` count. The e2e harness is single-shot git-state-based, so this is the right place.
+2. **If new behavior is browser-runtime** (e.g., DOM event handlers, async fetch cancellation, panel rendering): **DO NOT add e2e scenarios** — they would be noise. Instead, the lead does a `playwright-cli` walkthrough (R5 retro Patch A + R7 default) + adds the resulting screenshots to `docs/screenshots/`. Unit tests + static-analysis tests cover code structure; Playwright walkthrough covers runtime behavior.
+3. **If new behavior is BOTH** (e.g., a new test scenario that needs both git state and browser behavior): use scenario 14 (`previously-discussed-panel`) as a template — git setup function + `playwright-cli` walkthrough in a separate `docs/screenshots/` capture.
+
+**R7 evidence**: Dev added 15 new unit tests (8 AbortController + 7 hint) covering code structure, but AC7-1.4 (e2e tab-switch race) + AC7-2.4 (e2e hint visibility) were TBD. Lead added 2 placeholder e2e scenarios in closure + the 2 screenshots already captured during 3c walkthrough. **Future R7+ rounds with new browser-runtime behavior should follow this checklist** — Dev does the unit tests + static-analysis tests, lead does the Playwright walkthrough, no placeholder e2e scenarios needed.
+
+Apply this checklist as part of Step 7 (commit strategy) for any new-behavior implementation task.
+```
+
 ---
 
 ## 5. Tester Review prompt (Phase 3a — orchestrates 5 parallel lenses)
