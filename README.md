@@ -102,6 +102,19 @@ The slash-command template tells the agent to **not ask the user how to proceed*
 - The agent applies the plan in one batch, then re-runs `/diff-review-dashboard` to confirm.
 - If `open_count == 0` or no findings are actionable, the agent responds `Round N: no actionable items, closing out.` and stops.
 
+### Language matching for auto-replies
+
+The agent's `add_review_comment` replies and Post-Apply Trace comments follow the language of your findings:
+
+- **CJK ratio > 30%** in the user's text → reply in Chinese.
+- **CJK ratio < 10%** → reply in English.
+- **Mixed (10–30% CJK)** → default to English unless you clearly write in Chinese across 3+ comments in the same round.
+- **Empty / whitespace input** → defaults to English (preserves prior behavior).
+
+The heuristic is regex-based on the CJK character range `[\u4e00-\u9fff]` and runs in the plugin's `detectLanguage()` helper at `src/index.ts`. The agent prompt has a dedicated "### Language Matching" section that tells the model to mirror the user's comment language. Code, file paths, and tool identifiers stay in their canonical form regardless of the reply language.
+
+**To verify manually** (out of e2e harness scope — requires a real OpenCode session): post 1 Chinese finding like "这个 auth middleware 应该用 jwt.verify", submit the round, trigger the auto-apply loop, and confirm the agent's `add_review_comment` reply is in Chinese. The Chinese reply will then surface in the "Previously discussed" panel of the next round.
+
 ### Multi-round reviews
 
 Each session tracks review rounds. When you run `/diff-review-dashboard` again in the same session, findings from previous rounds carry over. If a file was removed or the anchored code changed, old findings are automatically closed (shown as `stale`). This enables iterative review.
@@ -208,13 +221,14 @@ Auto-detection (when `--worktree` is not passed): if you're in the main checkout
 The browser UI has three main areas:
 
 - **Sidebar** (left) — resizable panel (drag the handle, width persisted to `localStorage`). Contains four tabs:
-  - **Files Changed** — lists changed files with add/delete stats, tree/flat view toggle. File-level findings show a 📄 badge.
+  - **Files Changed** — lists changed files with add/delete stats, tree/flat view toggle. File-level findings show a 📄 badge. Untracked files appear with `status: "added"` and an "uncommitted" badge.
   - **Commits** — per-file commit list with short SHA and message.
   - **Conversation** — all findings with status badges (open/resolved/stale), plus inline comments per finding. Resolve, Remove, Reopen, or Jump-to-file actions per finding.
   - **Previously discussed** — prior-round context: per-round `notes`, per-round findings grouped by round (open + resolved + stale), and the full comment thread on each finding. Excludes the current round. Empty state on round 1.
 - **Diff cards** (center) — syntax-highlighted diffs. Click line numbers to select a range. Click the file card **+** button to add a file-level finding. Large unchanged regions are folded; click expand buttons to reveal 20 lines at a time.
-- **Review drawer** (overlay) — pick category (`bug`, `style`, `perf`, `question`, `recommend`) and severity (`high`, `medium`, `low`), write a comment, and click "Add Finding". A notes field holds general observations about this round.
-- **Header actions** (top-right) — `Submit Review` is always visible in the page header so the final action is never behind a panel toggle. Layout (unified / split) and theme (light / auto / dark) controls sit alongside it. The "Review" toggle button shows a live count of findings.
+- **Notes surface** (collapsible section above the diff cards) — round-level notes live here in an always-visible spot, so you can write notes while reviewing without opening the drawer. These notes feed into the next round's "Previously discussed" panel. Click the "Round notes" summary to collapse the section when you want more vertical space.
+- **Review drawer** (overlay) — findings-only: pick category (`bug`, `style`, `perf`, `question`, `recommend`) and severity (`high`, `medium`, `low`), write a comment, and click "Add Finding". The drawer contains only the finding fields — no notes, no submit.
+- **Header actions** (top-right) — `Submit Review` is the only submit action and it always lives in the page header so the terminal action is never behind a panel toggle. Layout (unified / split) and theme (light / auto / dark) controls sit alongside it. The "Review" toggle button shows a live count of findings.
 
 Light/dark mode follows your system preference, or you can toggle it manually.
 
@@ -245,7 +259,7 @@ Originally forked from [`oorestisime/opencode-diffs`](https://github.com/ooresti
 | `bun run check` | `format:check && lint && typecheck`. |
 | `bun run prepublishOnly` | Runs `check` then `build` before `npm publish`. |
 | `bun run test:unit` | Unit tests (`bun test src/`) — atomic-write invariant, corrupt-file recovery, concurrent saves. |
-| `bun run test:ui` | End-to-end browser tests (Playwright MCP) — 10 git scenarios with mock review server. |
+| `bun run test:ui` | End-to-end browser tests (Playwright MCP) — 15 git scenarios with mock review server. |
 
 ### Setup
 
