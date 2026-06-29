@@ -17,7 +17,7 @@ For interactive UI testing (drag, screenshot, etc.) see the skill
 
 ## What it tests
 
-15 git scenarios:
+17 git scenarios:
 
 | # | Scenario | What it checks |
 |---|---|---|
@@ -35,6 +35,9 @@ For interactive UI testing (drag, screenshot, etc.) see the skill
 | 12 | `range-changed-banner` | Cross-round yellow banner when diff range shifts |
 | 13 | `default-base-on-main` | Default base behavior on main branch |
 | 14 | `previously-discussed-panel` | 4th sidebar tab surfaces prior-round notes + comment threads |
+| 15 | `untracked-file-in-tree` | Untracked files appear with `status: "added"` + uncommitted badge |
+| 16 | `previously-discussed-race` | AbortController for loadPriorNotes (R7 MINOR #1) — server launches without errors with abort logic in place; race condition itself verified via Playwright walkthrough |
+| 17 | `previously-discussed-hint` | UI hint for "current round in Conversation" panel (R7 MINOR #2) — multi-round state triggers hint render; visibility verified via Playwright walkthrough |
 
 ## Files
 

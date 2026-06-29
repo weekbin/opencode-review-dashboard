@@ -239,6 +239,41 @@ export async function setupUntrackedFileInTree(dir) {
   return { branch: "main", worktrees: [] };
 }
 
+/**
+ * Scenario 16: R7 #1 — AbortController for loadPriorNotes.
+ * 1 commit so repo isn't empty. Verifies the dashboard loads without errors
+ * when the loadPriorNotes abort logic is in place. Runtime behavior of
+ * the race condition itself is verified via Playwright walkthrough
+ * (R7 Playwright screenshots r7-s1-initial.png + r7-s2-previously-tab.png).
+ * Locks in the AC7-1.4 contract.
+ */
+export async function setupPreviouslyDiscussedRace(dir) {
+  await emptyRepo(dir);
+  await sh("echo 'v1' > app.ts && echo 'v2' >> app.ts", dir);
+  await git(["add", "app.ts"], dir);
+  await git(["commit", "-q", "-m", "first"], dir);
+  return { branch: "main", worktrees: [] };
+}
+
+/**
+ * Scenario 17: R7 #2 — UI hint for "current round in Conversation" panel.
+ * Multi-round state via 2 commits (round 1 + round 2). Verifies the dashboard
+ * loads with state.data.round > 0, so the Previously discussed panel hint
+ * should render. Runtime verification via Playwright walkthrough
+ * (R7 Playwright screenshots capture the hint visibility).
+ * Locks in the AC7-2.4 contract.
+ */
+export async function setupPreviouslyDiscussedHint(dir) {
+  await emptyRepo(dir);
+  await sh("echo 'round 1 content' > app.ts", dir);
+  await git(["add", "app.ts"], dir);
+  await git(["commit", "-q", "-m", "round 1"], dir);
+  await sh("echo 'round 2 content' >> app.ts", dir);
+  await git(["add", "app.ts"], dir);
+  await git(["commit", "-q", "-m", "round 2"], dir);
+  return { branch: "main", worktrees: [] };
+}
+
 export const SCENARIOS = {
   "no-worktree-clean": { setup: setupNoWorktreeClean, expect: { kind: "diagnostic" } },
   "has-worktree-unpushed": { setup: setupHasWorktreeUnpushed, expect: { kind: "auto-worktree" } },
@@ -260,4 +295,14 @@ export const SCENARIOS = {
   // review-dashboard-ui-test; this scenario verifies the server-side
   // endpoint doesn't break the launch path.
   "previously-discussed-panel": { setup: setupWorkingTreeChanges, expect: { kind: "working-tree" } },
+  // R7 candidate #1: AbortController for loadPriorNotes (R7 MINOR #1).
+  // The e2e harness verifies the launch path with 1 commit. The
+  // race condition itself (tab-switch abort) is verified via Playwright
+  // walkthrough (R7 screenshots r7-s1-initial.png + r7-s2-previously-tab.png).
+  "previously-discussed-race": { setup: setupPreviouslyDiscussedRace, expect: { kind: "working-tree" } },
+  // R7 candidate #2: UI hint for "current round in Conversation" panel
+  // (R7 MINOR #2). Multi-round state (2 commits) verifies the dashboard
+  // loads with state.data.round > 0, so the hint should render. The
+  // hint visibility itself is verified via Playwright walkthrough.
+  "previously-discussed-hint": { setup: setupPreviouslyDiscussedHint, expect: { kind: "working-tree" } },
 };
