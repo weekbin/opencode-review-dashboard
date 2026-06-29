@@ -393,6 +393,99 @@ Both are mandatory. Both are lead-written. Both can surface skill patches. The t
 
 **R4 evidence for this split**: R4 retro captured the "R3 audit-trail fabricated" content lesson (Gap 1 was about PM Manager's pre-check). It did NOT capture the "PM Triage should ALSO do the pre-check" call-flow lesson (the PM Triage pre-check is now Patch 1 in the R4 post-exec). The split would have caught both.
 
+## Loop self-check (Phase 4.7 — MANDATORY every round, hard gate before closure commit)
+
+**Why**: R3 fabricated its audit-trail (claimed a SHIP that didn't happen, lead never caught it until R4). R4 had 3 lead takeovers and almost shipped without a written self-check. Each round, the lead can drift from the loop's spec (skip a phase, forget a file, miss a profile-gated check). Phase 4.7 is the **hard gate that catches this before the closure commit**.
+
+**When**: ALWAYS, AFTER Phase 4.6 Post-exec, BEFORE the closure commit. The closure sequence is:
+1. Phase 4 Decision → `decision.md` written
+2. Phase 4.5 Retro → `retro.md` written
+3. Phase 4.6 Post-exec → `post-exec-analysis.md` written
+4. **Phase 4.7 Self-check** → `self-check.md` written, **must be PASS** before commit
+5. Apply skill patches (if any from retro or post-exec)
+6. Commit + push
+
+**Output `.omo/round-N/self-check.md`** — a checklist with PASS/FAIL per row:
+
+```markdown
+# Self-check — Round N
+
+> Run by lead at end of every loop. Hard gate: if any FAIL, BLOCK the closure commit and fix.
+
+## Per-phase verification (every required phase ran, every required artifact exists)
+
+| Phase | Required artifact | Required | Status | Evidence (file:line / value) |
+|---|---|---|---|---|
+| 0 PM Triage | `.omo/round-N/brief.md` | yes | PASS/FAIL | file exists, has Candidates ranked, has Scope buckets (R5+), has ## Self-Critique, has U_* profile |
+| 0.5 PM Manager | `.omo/round-N/pm-manager-review.md` | yes | PASS/FAIL | verdict APPROVE / REJECT / CLARIFY (with pre_check PASS) |
+| 1 Architect | `.omo/round-N/plan.md` | feature/arch only | PASS/N/A/FAIL | 7 sections present (Goal, ACs, File changes, Steps, Test plan, Risk register, Hand-off) |
+| 2 Dev | worktree commit + AC trace in decision.md | yes | PASS/FAIL | commit SHA exists in worktree, AC trace has all N ACs with PASS/FAIL evidence |
+| 3a Tester Review | `.omo/round-N/test-report.md` + 5 review-*.md or lead-takeover note | yes | PASS/FAIL | test-report.md has 5/5 lens verdicts, 5 review-*.md files OR `.omo/round-N/lead-takeover-tester-review.md` exists |
+| 3b Tester Diff | `.omo/round-N/diff-report.md` | yes | PASS/FAIL | diff-report.md has no CRITICAL findings, file:line evidence for each change |
+| 3c Tester Playwright | `.omo/round-N/playwright-report.md` OR lead-takeover note OR profile-skipped justification | UI changed OR feature+arch profile | PASS/N/A/FAIL | walkthrough + screenshot + verdict, OR lead-takeover note, OR explicit skip justification |
+| 3.5 PM Doc Writer | `.omo/round-N/doc-update-report.md` | yes | PASS/FAIL | sections added/modified, screenshots captured, walkthrough validated |
+| 4 Decision | `.omo/round-N/decision.md` | yes | PASS/FAIL | SHIP/CONTINUE/STOP verdict, AC trace, lead takeovers list, dev self-check |
+| 4.5 Retro | `.omo/round-N/retro.md` | yes (mandatory) | PASS/FAIL | all 6 sections present (TL;DR, Successes, Failures, Skill gaps, Followup, Action items), no blank sections |
+| 4.6 Post-exec | `.omo/round-N/post-exec-analysis.md` | yes (mandatory, R4 retro) | PASS/FAIL | all 6 sections present (TL;DR, Call-flow timeline, Task invocations summary, Per-task review, Wasted analysis, New skill gaps) |
+
+## Profile-gated checks (skip if profile says skip — these are N/A, not FAIL)
+
+| Phase | Bugfix | Feature | Architecture | This round's profile | Status |
+|---|---|---|---|---|---|
+| Architect full plan (Phase 1) | 1-para | full | full + hyperplan | (from decision.md) | PASS/N/A/FAIL |
+| Hyperplan (external architecture review) | skip | skip | run | | N/A |
+| External review (extra code lens) | skip | skip | run | | N/A |
+| Lens #3 Code | skip | run | run | | PASS/N/A/FAIL |
+| Lens #5 Context | skip | run | run | | PASS/N/A/FAIL |
+| Tester Playwright (Phase 3c) | skip unless UI | run | run | | PASS/N/A/FAIL |
+| PM Doc Writer (Phase 3.5) | 1-para | full + screenshot | full + screenshot | | PASS/N/A/FAIL |
+
+## Closure sequence gates
+
+| Step | Status | Evidence |
+|---|---|---|
+| All expected output files exist for the profile (≥3/14 bugfix, ≥8/14 feature, 14/14 arch) | PASS/FAIL | `ls .omo/round-N/ | wc -l` |
+| `decision.md` SHIP verdict | PASS/FAIL | grep "## Verdict" decision.md |
+| `.omo/proposals.jsonl` R-N line appended | PASS/FAIL | `tail -1 .omo/proposals.jsonl` parses + has correct round number |
+| Skill patches applied (if retro OR post-exec surfaced gaps) | PASS/FAIL/N/A | git log of skill-update commits |
+| Closure commit (this self-check passes BEFORE the commit) | PENDING → DONE | git log of the round's closure commit |
+
+## Self-check verdict
+
+**PASS** — all required phases ran, all expected artifacts present, no skipped steps detected.
+
+**OR** **FAIL** — the following required steps are missing or incomplete:
+- <list of failures with file:line / what's missing>
+
+If FAIL: **the closure commit is BLOCKED**. Fix the missing artifact(s) (re-run the missing phase, re-take-over the missing deliverable, or update `decision.md` to mark the phase as legitimately skipped per profile rules). Then re-run this self-check.
+
+## Self-check checklist the lead must verify
+
+- [ ] Phase 0 brief.md exists + has all 6+ required sections (Title, Source, User pain, Candidates ranked, Scope buckets (R5+), Recommended candidate, Self-Critique, U_* profile)
+- [ ] Phase 0.5 pm-manager-review.md exists + has APPROVE/REJECT/CLARIFY verdict + pre_check PASS
+- [ ] Phase 1 plan.md exists IF profile is feature/architecture (skip for bugfix)
+- [ ] Phase 2: worktree commit exists in git, AC trace in decision.md has all N ACs with PASS/FAIL evidence
+- [ ] Phase 3a test-report.md exists + 5/5 lens verdicts + per-lens source (lens-task or LEAD_SYNTHESIZED)
+- [ ] Phase 3b diff-report.md exists + no CRITICAL findings
+- [ ] Phase 3c playwright-report.md OR lead-takeover-tester-playwright.md OR profile-skipped justification
+- [ ] Phase 3.5 doc-update-report.md exists + sections + walkthrough validated
+- [ ] Phase 4 decision.md exists + SHIP/CONTINUE/STOP verdict + AC trace + lead takeovers + dev self-check
+- [ ] Phase 4.5 retro.md exists + all 6 sections, no blanks
+- [ ] Phase 4.6 post-exec-analysis.md exists + all 6 sections, no blanks
+- [ ] `.omo/proposals.jsonl` R-N line appended (5 fields: round, timestamp, pm_source, brief_excerpt, final_outcome)
+- [ ] `git log --oneline -1` shows the round's closure commit (post-self-check)
+
+## Lead's required action after self-check
+
+- **If all PASS**: continue to closure commit (skill patches if any, then git add + commit + push)
+- **If any FAIL**: do NOT commit. Fix the missing artifact (re-run the missing phase via `task()` call, or write the missing file directly, or amend `decision.md` to mark the phase as legitimately skipped per profile rules). Re-run this self-check. Loop until PASS.
+
+**Failure modes this gate prevents**:
+- R3 audit-trail fabrication (commit SHAs in decision.md don't exist in git) — would be caught by Phase 2's "worktree commit exists" check
+- R4's "auto-pick after 4 non-response turns" not documented — would be caught by Phase 4's "lead takeovers list" check
+- Future round silently skipping Phase 4.5 retro or Phase 4.6 post-exec — would be caught by the corresponding row
+- Future round shipping without `self-check.md` itself — impossible by definition (this file is the self-check)
+
 ## Skill-update rule (when retro or post-exec surfaces skill gaps)
 
 If the retro's "Skill gaps found" section is non-empty:
@@ -493,7 +586,7 @@ Lead auto-classification:
 
 ## File structure (tracked, NOT ephemeral)
 
-Every round produces a directory `.omo/round-N/` with these 13 files (all tracked):
+Every round produces a directory `.omo/round-N/` with these 14 files (all tracked):
 
 ```text
 .omo/round-N/
@@ -509,7 +602,10 @@ Every round produces a directory `.omo/round-N/` with these 13 files (all tracke
 ├── diff-report.md              # /diff-review-dashboard output (or lead-takeover note)
 ├── playwright-report.md        # Playwright UI walkthrough
 ├── doc-update-report.md        # PM Doc Writer verdict (README + screenshots)
-└── decision.md                 # Lead's Phase 4 verdict (PASS/FAIL/CONTINUE/STOP)
+├── decision.md                 # Lead's Phase 4 verdict (PASS/FAIL/CONTINUE/STOP)
+├── retro.md                    # Phase 4.5 round-end retrospective (mandatory, R4 retro)
+├── post-exec-analysis.md       # Phase 4.6 post-execution call-flow analysis (mandatory, R4 retro)
+└── self-check.md               # Phase 4.7 loop self-check (mandatory hard gate)
 
 # Plus cross-round:
 .omo/proposals.jsonl            # append-only, 1 line per round (machine-readable summary)
