@@ -102,6 +102,19 @@ bun run test:unit
 - 一次性应用全部修改，然后重新运行 `/diff-review-dashboard` 确认。
 - 如果 `open_count == 0` 或没有可操作 finding，输出 `Round N: no actionable items, closing out.` 并结束。
 
+### 自动回复的语言匹配
+
+Agent 的 `add_review_comment` 回复和 Post-Apply Trace 评论会跟随你 finding 的语言：
+
+- **CJK 比例 > 30%** → 用中文回复。
+- **CJK 比例 < 10%** → 用英文回复。
+- **混合（10–30% CJK）** → 默认英文，除非你在同一轮里 3 条以上都明显用中文。
+- **空 / 纯空白输入** → 默认英文（保留原行为）。
+
+启发式正则基于 CJK 字符范围 `[\u4e00-\u9fff]`，由插件的 `detectLanguage()` 辅助函数在 `src/index.ts` 内执行。Agent prompt 里有一节专门的 "### Language Matching" 指示模型镜像用户评论的语言。代码、文件路径、工具标识符始终保持原样，不受回复语言影响。
+
+**手工验证**（超出 e2e harness 范围——需要真实的 OpenCode 会话）：发 1 条中文 finding，比如"这个 auth middleware 应该用 jwt.verify"，提交本轮，触发 auto-apply 循环，确认 Agent 的 `add_review_comment` 回复是中文。下一轮的中文回复会自动出现在"Previously discussed"面板中。
+
 ### 多轮审查
 
 每个会话会跟踪 review 轮次。再次运行 `/diff-review-dashboard` 时，之前轮次的 finding 会保留；如果文件被删除或锚定代码发生变化，旧 finding 会自动标记为 `stale`（过期）。
@@ -208,12 +221,14 @@ bun run test:unit
 浏览器界面分为四个区域（左侧 sidebar 含 4 个 tab）：
 
 - **左侧边栏**（可拖动调整宽度，宽度会保存到 localStorage）：
-  - **Files Changed** — 列出所有变更文件，支持 tree/flat 切换。文件级 finding 会显示 📄 徽章。
+  - **Files Changed** — 列出所有变更文件，支持 tree/flat 切换。文件级 finding 会显示 📄 徽章。未跟踪文件以 `status: "added"` 显示，并带"uncommitted" 徽章。
   - **Commits** — 每个文件涉及的提交列表，含短 SHA 和提交信息。
   - **Conversation** — 所有 finding（行级/文件级），含状态徽章和按 finding 回复的评论；支持 Resolve、Remove、Reopen、Jump 操作。
   - **Previously discussed** — 历史轮次上下文：每轮的 `notes`、每轮的 finding（open / resolved / stale）以及每条 finding 的完整评论线程。不含当前轮。第 1 轮显示空状态。
 - **中间 diff 卡片** — 语法高亮 diff。点击行号选择范围，点击文件卡片上的 + 按钮添加文件级 finding。大段未改动代码默认折叠，点击展开按钮每次显示 20 行。
-- **Review 抽屉** — 选择分类（`bug`/`style`/`perf`/`question`/`recommend`）和等级（`high`/`medium`/`low`），填写评论后点击 "Add Finding"。底部可填写本轮整体 notes。
+- **Notes 表面**（diff 卡片上方的可折叠区域）— 本轮整体 notes 永远在这里可见，审阅时随手写即可，不必打开抽屉。notes 会被下一轮的 "Previously discussed" 面板读取。点击 "Round notes" 标题可折叠，需要更多垂直空间时收起即可。
+- **Review 抽屉**（弹层）— 仅含 finding 字段：选择分类（`bug`/`style`/`perf`/`question`/`recommend`）和等级（`high`/`medium`/`low`），填写评论后点击 "Add Finding"。抽屉里不含 notes，也不含 Submit 按钮——保持单一职责。
+- **顶部 Header 操作** — `Submit Review` 永远在页面 header，是唯一提交入口；terminal 动作绝不藏在任何面板里。旁边是布局（unified / split）和主题（light / auto / dark）切换。"Review" 切换按钮实时显示 finding 数量。
 
 界面会跟随系统亮/暗模式，也可手动切换。
 
@@ -235,7 +250,7 @@ bun run test:unit
 | `bun run typecheck` | 使用 `tsc --noEmit` 类型检查。 |
 | `bun run check` | `format:check && lint && typecheck`。 |
 | `bun run prepublishOnly` | `npm publish` 前自动运行 `check + build`。 |
-| `bun run test:ui` | 端到端浏览器测试（Playwright MCP），覆盖 10 个 git 场景。 |
+| `bun run test:ui` | 端到端浏览器测试（Playwright MCP），覆盖 15 个 git 场景。 |
 
 ### 本地设置
 

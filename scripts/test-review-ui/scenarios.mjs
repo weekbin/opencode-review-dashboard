@@ -226,6 +226,19 @@ export async function setupDefaultBaseOnMain(dir) {
   return { branch: "main", worktrees: [] };
 }
 
+/**
+ * Scenario 15: R5 #7 — untracked file in the working tree.
+ * 1 committed file (so the repo is not empty) + 1 untracked file.
+ * The plugin should include the untracked file in the working-tree diff
+ * with status: "added" (the file is "new" because it's not in HEAD).
+ * Locks in the AC7-1 / AC7-2 contract.
+ */
+export async function setupUntrackedFileInTree(dir) {
+  await emptyRepo(dir);
+  await sh("echo 'never tracked' > brand_new_file.ts", dir);
+  return { branch: "main", worktrees: [] };
+}
+
 export const SCENARIOS = {
   "no-worktree-clean": { setup: setupNoWorktreeClean, expect: { kind: "diagnostic" } },
   "has-worktree-unpushed": { setup: setupHasWorktreeUnpushed, expect: { kind: "auto-worktree" } },
@@ -240,6 +253,7 @@ export const SCENARIOS = {
   "uncommitted-with-commits": { setup: setupUncommittedWithCommits, expect: { kind: "working-tree-with-commits" } },
   "range-changed-banner": { setup: setupRangeChangedBanner, expect: { kind: "working-tree" } },
   "default-base-on-main": { setup: setupDefaultBaseOnMain, expect: { kind: "diagnostic-with-base" } },
+  "untracked-file-in-tree": { setup: setupUntrackedFileInTree, expect: { kind: "working-tree" } },
   // R4 candidate #1: the plugin must still launch cleanly when the UI fetches
   // /api/review/${id}/prior-notes. The full UI assertion (panel renders,
   // comment threads visible) is covered by the Playwright skill
