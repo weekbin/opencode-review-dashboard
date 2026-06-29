@@ -195,6 +195,7 @@ For each phase, read `references/phase-prompts.md` for the exact prompt body. Ea
 | 4.5 | **Round-end retrospective** | (no subagent) | **lead always** | `.omo/round-N/retro.md` | **always run** (mandatory, R4 retro lesson — content-focused: what shipped, what worked, skill gaps) |
 | 4.6 | **Post-execution call-flow analysis** | (no subagent) | **lead always** | `.omo/round-N/post-exec-analysis.md` | **always run** (mandatory, R4 retro lesson — call-flow-focused: stalled subagents, lead takeovers, wasted time/tokens, NEW call-flow gaps not in retro) |
 | 4.7 | **Loop self-check** (HARD GATE) | (no subagent) | **lead always** | `.omo/round-N/self-check.md` | **always run** (mandatory, hard gate before closure commit — verifies per-phase artifacts + closure sequence gates; MUST be PASS) |
+| 4.8 | **Loop Summary Output** | (no subagent) | **lead always** | (chat response, NOT a file) | **always run** (mandatory, R7 retro Gap J — lead outputs 5-section summary to user as chat response BEFORE closure commit; user MUST see what shipped without asking) |
 | — | Skill-update patch (if retro OR post-exec surfaced skill gaps) | (no subagent) | **lead always** | `.opencode/skills/team-dev-loop/**` | **always run if retro or post-exec surfaces skill gaps** |
 | — | Append audit log | (no subagent) | **lead always** | `.omo/proposals.jsonl` (1 line) | always run |
 
@@ -563,6 +564,62 @@ If FAIL: **the closure commit is BLOCKED**. Fix the missing artifact(s) (re-run 
 - R4's "auto-pick after 4 non-response turns" not documented — would be caught by Phase 4's "lead takeovers list" check
 - Future round silently skipping Phase 4.5 retro or Phase 4.6 post-exec — would be caught by the corresponding row
 - Future round shipping without `self-check.md` itself — impossible by definition (this file is the self-check)
+
+## Loop Summary Output (Phase 4.8 — MANDATORY every round, R7 retro Gap J)
+
+**Why**: R7 user feedback: "你现在一轮做完我都不知道你改了什么，提升了什么，仓库有什么变化". Lead was completing rounds silently (between Phase 4.7 PASS and the closure commit message), so the user had no visible summary of what shipped until they ran `git log` themselves. R7 retro Gap J fixes this by making the Loop Summary a MANDATORY phase with a specific output format.
+
+**When**: After Phase 4.7 Self-check PASS, BEFORE the closure commit. The Loop Summary is part of the response to the user — the user MUST see it before the commit lands.
+
+**Output format** (canonical structure, 5 sections, no blanks):
+
+```markdown
+# Round <N> Loop Summary
+
+## 1. 改了什么 (What changed)
+<file:line table of changes — file path, change description, +/- LOC>
+<Total LOC change: e.g., "+572 insertions / -15 deletions across 8 files">
+<Screenshots / new files / new test files listed>
+
+## 2. 提升了什么 (What improved)
+<功能层面: new capabilities, bug fixes, UX improvements>
+<质量层面: test coverage, e2e scenarios, build/lint/typecheck, Playwright screenshots>
+<skill 层面: any skill patches from this round>
+
+## 3. 仓库变化 (Repo state)
+<git log last N commits (post-merge)>
+<file count change: src/ +N, e2e +N, screenshots +N>
+<test count: unit +N (was X, now Y), e2e +N (was X, now Y)>
+<backlog state: 0 bugfixes / 1 fresh user-story / etc.>
+
+## 4. 优化收敛状态 (Optimization convergence)
+<comparison table: R5 baseline | R6 | R(N)>
+<Speedup factor vs R5 baseline>
+<Patch status: how many active, any new this round>
+
+## 5. 接下来 (What's next)
+<R(N+1) candidates per backlog-freshness gate>
+<Open questions / follow-ups>
+```
+
+**Enforcement**:
+- Lead MUST output this summary to the user as a chat response BEFORE the closure commit
+- The summary is NOT a file artifact — it's a chat response (so the user sees it directly)
+- If lead is silent after self-check PASS, the user has no visibility (R7 user complaint)
+- The summary should be CONCRETE (file paths, line numbers, commit SHAs, counts) — not vague ("we improved quality")
+- The summary should be BATCHED (all 5 sections in one response) — not split across multiple chat messages
+- Cite real evidence: `git log --oneline -5`, `wc -l <file>`, `bun test <file>` output, file:line citations from decision.md
+- This summary is for the USER (not for the audit trail) — the audit trail is in `.omo/round-N/decision.md` + `.omo/proposals.jsonl` (already produced)
+
+**R7 evidence**: R7 completed in 33m 49s, but the user had to ask "这一轮 Post execution 是不是依然没有做呢?" before getting any visibility into what shipped. The Loop Summary at the end of the round would have shown:
+- 2 sub-candidates shipped (AbortController + UI hint)
+- 79/79 unit tests + 17/17 e2e scenarios
+- 1 new skill gap (Gap I) applied
+- 5 lead takeovers
+- All within 33m 49s (1.8x speedup vs R5)
+- WITHOUT the user needing to ask.
+
+**Apply to R8+**: Lead MUST output the Loop Summary chat response after Phase 4.7 PASS, before the closure commit. The summary should be visible to the user in their chat client. Lead should NOT be silent between self-check PASS and the commit.
 
 ## Skill-update rule (when retro or post-exec surfaces skill gaps)
 
