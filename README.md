@@ -111,7 +111,7 @@ The agent's `add_review_comment` replies and Post-Apply Trace comments follow th
 - **Mixed (10–30% CJK)** → default to English unless you clearly write in Chinese across 3+ comments in the same round.
 - **Empty / whitespace input** → defaults to English (preserves prior behavior).
 
-The heuristic is regex-based on the CJK character range `[\u4e00-\u9fff]` and runs in the plugin's `detectLanguage()` helper at `src/index.ts`. The agent prompt has a dedicated "### Language Matching" section that tells the model to mirror the user's comment language. Code, file paths, and tool identifiers stay in their canonical form regardless of the reply language.
+The heuristic is regex-based on the CJK character range `[\u4e00-\u9fff\uac00-\ud7af\u3040-\u309f\u30a0-\u30ff]` (Chinese Hanzi + Japanese Kanji/Hiragana/Katakana + Korean Hangul) and runs in the plugin's `detectLanguage()` helper at `src/index.ts`. The agent prompt has a dedicated "### Language Matching" section that tells the model to mirror the user's comment language. Code, file paths, and tool identifiers stay in their canonical form regardless of the reply language.
 
 **To verify manually** (out of e2e harness scope — requires a real OpenCode session): post 1 Chinese finding like "这个 auth middleware 应该用 jwt.verify", submit the round, trigger the auto-apply loop, and confirm the agent's `add_review_comment` reply is in Chinese. The Chinese reply will then surface in the "Previously discussed" panel of the next round.
 

@@ -111,7 +111,7 @@ Agent 的 `add_review_comment` 回复和 Post-Apply Trace 评论会跟随你 fin
 - **混合（10–30% CJK）** → 默认英文，除非你在同一轮里 3 条以上都明显用中文。
 - **空 / 纯空白输入** → 默认英文（保留原行为）。
 
-启发式正则基于 CJK 字符范围 `[\u4e00-\u9fff]`，由插件的 `detectLanguage()` 辅助函数在 `src/index.ts` 内执行。Agent prompt 里有一节专门的 "### Language Matching" 指示模型镜像用户评论的语言。代码、文件路径、工具标识符始终保持原样，不受回复语言影响。
+启发式正则基于 CJK 字符范围 `[\u4e00-\u9fff\uac00-\ud7af\u3040-\u309f\u30a0-\u30ff]`（汉字 + 日文汉字/平假名/片假名 + 韩文 Hangul），由插件的 `detectLanguage()` 辅助函数在 `src/index.ts` 内执行。Agent prompt 里有一节专门的 "### Language Matching" 指示模型镜像用户评论的语言。代码、文件路径、工具标识符始终保持原样，不受回复语言影响。
 
 **手工验证**（超出 e2e harness 范围——需要真实的 OpenCode 会话）：发 1 条中文 finding，比如"这个 auth middleware 应该用 jwt.verify"，提交本轮，触发 auto-apply 循环，确认 Agent 的 `add_review_comment` 回复是中文。下一轮的中文回复会自动出现在"Previously discussed"面板中。
 
