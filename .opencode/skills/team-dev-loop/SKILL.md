@@ -447,6 +447,8 @@ Both are mandatory. Both are lead-written. Both can surface skill patches. The t
 
 **Output `.omo/round-N/self-check.md`** — a checklist with PASS/FAIL per row:
 
+<!-- CANONICAL TEMPLATE — DO NOT MODIFY (Phase 4.7 Self-check) -->
+
 ```markdown
 # Self-check — Round N
 
