@@ -51,6 +51,7 @@ You do not need to do anything to get this — every existing `/diff-review-dash
 - **Browser review UI** — file tree, syntax-highlighted diffs with folded unchanged regions, finding drawer (category, severity, comment). See [Review UI](#review-ui).
 - **Diff range with cross-round drift banner** — report the actual diff range reviewed; show a yellow banner when the range changes between rounds. See [Diff range](#diff-range).
 - **Multi-round reviews** — findings carry over between rounds; auto-close stale ones when anchored code changes.
+- **Previously discussed panel (4th sidebar tab)** — dedicated tab that surfaces prior-round context: per-round `notes` (read from the existing `round-NNN.md` exports) plus every prior finding with its full comment thread (open, resolved, and stale). Lets you re-orient to the conversation history before deciding what to do this round, without opening a terminal or scrolling 30+ entries in the Conversation tab. Complements the Conversation tab (which shows the current round).
 - **Auto-apply workflow** — agent plan-first applies actionable findings in one batch, then re-runs the review.
 - **Worktree auto-detection** — picks the worktree with the most commits ahead of `origin/main` when `--worktree` is omitted; an explicit `--worktree <path>` is always respected, even when the named worktree is empty (the auto-pickaround excludes the worktree it already tried, so it never silently overrides the user's flag).
 
@@ -104,6 +105,8 @@ The slash-command template tells the agent to **not ask the user how to proceed*
 ### Multi-round reviews
 
 Each session tracks review rounds. When you run `/diff-review-dashboard` again in the same session, findings from previous rounds carry over. If a file was removed or the anchored code changed, old findings are automatically closed (shown as `stale`). This enables iterative review.
+
+The 4th sidebar tab ("Previously discussed") gives you a glanceable history of every prior round in the same session: per-round `notes` (read from `round-NNN.md`), per-round findings (open + resolved + stale), and the full comment thread on each finding (every user / agent reply, in chronological order). The data is read from the existing `state.findings[]` array and the existing `round-NNN.md` exports — no new state file, no new payload field, no new dependency. The current round is intentionally excluded (use the Conversation tab for that). If you're on round 1, the tab shows a "First round — no prior discussion yet" empty state.
 
 ### State and exports
 
@@ -204,10 +207,11 @@ Auto-detection (when `--worktree` is not passed): if you're in the main checkout
 
 The browser UI has three main areas:
 
-- **Sidebar** (left) — resizable panel (drag the handle, width persisted to `localStorage`). Contains three tabs:
+- **Sidebar** (left) — resizable panel (drag the handle, width persisted to `localStorage`). Contains four tabs:
   - **Files Changed** — lists changed files with add/delete stats, tree/flat view toggle. File-level findings show a 📄 badge.
   - **Commits** — per-file commit list with short SHA and message.
   - **Conversation** — all findings with status badges (open/resolved/stale), plus inline comments per finding. Resolve, Remove, Reopen, or Jump-to-file actions per finding.
+  - **Previously discussed** — prior-round context: per-round `notes`, per-round findings grouped by round (open + resolved + stale), and the full comment thread on each finding. Excludes the current round. Empty state on round 1.
 - **Diff cards** (center) — syntax-highlighted diffs. Click line numbers to select a range. Click the file card **+** button to add a file-level finding. Large unchanged regions are folded; click expand buttons to reveal 20 lines at a time.
 - **Review drawer** (overlay) — pick category (`bug`, `style`, `perf`, `question`, `recommend`) and severity (`high`, `medium`, `low`), write a comment, and click "Add Finding". A notes field holds general observations about this round.
 - **Header actions** (top-right) — `Submit Review` is always visible in the page header so the final action is never behind a panel toggle. Layout (unified / split) and theme (light / auto / dark) controls sit alongside it. The "Review" toggle button shows a live count of findings.

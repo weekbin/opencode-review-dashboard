@@ -17,7 +17,7 @@ For interactive UI testing (drag, screenshot, etc.) see the skill
 
 ## What it tests
 
-10 git scenarios:
+14 git scenarios:
 
 | # | Scenario | What it checks |
 |---|---|---|
@@ -31,6 +31,10 @@ For interactive UI testing (drag, screenshot, etc.) see the skill
 | 8 | `files-filter` | `--files a.ts,b.ts` |
 | 9 | `worktree-flag-override` | `--worktree <path>` from main |
 | 10 | `empty-repo` | Diagnostic on empty repo |
+| 11 | `uncommitted-with-commits` | Uncommitted files + diff_base header + uncommitted badge |
+| 12 | `range-changed-banner` | Cross-round yellow banner when diff range shifts |
+| 13 | `default-base-on-main` | Default base behavior on main branch |
+| 14 | `previously-discussed-panel` | 4th sidebar tab surfaces prior-round notes + comment threads |
 
 ## Files
 

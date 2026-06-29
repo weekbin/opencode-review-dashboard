@@ -1711,6 +1711,14 @@
         Conversation
         <span class="navbar-count" id="conversation-count" hidden>0</span>
       </button>
+      <button
+        data-tab="previously"
+        aria-pressed="false"
+        title="Previously discussed (prior round notes + comment threads)"
+      >
+        Previously discussed
+        <span class="navbar-count" id="previously-count" hidden>0</span>
+      </button>
     </nav>
 
     <div id="range-banner" class="range-banner" hidden></div>
@@ -1756,6 +1764,12 @@
           </div>
         </div>
         <div class="conversation-list" id="conversation-list"></div>
+      </div>
+      <div class="pane pane-previously" data-pane="previously" hidden>
+        <div class="pane-toolbar">
+          <div class="pane-title">Prior rounds — what you told the agent + how it replied</div>
+        </div>
+        <div class="previously-list" id="previously-list"></div>
       </div>
     </div>
 

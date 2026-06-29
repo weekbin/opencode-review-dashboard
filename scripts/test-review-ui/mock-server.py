@@ -91,7 +91,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.serve_asset(path[len("/assets/"):])
             return
         if path.startswith("/api/review/"):
-            self.serve_mock()
+            if path.endswith("/prior-notes"):
+                self.serve_prior_notes()
+            else:
+                self.serve_mock()
             return
         # Default: review.html (root or /review/<id>)
         self.serve_html()
@@ -137,6 +140,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def serve_mock(self):
         body = json.dumps(load_mock()).encode()
+        self.send_response(200)
+        self.send_header("content-type", "application/json")
+        self.send_header("cache-control", "no-cache")
+        self.send_header("content-length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def serve_prior_notes(self):
+        # Mock fixture for the Previously discussed tab (R4 candidate #1).
+        payload = {
+            "rounds": [
+                {"round": 1, "notes": "Fix the auth middleware"},
+                {"round": 2, "notes": "And add unit tests for the middleware"},
+            ]
+        }
+        body = json.dumps(payload).encode()
         self.send_response(200)
         self.send_header("content-type", "application/json")
         self.send_header("cache-control", "no-cache")
