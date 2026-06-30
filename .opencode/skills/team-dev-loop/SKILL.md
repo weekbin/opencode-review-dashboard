@@ -1,12 +1,12 @@
 ---
 name: team-dev-loop
-description: "v5 fully-automated cron-style dev loop — 11 phases (Phase -0 Sync / Phase 0 PM Triage v5 / Phase 0.25 PM Researcher / Phase 0.5 PM Manager v5 / Phase 0.75 Planner / Phase 1 Architect / Phase 2 Dev / Phase 2.5 Pre-Commit Audit / Phase 3a-c Tester / Phase 3.5 PM Doc Writer / Phase 4 Decision + 4.5-4.9 lead-owned). PM is competitor-driven, PM Manager auto-opens GH issues, Planner selects scope autonomously (≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round), no User Pick gate, hard STOP on sync/audit failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
+description: "v5.3 cron-style dev loop — 11 phases (Phase -0 Sync / Phase 0 PM Triage / 0.25 PM Researcher / 0.5 PM Manager / 0.75 Planner / 1 Architect / 2 Dev / 2.5 Pre-Commit Audit / 3a-c Tester / 3.5 Doc Writer / 4 Decision + 4.5-4.9 lead-owned). Default NO user pick (Planner autonomous); user MAY pre-pick A-E or 1-6 (R12 Gap #1). PM researcher advisories are advisory-only (R12 Gap #14: lead must verify independently). PM manager auto-opens GH issues; ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
 ---
 
 # /team-dev-loop Command (v5)
 
-> **Last Updated**: 2026-06-29 (v5: fully-automated cron-style loop. PM competitor-driven + PM Researcher web-verifier + Planner (Phase 0.75) autonomous scope selector + Phase -0 Sync entry-point + Phase 2.5 Pre-Commit Audit. User Pick gate removed; PM Manager auto-opens GH issues; zero user intervention by design.)
-> **Status**: R10+ will run on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..9}/`).
+> **Last Updated**: 2026-06-30 (v5.3: R12 retro patch in commit `657a064` — 14 gap fixes: USER-LOCKED SCOPE override / user-gate auto-pilot opt-in / user-gate decision matrix / phase hand-off contracts / subagent claim verification / AUDIT FAIL POST-CLOSURE workflow / 30-min wall-clock discipline / Doc side-file reverse-validate / Multi-round AC test-design pattern / Playwright click-retry fallback. Tester Review prompt rewritten to lead-synthesized — orchestrator-fanout pattern retired (R4 Gap 2). Phase 4.9 changed to verification-only — commit msg `close #N` auto-closes.)
+> **Status**: R13+ will run on v5.3. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
 > **Migration from v2**: see `## Migration v2 → v5` section below.
 
 ## Migration v2 → v5

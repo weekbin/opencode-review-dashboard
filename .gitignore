@@ -6,6 +6,8 @@ dist/
 .opencode/cache/
 .opencode/state.json
 .opencode/magic-context/
+.opencode/command/
+.cortexkit/
 .playwright-mcp/
 # We use opencode, not Claude CLI — `playwright-cli install --skills` would
 # otherwise pollute the project with .claude/skills/. Global install is enough.
