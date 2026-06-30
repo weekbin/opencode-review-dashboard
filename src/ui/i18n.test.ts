@@ -266,4 +266,20 @@ describe("AC1.2 — toggle re-renders static-HTML labels via registerUITranslato
     expect(i18n.includes('"最近搜索"')).toBe(true);
     expect(src.includes('t("search.recent.title")')).toBe(true);
   });
+
+  // R22 #45: STRINGS_USAGE_PLAN regression for search.recent.clear (button label).
+  it("STRINGS['search.recent.clear'] has both en + zh-CN translations", async () => {
+    const i18n = await readSource(I18N);
+    expect(i18n.includes('"search.recent.clear":')).toBe(true);
+    expect(i18n.includes('"Clear"')).toBe(true);
+    expect(i18n.includes('"清空"')).toBe(true);
+  });
+
+  // R22 #45: STRINGS_USAGE_PLAN regression for search.recent.clear.confirm (toast).
+  it("STRINGS['search.recent.clear.confirm'] has both en + zh-CN translations", async () => {
+    const i18n = await readSource(I18N);
+    expect(i18n.includes('"search.recent.clear.confirm":')).toBe(true);
+    expect(i18n.includes('"Recent searches cleared"')).toBe(true);
+    expect(i18n.includes('"最近搜索已清空"')).toBe(true);
+  });
 });

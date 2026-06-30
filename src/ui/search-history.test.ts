@@ -20,6 +20,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import {
   addRecentSearch,
   cancelPendingCommit,
+  clearRecentSearches,
   commitRecentSearch,
   commitRecentSearchImmediate,
   COMMIT_DEBOUNCE_MS,
@@ -249,5 +250,37 @@ describe("R21 #43 cancelPendingCommit", () => {
     cancelPendingCommit();
     await new Promise((r) => setTimeout(r, COMMIT_DEBOUNCE_MS + 50));
     expect(getRecentSearches()).not.toContain("pending");
+  });
+});
+
+describe("R22 #45 AC5.2 — clearRecentSearches sets localStorage to []", () => {
+  it("writes an empty JSON array to localStorage", () => {
+    addRecentSearch("to-be-cleared");
+    expect(getRecentSearches()).not.toEqual([]);
+    clearRecentSearches();
+    const raw = fakeStorage.getItem(RECENT_SEARCHES_KEY);
+    expect(raw).toBe("[]");
+    expect(getRecentSearches()).toEqual([]);
+  });
+
+  it("cancels any pending debounced commit so clear is not undone", async () => {
+    commitRecentSearch("pending-query");
+    clearRecentSearches();
+    await new Promise((r) => setTimeout(r, COMMIT_DEBOUNCE_MS + 50));
+    expect(getRecentSearches()).toEqual([]);
+  });
+});
+
+describe("R22 #45 AC5.6 — max 5 cap + debounce preserved (no regression)", () => {
+  it("clearRecentSearches does not affect MAX_RECENT constant", () => {
+    expect(MAX_RECENT).toBe(5);
+  });
+
+  it("addRecentSearch still caps to MAX_RECENT after clear", () => {
+    clearRecentSearches();
+    for (let i = 1; i <= MAX_RECENT + 3; i++) {
+      addRecentSearch(`q${i}`);
+    }
+    expect(getRecentSearches().length).toBe(MAX_RECENT);
   });
 });

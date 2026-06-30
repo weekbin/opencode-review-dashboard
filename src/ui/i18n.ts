@@ -54,6 +54,8 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   },
   "sidebar.filter.unread": { en: "Show only unread", "zh-CN": "仅显示未审查" },
   "search.recent.title": { en: "Recent searches", "zh-CN": "最近搜索" },
+  "search.recent.clear": { en: "Clear", "zh-CN": "清空" },
+  "search.recent.clear.confirm": { en: "Recent searches cleared", "zh-CN": "最近搜索已清空" },
   "toolbar.settings": { en: "Settings", "zh-CN": "设置" },
   "settings.title": { en: "Settings", "zh-CN": "设置" },
   "settings.section.appearance": { en: "Appearance", "zh-CN": "外观" },
