@@ -104,6 +104,10 @@ If you review pull requests or diffs on a regular basis, this saves you the back
 
 *Click "Clear" in the Recent Searches dropdown header to empty your search history instantly. Mirrors GitHub's `Cmd+K` → "Clear all" and VS Code's search history Clear button. Toast confirms the action. Pending debounced commits are cancelled so the dropdown stays empty.*
 
+### Bulk delete recent searches (multi-select)
+
+*Each entry in the Recent Searches dropdown now has a checkbox. Check the ones you want to remove, then click "Delete selected" to remove just those (leaving the rest intact). When ≥1 entry is selected, the "Clear" button is replaced by "Delete selected". When 0 entries are selected, "Clear" works as before. Mirrors Chrome history multi-select delete and VS Code search multi-select clear.*
+
 ### Settings panel (centralized preferences)
 
 *Click the ⚙ button in the header to open a centralized settings panel with 4 sections: Appearance (theme: light/auto/dark), Layout (unified/split), Search (history max), and Language (English / Chinese). Toolbar toggles still work as quick shortcuts; the settings panel is the canonical view for full control. Includes a Reset-to-defaults button.*
@@ -170,6 +174,8 @@ If you review pull requests or diffs on a regular basis, this saves you the back
 - **Cmd+/ help overlay** *(added R17)* — press `Cmd+/` (Mac) or `Ctrl+/` (other) to open a 2-column shortcut grid with the 10 most common shortcuts. Press `?` or `Escape` to close
 - **Search history debounce** *(added R21)* — typing into the in-diff search bar no longer floods your recent-searches with every intermediate keystroke. 300ms quiet-period debounce + Enter-immediate commit. Mirrors GitHub / VS Code behavior
 - **Clear recent searches** *(added R22)* — "Clear" button in the Recent Searches dropdown header empties your search history in one click. Toast confirms the action. Mirrors GitHub / VS Code / Chrome
+- **Bulk delete recent searches** *(added R23)* — per-item checkboxes in the Recent Searches dropdown let you multi-select and remove just the entries you want (without nuking everything). Mirrors Chrome history / VS Code search multi-select delete
+- **Diff virtualization for 1000+ line files** *(added R23)* — IntersectionObserver-based hunk virtualization. Only visible hunks render fully; off-screen hunks collapse to placeholders. Smooth scroll even on 5000+ line files. Mirrors GitHub Turbo Frames / VS Code virtualized editor / Phabricator chunked diffs
 - **Settings panel** *(added R21)* — click the ⚙ button in the header for a centralized preferences panel (theme / layout / search / language / reset-to-defaults). Toolbar controls stay as quick shortcuts; both paths share the same handlers
 
 ### Resolving findings

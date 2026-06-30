@@ -104,6 +104,10 @@
 
 *点击最近搜索下拉头部的「清空」按钮，一键清空整个搜索历史。对齐 GitHub 的 `Cmd+K` → 「Clear all」和 VS Code 的搜索历史 Clear 按钮。Toast 确认操作。Pending 的 debounce commit 会被取消，确保下拉保持空白。*
 
+### 批量删除最近搜索（多选）
+
+*最近搜索下拉的每个条目现在都有一个 checkbox。勾选你想要删除的条目，然后点「删除选中」即可只删除这些（保留其他有用的条目）。当 ≥1 条目被选中时，「清空」按钮会被「删除选中」替换。当 0 条目被选中时，「清空」按钮照常工作。对齐 Chrome 历史记录多选删除和 VS Code 搜索多选清空。*
+
 ### IME 安全的搜索
 
 ![搜索框激活了中文 IME 组合输入](docs/screenshots/r17-ime-composition.png)
@@ -166,6 +170,8 @@
 - **Cmd+/ 帮助覆盖层** *(R17 新增)* —— 按 `Cmd+/`（Mac）或 `Ctrl+/`（其他）打开两列快捷键网格，10 个最常用的快捷键都在里面。按 `?` 或 `Escape` 关闭
 - **搜索历史 debounce** *(R21 新增)* —— 在 in-diff 搜索框里输入时，不再让每一次中间按键都进最近搜索列表。300ms 静默期 debounce + Enter 即时提交。对齐 GitHub / VS Code 行为
 - **清空最近搜索** *(R22 新增)* —— 最近搜索下拉头部的「清空」按钮一键清空搜索历史。Toast 确认操作。对齐 GitHub / VS Code / Chrome
+- **批量删除最近搜索** *(R23 新增)* —— 最近搜索下拉的每个条目有 checkbox，可以多选并删除指定的条目（不会清空全部）。对齐 Chrome 历史记录 / VS Code 搜索多选删除
+- **1000+ 行文件 diff 虚拟化** *(R23 新增)* —— 基于 IntersectionObserver 的 hunk 虚拟化。只有可见 hunk 完整渲染；屏幕外的 hunk 折叠成占位符。即使 5000+ 行文件也能流畅滚动。对齐 GitHub Turbo Frames / VS Code 虚拟化编辑器 / Phabricator chunked diffs
 - **设置面板** *(R21 新增)* —— 点击头部 ⚙ 按钮打开集中偏好面板（主题 / 布局 / 搜索 / 语言 / 恢复默认）。工具栏控制作为快速开关保留；两条路径共享同一套 handler
 
 ### 解决 finding
