@@ -2,6 +2,7 @@ import { FileDiff, type DiffLineAnnotation } from "@pierre/diffs";
 
 import { cycleTab, TAB_ORDER, tabIndexFor, type TabKey } from "../sidebar-keyboard";
 import { filterByQuery } from "../search-utils";
+import { sortConversationEntries, type SortFindingsBy } from "../sort-utils";
 
 type Category = "bug" | "style" | "perf" | "question" | "recommend";
 type Severity = "high" | "medium" | "low";
@@ -143,9 +144,6 @@ type View = {
 type ThemeMode = "light" | "dark" | "auto";
 type DiffLayout = "unified" | "split";
 type SidebarMode = "tree" | "flat";
-// R14 #23: sort findings in the Conversation panel. 4 options; default "newest"
-// (round DESC, created_at ASC) matches the pre-R14 chronological behavior.
-type SortFindingsBy = "newest" | "oldest" | "severity" | "file";
 const SIDEBAR_KEY = "diff-review:sidebar-mode";
 const SIDEBAR_WIDTH_KEY = "diff-review:sidebar-width";
 const THEME_KEY = "diff-review:theme-mode";
@@ -437,49 +435,6 @@ function getSortedFindings(): SortedFinding[] {
     );
   }
   return [...filtered].sort((a, b) => {
-    if (a.round !== b.round) return b.round - a.round;
-    return a.created_at - b.created_at;
-  });
-}
-
-// R14 #23: pure client-side sort reducer for the Conversation panel.
-// 4 modes: "newest" (default, preserves pre-R14 chronological order),
-// "oldest" (reverse of newest), "severity" (high→low, then newest tie-break),
-// "file" (file path A–Z case-insensitive, then line, then newest tie-break).
-// Exported via __test for unit tests; safe to call with an empty array.
-const SEVERITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
-
-function sortConversationEntries<T extends ConversationEntry>(
-  entries: T[],
-  by: SortFindingsBy,
-): T[] {
-  if (by === "newest") {
-    return [...entries].sort((a, b) => {
-      if (a.round !== b.round) return b.round - a.round;
-      return a.created_at - b.created_at;
-    });
-  }
-  if (by === "oldest") {
-    return [...entries].sort((a, b) => {
-      if (a.round !== b.round) return a.round - b.round;
-      return a.created_at - b.created_at;
-    });
-  }
-  if (by === "severity") {
-    return [...entries].sort((a, b) => {
-      const sa = SEVERITY_RANK[a.severity] ?? 99;
-      const sb = SEVERITY_RANK[b.severity] ?? 99;
-      if (sa !== sb) return sa - sb;
-      if (a.round !== b.round) return b.round - a.round;
-      return a.created_at - b.created_at;
-    });
-  }
-  // "file" — case-insensitive A–Z by file path, then start_line, then round DESC.
-  return [...entries].sort((a, b) => {
-    const fa = a.file.toLowerCase();
-    const fb = b.file.toLowerCase();
-    if (fa !== fb) return fa.localeCompare(fb);
-    if (a.start_line !== b.start_line) return a.start_line - b.start_line;
     if (a.round !== b.round) return b.round - a.round;
     return a.created_at - b.created_at;
   });
@@ -1584,18 +1539,14 @@ function setStatus(text: string, error = false) {
 // Replaces the intrusive "Draft saved at HH:MM:SS" toast. Ticks every 5s
 // via setInterval; after 60s of no new saves the indicator falls back
 // to "All changes saved" (signals the work is durably persisted).
-const SAVE_INDICATOR_HIDE_AFTER_MS = 60_000;
-const SAVE_INDICATOR_TICK_MS = 5_000;
-
-function formatRelativeSeconds(ms: number): string {
-  if (ms < 1_500) return "just now";
-  const s = Math.floor(ms / 1000);
-  if (s < 60) return `${s}s ago`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  return `${h}h ago`;
-}
+// Pure helpers (formatRelativeSeconds + tick constants) live in
+// src/format-utils.ts so unit tests can import them without dragging
+// in the browser-only window.* initializers at the top of this file.
+import {
+  formatRelativeSeconds,
+  SAVE_INDICATOR_HIDE_AFTER_MS,
+  SAVE_INDICATOR_TICK_MS,
+} from "../format-utils";
 
 function updateSaveIndicator() {
   const el = document.querySelector<HTMLSpanElement>("#save-indicator");
@@ -4823,12 +4774,7 @@ async function init() {
 
 init();
 
-// R14 #23 / R14 #24: unit-test export of pure helpers. Keeps them off the
-// global namespace while still allowing bun test src/ to drive them.
-export const __test = {
-  sortConversationEntries,
-  sortConversationEntries_severityRank: SEVERITY_RANK,
-  formatRelativeSeconds,
-  SAVE_INDICATOR_HIDE_AFTER_MS,
-  SAVE_INDICATOR_TICK_MS,
-};
+// R14 #23: re-export the pure sort helper so existing __test consumers
+// (if any) still resolve. The canonical export is now from
+// src/sort-utils.ts.
+export { sortConversationEntries } from "../sort-utils";
