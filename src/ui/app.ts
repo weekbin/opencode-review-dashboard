@@ -813,9 +813,129 @@ window.addEventListener(
       openDiffSearch();
       return;
     }
+    if (
+      (event.key === "p" || event.key === "P") &&
+      (event.metaKey || event.ctrlKey) &&
+      !event.shiftKey
+    ) {
+      event.preventDefault();
+      openCmdPPalette();
+      return;
+    }
   },
   true,
 );
+
+function openCmdPPalette(): void {
+  if (isTextInputFocused()) return;
+  const ordered = getOrderedFiles();
+  let selectedIndex = -1;
+  const overlay = document.createElement("div");
+  overlay.className = "cmd-p-overlay";
+  const palette = document.createElement("div");
+  palette.className = "cmd-p-palette";
+  palette.setAttribute("role", "dialog");
+  palette.setAttribute("aria-label", "File jumper");
+  const inputWrap = document.createElement("div");
+  inputWrap.className = "cmd-p-input-wrap";
+  inputWrap.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M11 11l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><input class="cmd-p-input" type="text" placeholder="Jump to file…" autocomplete="off" autocorrect="off" spellcheck="false"/>`;
+  const results = document.createElement("div");
+  results.className = "cmd-p-results";
+  const footer = document.createElement("div");
+  footer.className = "cmd-p-footer";
+  footer.innerHTML = `<span><kbd>↵</kbd> jump</span><span><kbd>↑↓</kbd> navigate</span><span><kbd>Esc</kbd> close</span>`;
+  palette.appendChild(inputWrap);
+  palette.appendChild(results);
+  palette.appendChild(footer);
+  overlay.appendChild(palette);
+  document.body.appendChild(overlay);
+  const input = inputWrap.querySelector(".cmd-p-input") as HTMLInputElement;
+  input.focus();
+  const close = () => {
+    if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+  };
+  const renderResults = (query: string) => {
+    const q = query.toLowerCase();
+    const filtered = ordered.filter((f) => !q || f.path.toLowerCase().includes(q)).slice(0, 10);
+    results.innerHTML = "";
+    selectedIndex = -1;
+    if (filtered.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "cmd-p-empty";
+      empty.textContent = query ? `No files match "${query}"` : "No files available";
+      results.appendChild(empty);
+      return;
+    }
+    filtered.forEach((file) => {
+      const item = document.createElement("div");
+      item.className = "cmd-p-result";
+      item.setAttribute("data-path", file.path);
+      let displayPath = file.path;
+      if (q) {
+        const idx = file.path.toLowerCase().indexOf(q);
+        displayPath =
+          idx >= 0
+            ? escapeHtml(file.path.slice(0, idx)) +
+              "<mark>" +
+              escapeHtml(file.path.slice(idx, idx + q.length)) +
+              "</mark>" +
+              escapeHtml(file.path.slice(idx + q.length))
+            : escapeHtml(file.path);
+      } else {
+        displayPath = escapeHtml(file.path);
+      }
+      item.innerHTML = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 2h7l3 3v9H3V2z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><rect x="5" y="7" width="6" height="4" rx="0.5" stroke="currentColor" stroke-width="1"/></svg><span class="file-path">${displayPath}</span>`;
+      item.addEventListener("click", () => {
+        jumpToFile(file.path);
+        close();
+      });
+      results.appendChild(item);
+    });
+    if (filtered.length > 0) {
+      selectedIndex = 0;
+      results.children[0]?.classList.add("active");
+    }
+  };
+  const selectNext = (dir: number) => {
+    const items = results.querySelectorAll<HTMLElement>(".cmd-p-result");
+    if (items.length === 0) return;
+    items[selectedIndex]?.classList.remove("active");
+    selectedIndex = Math.max(0, Math.min(items.length - 1, selectedIndex + dir));
+    items[selectedIndex]?.classList.add("active");
+    items[selectedIndex]?.scrollIntoView({ block: "nearest" });
+  };
+  const confirmSelection = () => {
+    const items = results.querySelectorAll<HTMLElement>(".cmd-p-result");
+    const selected = items[selectedIndex];
+    if (selected) {
+      const path = selected.getAttribute("data-path");
+      if (path) {
+        jumpToFile(path);
+        close();
+      }
+    }
+  };
+  input.addEventListener("input", () => renderResults(input.value));
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      selectNext(1);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      selectNext(-1);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      confirmSelection();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      close();
+    }
+  });
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) close();
+  });
+  renderResults("");
+}
 
 // ── File-type icon table ──
 //
@@ -3397,6 +3517,37 @@ function renderConversationPanel(root: HTMLElement) {
       }
     }
 
+    const auditLog = (entry as any).audit_log as
+      | Array<{
+          before: { category: string; severity: string; comment: string };
+          after: { category: string; severity: string; comment: string };
+          at: number;
+          by: string;
+        }>
+      | undefined;
+    if (auditLog && auditLog.length > 0) {
+      const auditDisclosure = document.createElement("details");
+      auditDisclosure.className = "audit-disclosure";
+      const summary = document.createElement("summary");
+      summary.textContent = `${auditLog.length} edit${auditLog.length !== 1 ? "s" : ""} — click to expand`;
+      auditDisclosure.appendChild(summary);
+      for (const row of auditLog) {
+        const ts = new Date(row.at).toLocaleString();
+        const changes: string[] = [];
+        if (row.before.category !== row.after.category)
+          changes.push(`category: ${row.before.category} → ${row.after.category}`);
+        if (row.before.severity !== row.after.severity)
+          changes.push(`severity: ${row.before.severity} → ${row.after.severity}`);
+        if (row.before.comment !== row.after.comment) changes.push("comment updated");
+        const changeText = changes.length > 0 ? changes.join(", ") : "no field changes";
+        const rowEl = document.createElement("div");
+        rowEl.className = "audit-trail-row";
+        rowEl.innerHTML = `<span class="audit-icon">✏️</span><div class="audit-body"><div class="audit-changes">${escapeHtml(changeText)}</div></div><span class="audit-ts">${escapeHtml(ts)}</span>`;
+        auditDisclosure.appendChild(rowEl);
+      }
+      commentsRoot.appendChild(auditDisclosure);
+    }
+
     const inputRow = document.createElement("div");
     inputRow.className = "conversation-comment-input-row";
     const textarea = document.createElement("textarea");
@@ -4649,7 +4800,41 @@ findingsRoot.addEventListener("click", (event) => {
 
 addButton.addEventListener("click", addFinding);
 clearButton.addEventListener("click", clearSelection);
-submitButton.addEventListener("click", submit);
+submitButton.addEventListener("click", () => {
+  const findings = all();
+  const openCount = findings.filter(
+    (f) => f.status === "open" || f.status === "closed_auto",
+  ).length;
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  const dialog = document.createElement("div");
+  dialog.className = "modal-dialog submit-confirm-modal";
+  dialog.setAttribute("role", "dialog");
+  dialog.setAttribute("aria-modal", "true");
+  dialog.innerHTML = `<h3>Submit review?</h3><p>You're about to submit your review.</p><div class="finding-count">${openCount}</div><p style="text-align:center;font-size:13px;color:light-dark(#666,#aaa);margin-bottom:0">open finding${openCount !== 1 ? "s" : ""} will be submitted.</p><div class="modal-actions"><button id="submit-confirm-cancel" type="button">Cancel</button><button id="submit-confirm-ok" class="primary" type="button">Submit</button></div>`;
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+  const close = () => {
+    if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+  };
+  const cancelBtn = dialog.querySelector("#submit-confirm-cancel") as HTMLButtonElement;
+  const okBtn = dialog.querySelector("#submit-confirm-ok") as HTMLButtonElement;
+  cancelBtn.addEventListener("click", close);
+  okBtn.addEventListener("click", () => {
+    close();
+    submit();
+  });
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) close();
+  });
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === "Escape") {
+      close();
+      window.removeEventListener("keydown", onKey);
+    }
+  };
+  window.addEventListener("keydown", onKey);
+});
 exportButton?.addEventListener("click", () => {
   if (!state.data) {
     setStatus("No review data to export", true);
