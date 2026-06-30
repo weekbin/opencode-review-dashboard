@@ -16,6 +16,24 @@
         margin: 0;
       }
 
+      /* R19 #38: skip-to-content — hidden off-screen until keyboard-focused. */
+      .skip-link {
+        position: absolute;
+        left: -9999px;
+        top: 8px;
+        padding: 6px 12px;
+        background: var(--pierre-accent, #2563eb);
+        color: #fff;
+        border-radius: var(--radius);
+        z-index: 10000;
+        font-weight: 600;
+      }
+      .skip-link:focus,
+      .skip-link:focus-visible {
+        left: 8px;
+        outline: 2px solid currentColor;
+      }
+
       body {
         font-family:
           system-ui,
@@ -2582,6 +2600,8 @@
     </style>
   </head>
   <body>
+    <!-- R19 #38: skip-to-content, first focusable, styled via .skip-link -->
+    <a href="#diffs" class="skip-link">Skip to main content</a>
     <header>
       <div class="header-left">
         <h1>Review Dashboard</h1>
@@ -2591,6 +2611,7 @@
           class="save-indicator"
           id="save-indicator"
           data-state="idle"
+          role="status"
           title="Auto-save status"
           aria-live="polite"
           >All changes saved</span

@@ -3,6 +3,8 @@ import { FileDiff, type DiffLineAnnotation } from "@pierre/diffs";
 import { cycleTab, TAB_ORDER, tabIndexFor, type TabKey } from "../sidebar-keyboard";
 import { filterByQuery } from "../search-utils";
 import { sortConversationEntries, type SortFindingsBy } from "../sort-utils";
+// R19 #38: additive modal a11y helper (Escape + focus trap + initial focus).
+import { installModalA11y } from "./modal-a11y";
 
 type Category = "bug" | "style" | "perf" | "question" | "recommend";
 type Severity = "high" | "medium" | "low";
@@ -1042,20 +1044,13 @@ function showHelpModal(): void {
   const close = () => {
     state.showHelp = false;
     if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-    window.removeEventListener("keydown", onKey);
   };
   const closeBtn = dialog.querySelector("#help-close") as HTMLButtonElement;
   closeBtn.addEventListener("click", close);
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) close();
   });
-  const onKey = (e: KeyboardEvent) => {
-    if (e.key === "Escape" || e.key === "?") {
-      e.preventDefault();
-      close();
-    }
-  };
-  window.addEventListener("keydown", onKey);
+  installModalA11y(dialog, close);
   closeBtn.focus();
 }
 
@@ -1873,6 +1868,7 @@ function showReopenReasonModal(_findingId: string): Promise<string | null> {
       resolve(value);
     };
 
+    installModalA11y(dialog, () => closeWith(null));
     textarea?.focus();
     cancelBtn?.addEventListener("click", () => closeWith(null));
     submitBtn?.addEventListener("click", () => {
@@ -1938,6 +1934,7 @@ function showResolveReasonModal(_findingId: string): Promise<ResolveReasonModalR
       resolve(value);
     };
 
+    installModalA11y(dialog, () => closeWith(null));
     textarea?.focus();
     cancelBtn?.addEventListener("click", () => closeWith(null));
     submitBtn?.addEventListener("click", () => {
@@ -2027,6 +2024,7 @@ function showMarkAsWontfixModal(_findingId: string): Promise<MarkAsWontfixResult
       resolve(value);
     };
 
+    installModalA11y(dialog, () => closeWith(null));
     const firstRadio = dialog.querySelector<HTMLInputElement>('input[name="wontfix-kind"]');
     firstRadio?.focus();
     cancelBtn?.addEventListener("click", () => closeWith(null));
@@ -3241,6 +3239,7 @@ function showExportModal(): void {
   const close = () => {
     if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
   };
+  installModalA11y(dialog, close);
   cancelBtn?.addEventListener("click", close);
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) close();
@@ -5043,13 +5042,7 @@ submitButton.addEventListener("click", () => {
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) close();
   });
-  const onKey = (e: KeyboardEvent) => {
-    if (e.key === "Escape") {
-      close();
-      window.removeEventListener("keydown", onKey);
-    }
-  };
-  window.addEventListener("keydown", onKey);
+  installModalA11y(dialog, close);
   notesArea.focus();
 });
 exportButton?.addEventListener("click", () => {
