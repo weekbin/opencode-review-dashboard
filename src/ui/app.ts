@@ -1,5 +1,7 @@
 import { FileDiff, type DiffLineAnnotation } from "@pierre/diffs";
 
+import { DiffVirtualizer } from "./diff-virtualization";
+
 import { cycleTab, TAB_ORDER, tabIndexFor, type TabKey } from "../sidebar-keyboard";
 import { filterByQuery } from "../search-utils";
 import { sortConversationEntries, type SortFindingsBy } from "../sort-utils";
@@ -1989,6 +1991,8 @@ let dragPreviewWidth = 0;
 let activeScrollSpyFile: string | null = null;
 let scrollSpyObserver: IntersectionObserver | null = null;
 let priorNotesController: AbortController | null = null;
+// R23 #47: per-file diff virtualizers (keyed by file path)
+const diffVirtualizers = new Map<string, DiffVirtualizer>();
 
 // R8 #1: in-tab search state — survives tab switches within the session.
 let currentSearchQuery = "";
@@ -2769,6 +2773,9 @@ function createView(file: FileEntry, mount: HTMLElement) {
     lineAnnotations: diffAnnotations(file.path),
   });
 
+  const virtualizer = new DiffVirtualizer(mount);
+  diffVirtualizers.set(file.path, virtualizer);
+
   return {
     kind: "diff" as const,
     instance,
@@ -2822,6 +2829,9 @@ function createAddedFileView(file: FileEntry, mount: HTMLElement) {
     lineAnnotations: diffAnnotations(file.path),
   });
 
+  const virtualizer = new DiffVirtualizer(mount);
+  diffVirtualizers.set(file.path, virtualizer);
+
   return { kind: "diff" as const, instance };
 }
 
@@ -2871,6 +2881,9 @@ function createDeletedFileView(file: FileEntry, mount: HTMLElement) {
     containerWrapper: mount,
     lineAnnotations: diffAnnotations(file.path),
   });
+
+  const virtualizer = new DiffVirtualizer(mount);
+  diffVirtualizers.set(file.path, virtualizer);
 
   return { kind: "diff" as const, instance };
 }
@@ -4563,6 +4576,10 @@ function renderDiffPanel() {
   diffSearch.currentIndex = -1;
   updateDiffSearchCounter();
   diffsRoot.innerHTML = "";
+  for (const v of diffVirtualizers.values()) {
+    v.disconnect();
+  }
+  diffVirtualizers.clear();
   state.views.clear();
   state.cards.clear();
 
