@@ -16,11 +16,29 @@ If you review pull requests or diffs on a regular basis, this saves you the back
 
 *Files with changes are highlighted. Files you haven't touched appear dimmed.*
 
+### Hide whitespace noise
+
+![Diff panel with Ignore ws toggle on — multiple consecutive whitespace runs collapsed onto single lines](docs/screenshots/r16-hide-whitespace-on.png)
+
+*Click `Ignore ws` in the toolbar to collapse consecutive whitespace and trim trailing space. Pure reformatting (tab↔space, indent width) disappears from the diff. Stays on across reloads.*
+
+### Expand or collapse everything
+
+![Diff panel toolbar with Expand all and Collapse all buttons next to each file's diff](docs/screenshots/r16-diff-toolbar.png)
+
+*Two buttons at the top of the diff panel flip every file's collapsed-context setting at once. Useful for skimming a 30-file diff vs. reviewing line-by-line.*
+
 ### Add findings and react with emoji
 
 ![A finding card showing the comment, category, severity, and emoji reaction row](docs/screenshots/r12-conversation-with-finding.png)
 
 *Click any line number to add a finding. One-click reactions for quick feedback.*
+
+### Copy a finding as Markdown
+
+![Finding card with Copy as MD button highlighted in the action row](docs/screenshots/r16-conversation-copy-as-md.png)
+
+*One click drops a self-contained Markdown snippet (round tag, file:line permalink, comment, audit count, reactions) onto your clipboard. Paste straight into a PR comment, Slack thread, or Notion doc.*
 
 ### Filter and sort the conversation
 
