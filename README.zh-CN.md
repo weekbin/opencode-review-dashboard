@@ -66,6 +66,8 @@
 - **sidebar 显示改动文件数** —— 一眼看出 scope
 - **支持行级 + 文件级 diff** —— 都支持
 - **Diff 范围 banner** —— 范围在会话中变了（如新增未 commit 文件），顶部出现黄色 banner
+- **忽略空白改动** *(R16 新增)* —— 工具栏里的 toggle 按钮，把每行的连续空白折叠成一个空格并去掉行尾空格，纯粹的格式调整（tab↔space、缩进宽度）会从 diff 里消失。刷新后保持
+- **Expand all / Collapse all** *(R16 新增)* —— diff 面板顶部两个按钮，一次性切换所有文件的 `expandUnchanged` 设置。快速浏览 30 个文件的 diff 跟一行行 review 两种场景都顺手
 
 ### 加 finding
 
@@ -83,6 +85,7 @@
 - **★ Sort findings** *(R14 新增)* —— 下拉菜单按 Newest / Oldest / Severity（high → low）/ File path（A-Z）排序
 - **Filter Previously-discussed by round** *(R14 新增)* —— 5 轮以上时，按 round 数字过滤历史 tab
 - **★ Cmd+P 文件跳转** *(R15 新增)* —— VS Code 风格的 quick-open 面板。输入文件名直接跳过去
+- **Copy finding as Markdown** *(R16 新增)* —— 每个 finding 上的「Copy as MD」按钮把自包含的 Markdown 片段（轮次 tag、file:line permalink、评论、审计次数、反应）丢到剪贴板。直接粘到 PR 评论或聊天里
 
 ### 解决 finding
 
@@ -152,6 +155,7 @@
 | `Cmd+P` / `Ctrl+P` | 打开文件快速跳转面板 |
 | `Escape` | 关闭任何打开的弹窗 / 覆盖层 |
 | `Enter` | 弹窗中确认默认操作 |
+| `Tab`（焦点在「Ignore ws」按钮上时）| 切换空白折叠开关（用工具栏按钮，没有全局快捷键 —— 让你 review 纯格式调整的 diff 时不被视觉噪声干扰）|
 
 ---
 

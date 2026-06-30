@@ -264,6 +264,30 @@
         flex-shrink: 0;
       }
 
+      .ignore-whitespace-btn {
+        all: unset;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 14px;
+        color: light-dark(#666, #888);
+        background: light-dark(#f0f0f0, #3a3a3a);
+        border: 1px solid light-dark(#d8d8d8, #3a3a3a);
+        transition: all 120ms;
+      }
+
+      .ignore-whitespace-btn:hover {
+        color: light-dark(#333, #ccc);
+      }
+
+      .ignore-whitespace-btn[aria-pressed="true"] {
+        background: light-dark(#ffffff, #1d4ed8);
+        color: light-dark(#111, #fff);
+        box-shadow: 0 1px 2px light-dark(rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.3));
+      }
+
       /* ── Theme toggle ── */
       .theme-toggle {
         display: inline-flex;
@@ -1256,6 +1280,28 @@
       }
 
       /* ── Diff cards ── */
+      .diff-panel-toolbar {
+        display: flex;
+        gap: 6px;
+        padding: 4px 0 8px;
+        align-items: center;
+      }
+
+      .diff-panel-toolbar button {
+        all: unset;
+        cursor: pointer;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 13px;
+        color: light-dark(#444, #aaa);
+        background: light-dark(#f0f0f0, #2a2a2a);
+        border: 1px solid light-dark(#d8d8d8, #3a3a3a);
+      }
+
+      .diff-panel-toolbar button:hover {
+        background: light-dark(#e6e6e6, #333);
+      }
+
       .card {
         border-radius: var(--radius);
         margin-bottom: 12px;
@@ -2508,6 +2554,15 @@
             Split
           </button>
         </div>
+        <button
+          type="button"
+          id="ignore-whitespace"
+          class="ignore-whitespace-btn"
+          aria-pressed="false"
+          title="Hide whitespace changes (collapse consecutive whitespace + trim trailing)"
+        >
+          Ignore ws
+        </button>
         <div class="theme-toggle" id="theme-toggle">
           <button data-theme="light" aria-pressed="false">Light</button>
           <button data-theme="auto" aria-pressed="false">Auto</button>

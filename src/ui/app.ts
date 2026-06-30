@@ -148,6 +148,7 @@ const SIDEBAR_KEY = "diff-review:sidebar-mode";
 const SIDEBAR_WIDTH_KEY = "diff-review:sidebar-width";
 const THEME_KEY = "diff-review:theme-mode";
 const LAYOUT_KEY = "diff-review:diff-layout";
+const IGNORE_WHITESPACE_KEY = "diff-review:ignore-whitespace";
 const CONV_FILTER_KEY = "diff-review:conversation-filter";
 const ACTIVE_TAB_KEY = "diff-review:active-tab";
 // R14 #23: localStorage key for the Conversation-panel sort dropdown.
@@ -171,6 +172,10 @@ function writeStored(key: string, value: string) {
   } catch {
     // ignore
   }
+}
+
+function stripWhitespace(s: string): string {
+  return s.replace(/\s+/g, " ").replace(/ +$/, "");
 }
 
 // ── Saved Replies (R10 #1, GH#10) ──
@@ -311,10 +316,10 @@ async function copyFindingPermalinkToClipboard(
   button: HTMLButtonElement,
 ): Promise<void> {
   const url = buildFindingPermalink(findingId);
-  const fallbackCopy = () => {
+  const fallbackCopy = (text: string) => {
     try {
       const ta = document.createElement("textarea");
-      ta.value = url;
+      ta.value = text;
       ta.style.position = "fixed";
       ta.style.opacity = "0";
       document.body.appendChild(ta);
@@ -332,10 +337,10 @@ async function copyFindingPermalinkToClipboard(
       await navigator.clipboard.writeText(url);
       ok = true;
     } catch {
-      ok = fallbackCopy();
+      ok = fallbackCopy(url);
     }
   } else {
-    ok = fallbackCopy();
+    ok = fallbackCopy(url);
   }
   if (ok) {
     const original = button.textContent;
@@ -348,6 +353,79 @@ async function copyFindingPermalinkToClipboard(
     setStatus(`Copied permalink for ${findingId}`);
   } else {
     setStatus("Could not copy permalink — clipboard blocked", true);
+  }
+}
+
+function buildFindingMarkdownSnippet(entry: ConversationEntry, round: number): string {
+  const loc =
+    entry.start_line && entry.end_line && entry.start_line !== entry.end_line
+      ? `${entry.file}:${entry.start_line}-${entry.end_line}`
+      : `${entry.file}:${entry.start_line ?? "?"}`;
+  const permalink = buildFindingPermalink(entry.id);
+  const auditCount = entry.audit_log?.length ?? 0;
+  const reactionCounts = new Map<string, number>();
+  for (const r of entry.reactions ?? []) {
+    reactionCounts.set(r.emoji, (reactionCounts.get(r.emoji) ?? 0) + 1);
+  }
+  const reactionLine =
+    reactionCounts.size === 0
+      ? "reactions: (none)"
+      : `reactions: ${[...reactionCounts.entries()]
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([emoji, n]) => `${emoji}×${n}`)
+          .join(" ")}`;
+  const comment = (entry.comment ?? "").replace(/\n+/g, " ").trim();
+  const lines: string[] = [];
+  lines.push(`[Round ${round}] **[${loc}](${permalink})** — ${comment}`);
+  lines.push("");
+  lines.push(`> audit: ${auditCount} edits`);
+  lines.push(reactionLine);
+  return lines.join("\n");
+}
+
+async function copyFindingAsMarkdownToClipboard(
+  finding: ConversationEntry,
+  round: number,
+  button: HTMLButtonElement,
+): Promise<void> {
+  const md = buildFindingMarkdownSnippet(finding, round);
+  const fallbackCopy = (text: string) => {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  let ok = false;
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(md);
+      ok = true;
+    } catch {
+      ok = fallbackCopy(md);
+    }
+  } else {
+    ok = fallbackCopy(md);
+  }
+  if (ok) {
+    const original = button.textContent;
+    button.textContent = "✓ Copied";
+    button.disabled = true;
+    setTimeout(() => {
+      button.textContent = original;
+      button.disabled = false;
+    }, 1200);
+    setStatus("Copied as Markdown");
+  } else {
+    setStatus("Could not copy markdown — clipboard blocked", true);
   }
 }
 
@@ -1169,6 +1247,7 @@ const state = {
   views: new Map<string, View>(),
   themeMode: readStored<ThemeMode>(THEME_KEY, ["light", "dark", "auto"], "light"),
   diffLayout: readStored<DiffLayout>(LAYOUT_KEY, ["unified", "split"], "split"),
+  ignoreWhitespace: readStored<"on" | "off">(IGNORE_WHITESPACE_KEY, ["on", "off"], "off") === "on",
   sidebarMode: readStored<SidebarMode>(SIDEBAR_KEY, ["tree", "flat"], "tree"),
   activeTab: readStored<"files" | "commits" | "conversation" | "previously">(
     ACTIVE_TAB_KEY,
@@ -1260,6 +1339,27 @@ layoutToggle.addEventListener("click", (event) => {
   const btn = (event.target as HTMLElement).closest("button");
   if (!btn) return;
   setLayout(btn.dataset.layout as DiffLayout);
+});
+
+const ignoreWhitespaceToggle = document.querySelector("#ignore-whitespace") as HTMLButtonElement;
+
+function applyIgnoreWhitespace() {
+  ignoreWhitespaceToggle.setAttribute("aria-pressed", state.ignoreWhitespace ? "true" : "false");
+  ignoreWhitespaceToggle.textContent = state.ignoreWhitespace ? "✓ Ignore ws" : "Ignore ws";
+}
+
+function setIgnoreWhitespace(next: boolean) {
+  if (state.ignoreWhitespace === next) return;
+  state.ignoreWhitespace = next;
+  applyIgnoreWhitespace();
+  writeStored(IGNORE_WHITESPACE_KEY, next ? "on" : "off");
+  renderDiffPanel();
+}
+
+applyIgnoreWhitespace();
+
+ignoreWhitespaceToggle.addEventListener("click", () => {
+  setIgnoreWhitespace(!state.ignoreWhitespace);
 });
 
 // ── Sidebar mode toggle ──
@@ -2228,11 +2328,11 @@ function createView(file: FileEntry, mount: HTMLElement) {
   instance.render({
     oldFile: {
       name: file.path,
-      contents: file.before || "",
+      contents: state.ignoreWhitespace ? stripWhitespace(file.before || "") : file.before || "",
     },
     newFile: {
       name: file.path,
-      contents: file.after || "",
+      contents: state.ignoreWhitespace ? stripWhitespace(file.after || "") : file.after || "",
     },
     containerWrapper: mount,
     lineAnnotations: diffAnnotations(file.path),
@@ -2283,7 +2383,10 @@ function createAddedFileView(file: FileEntry, mount: HTMLElement) {
 
   instance.render({
     oldFile: { name: file.path, contents: "\n\n" },
-    newFile: { name: file.path, contents: file.after || "" },
+    newFile: {
+      name: file.path,
+      contents: state.ignoreWhitespace ? stripWhitespace(file.after || "") : file.after || "",
+    },
     containerWrapper: mount,
     lineAnnotations: diffAnnotations(file.path),
   });
@@ -2329,7 +2432,10 @@ function createDeletedFileView(file: FileEntry, mount: HTMLElement) {
   });
 
   instance.render({
-    oldFile: { name: file.path, contents: file.before || "" },
+    oldFile: {
+      name: file.path,
+      contents: state.ignoreWhitespace ? stripWhitespace(file.before || "") : file.before || "",
+    },
     newFile: { name: file.path, contents: "\n\n" },
     containerWrapper: mount,
     lineAnnotations: diffAnnotations(file.path),
@@ -2882,6 +2988,7 @@ type ConversationEntry = {
   resolved_at?: number;
   resolution_kind?: FindingResolutionKind;
   resolution_reason?: string;
+  audit_log?: { at: number; by: string }[];
 };
 
 function formatRelativeTime(ts: number): string {
@@ -3378,6 +3485,18 @@ function renderConversationPanel(root: HTMLElement) {
         void copyFindingPermalinkToClipboard(entry.id, copyLinkBtn);
       });
       actions.appendChild(copyLinkBtn);
+
+      const copyMdBtn = document.createElement("button");
+      copyMdBtn.type = "button";
+      copyMdBtn.className = "finding-copy-md";
+      copyMdBtn.textContent = "Copy as MD";
+      copyMdBtn.title =
+        "Copy finding as a Markdown snippet (round, file:line, permalink, comment, audit count, reactions)";
+      copyMdBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        void copyFindingAsMarkdownToClipboard(entry, entry.round ?? 0, copyMdBtn);
+      });
+      actions.appendChild(copyMdBtn);
     }
 
     if (entry.id) {
@@ -3977,6 +4096,17 @@ function renderPreviouslyPane() {
   renderPreviouslyDiscussedPanel(previouslyListRoot);
 }
 
+function setAllExpanded(expand: boolean) {
+  for (const view of state.views.values()) {
+    view.instance.setOptions({
+      ...view.instance.options,
+      expandUnchanged: expand,
+    });
+    view.instance.rerender();
+  }
+  setStatus(expand ? "Expanded all files" : "Collapsed all files");
+}
+
 function renderDiffPanel() {
   for (const view of state.views.values()) {
     view.instance.cleanUp();
@@ -3994,6 +4124,27 @@ function renderDiffPanel() {
   state.cards.clear();
 
   const files = getOrderedFiles();
+
+  if (files.length > 0) {
+    const panelToolbar = document.createElement("div");
+    panelToolbar.className = "diff-panel-toolbar";
+    const expandAllBtn = document.createElement("button");
+    expandAllBtn.type = "button";
+    expandAllBtn.className = "diff-expand-all-btn";
+    expandAllBtn.textContent = "Expand all";
+    expandAllBtn.title = "Expand all unchanged regions across every file";
+    expandAllBtn.addEventListener("click", () => setAllExpanded(true));
+    const collapseAllBtn = document.createElement("button");
+    collapseAllBtn.type = "button";
+    collapseAllBtn.className = "diff-collapse-all-btn";
+    collapseAllBtn.textContent = "Collapse all";
+    collapseAllBtn.title = "Collapse all unchanged regions across every file";
+    collapseAllBtn.addEventListener("click", () => setAllExpanded(false));
+    panelToolbar.appendChild(expandAllBtn);
+    panelToolbar.appendChild(collapseAllBtn);
+    diffsRoot.appendChild(panelToolbar);
+  }
+
   for (const [index, file] of files.entries()) {
     // ── Card ──
     const card = document.createElement("section");

@@ -66,6 +66,8 @@ If you review pull requests or diffs on a regular basis, this saves you the back
 - **Files-changed count** in the sidebar — see scope at a glance
 - **Visual diff for line-level and file-level** — both supported
 - **Diff range banner** — if the range changes mid-session (e.g., new uncommitted file), a yellow banner appears
+- **Ignore whitespace changes** *(added R16)* — toggle in the toolbar collapses consecutive whitespace and trims trailing space per line, so pure reformatting (tab↔space, indent width) disappears from the diff. Stays on across reloads
+- **Expand all / Collapse all** *(added R16)* — two buttons at the top of the diff panel flip every file's `expandUnchanged` setting at once. Useful for quickly skimming a 30-file diff vs. reviewing it line-by-line
 
 ### Adding findings
 
@@ -83,6 +85,7 @@ If you review pull requests or diffs on a regular basis, this saves you the back
 - **★ Sort findings** *(added R14)* — dropdown to sort by Newest / Oldest / Severity (high → low) / File path (A-Z)
 - **Filter Previously-discussed by round** *(added R14)* — when reviewing 5+ rounds, filter the history tab by round number
 - **★ Cmd+P file jumper** *(added R15)* — VS Code-style quick-open palette. Type a filename to jump directly to it
+- **Copy finding as Markdown** *(added R16)* — "Copy as MD" button on each finding drops a self-contained Markdown snippet (round tag, file:line permalink, comment, audit count, reactions) onto your clipboard. Paste it straight into a PR comment or chat
 
 ### Resolving findings
 
@@ -152,6 +155,7 @@ That's it. The dashboard opens in your browser at `http://localhost:<port>`.
 | `Cmd+P` / `Ctrl+P` | Open file quick-jump palette |
 | `Escape` | Close any open modal / overlay |
 | `Enter` | Confirm default action in modals |
+| `Tab` (when "Ignore ws" toggle focused) | Toggle whitespace-collapse on/off (use the toolbar button — no global shortcut; helps you review reformatted diffs without visual noise) |
 
 ---
 
