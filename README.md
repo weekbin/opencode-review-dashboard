@@ -125,6 +125,10 @@ If you review pull requests or diffs on a regular basis, this saves you the back
 
 *IntersectionObserver-based hunk virtualization. Only visible hunks render fully; off-screen hunks collapse to placeholders. Smooth scroll even on 5000+ line files. Toggle in settings (Appearance section) — OFF renders all hunks eagerly. Mirrors GitHub Turbo Frames / VS Code virtualized editor / Phabricator chunked diffs.*
 
+### Bulk delete recent-searches (multi-select)
+
+*Each entry in the Recent Searches dropdown now has a checkbox. Check the entries you want to remove, then click "Delete selected" to remove just those (keeping other useful entries). The "Clear" button is replaced by "Delete selected" when ≥1 entry is checked. When 0 entries are checked, "Clear" works as before. Mirrors Chrome history multi-select delete and VS Code search multi-select clear.*
+
 ### Bulk mark sidebar files as reviewed
 
 *Each file card in the sidebar has a checkbox. Check the files you've reviewed, then click "Mark selected as reviewed" to mark them all in one action. The review progress counter (X/Y reviewed) updates immediately. Mirrors GitHub PR file tree multi-select.*
