@@ -96,6 +96,14 @@
 
 *聚焦 diff 搜索栏（`Ctrl+F` / `Cmd+F`）会显示你最近 5 次搜索作为下拉菜单。点击任何最近搜索可重新运行。状态在刷新后会保留。*
 
+### 搜索历史智能提交
+
+*搜索历史现在会对中间按键做 debounce（300ms 静默期），只在你按 Enter 或停止输入 300ms 后提交最终查询。再也不会有「f」「fn」「fun」这种中间态把最近搜索列表搞乱。对齐 GitHub 的 `Cmd+K` 面板和 VS Code 的搜索历史行为。*
+
+### 一键清空最近搜索
+
+*点击最近搜索下拉头部的「清空」按钮，一键清空整个搜索历史。对齐 GitHub 的 `Cmd+K` → 「Clear all」和 VS Code 的搜索历史 Clear 按钮。Toast 确认操作。Pending 的 debounce commit 会被取消，确保下拉保持空白。*
+
 ### IME 安全的搜索
 
 ![搜索框激活了中文 IME 组合输入](docs/screenshots/r17-ime-composition.png)
