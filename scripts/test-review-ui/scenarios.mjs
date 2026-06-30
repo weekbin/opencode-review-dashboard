@@ -479,6 +479,28 @@ export const SCENARIOS = {
   // conversationFilter === "open". Verifies the launch path with 1
   // commit; full flow verified via Playwright walkthrough.
   "jump-skips-stale": { setup: setupJumpSkipsStale, expect: { kind: "working-tree" } },
+  // R13 #20 (GH#20): Resolve with reason. Resolve button on open
+  // finding opens a modal with 4 quick-reason chips + textarea;
+  // Cancel returns null (no POST); Confirm POSTs {finding_id,
+  // reason} and the dashboard re-renders. Verifies the launch path
+  // with 1 commit; full flow verified via Playwright walkthrough.
+  "resolve-with-reason": { setup: setupResolveWithReason, expect: { kind: "working-tree" } },
+  // R13 #21 (GH#21): Mark as wontfix. Sibling button to Resolve
+  // opens a radio-button modal (wontfix / out_of_scope /
+  // false_positive / duplicate) + optional reason textarea. POSTs
+  // {finding_id, resolution_kind, resolution_reason} and the
+  // finding gets a badge-resolution-{kind} in the conversation
+  // panel. Verifies the launch path with 1 commit; full flow
+  // verified via Playwright walkthrough.
+  "mark-as-wontfix": { setup: setupMarkAsWontfix, expect: { kind: "working-tree" } },
+  // R13 #22 (GH#22): In-diff search. Cmd+F / Ctrl+F / `/` opens
+  // the fixed-top .diff-search-bar overlay; user types → matches
+  // wrapped in <mark class="diff-search-match">; counter shows "N
+  // of M matches"; Enter / F3 jump next, Shift+Enter / Shift+F3
+  // prev; Escape closes; query persisted in sessionStorage. Verifies
+  // the launch path with 1 commit; full flow verified via
+  // Playwright walkthrough.
+  "in-diff-search": { setup: setupInDiffSearch, expect: { kind: "working-tree" } },
 };
 
 /**
@@ -614,6 +636,71 @@ export async function setupPJumpPrev(dir) {
  * Locks in the AC11.4 (filter composition) contract for #19.
  */
 export async function setupJumpSkipsStale(dir) {
+  await emptyRepo(dir);
+  await sh("echo 'v1' > app.ts", dir);
+  await git(["add", "app.ts"], dir);
+  await git(["commit", "-q", "-m", "first"], dir);
+  return { branch: "main", worktrees: [] };
+}
+
+/**
+ * Scenario 32: R13 #20 — Resolve with reason (GH#20).
+ * 1 commit so the dashboard is non-empty. Verifies the dashboard
+ * loads without errors when the resolve button on an open finding
+ * opens the resolve-with-reason modal (4 quick-reason chips +
+ * textarea). Runtime verification (click Resolve → modal opens →
+ * click a chip → click Resolve button → POST {finding_id, reason} →
+ * re-render; click Cancel → no POST) is done via Playwright
+ * walkthrough.
+ * Locks in the AC1 (modal markup) + AC2 (server accepts reason)
+ * contract for #20.
+ */
+export async function setupResolveWithReason(dir) {
+  await emptyRepo(dir);
+  await sh("echo 'v1' > app.ts", dir);
+  await git(["add", "app.ts"], dir);
+  await git(["commit", "-q", "-m", "first"], dir);
+  return { branch: "main", worktrees: [] };
+}
+
+/**
+ * Scenario 33: R13 #21 — Mark as wontfix (GH#21).
+ * 1 commit so the dashboard is non-empty. Verifies the dashboard
+ * loads without errors when the "Mark as wontfix" sibling button
+ * on an open finding opens the radio-button modal (4 enum values +
+ * optional reason). Runtime verification (click Mark as wontfix →
+ * modal opens with 4 radios → select "out_of_scope" → click Mark
+ * as wontfix → POST {finding_id, resolution_kind: "out_of_scope"}
+ * → conversation panel renders <span class="badge
+ * badge-resolution-out_of_scope">) is done via Playwright
+ * walkthrough.
+ * Locks in the AC3 (button + radio modal) + AC4 (server 400
+ * validation) + AC5 (badge render) contract for #21.
+ */
+export async function setupMarkAsWontfix(dir) {
+  await emptyRepo(dir);
+  await sh("echo 'v1' > app.ts", dir);
+  await git(["add", "app.ts"], dir);
+  await git(["commit", "-q", "-m", "first"], dir);
+  return { branch: "main", worktrees: [] };
+}
+
+/**
+ * Scenario 34: R13 #22 — In-diff search (GH#22).
+ * 1 commit so the dashboard is non-empty. Verifies the dashboard
+ * loads without errors when the global Cmd+F / Ctrl+F / / keydown
+ * listener is wired. Runtime verification (press Ctrl+F → fixed-top
+ * .diff-search-bar overlay opens → type "v1" → counter shows "1 of
+ * 1 matches" → match wrapped in <mark class="diff-search-match"> →
+ * press Enter → flash highlight on next match; press Escape →
+ * overlay closes + <mark> wrappers removed) is done via Playwright
+ * walkthrough.
+ * Locks in the AC6 (capture-phase keydown listener) + AC7
+ * (counter + Enter/Escape) + AC8 (`/` focus-guard) + AC9 (match
+ * selector + <mark> wrap) + AC10 (sessionStorage persistence)
+ * contract for #22.
+ */
+export async function setupInDiffSearch(dir) {
   await emptyRepo(dir);
   await sh("echo 'v1' > app.ts", dir);
   await git(["add", "app.ts"], dir);
