@@ -58,6 +58,24 @@
 
 *提交前的二次确认，防止误操作丢工作。*
 
+### 轮次笔记移到提交弹窗里
+
+![Submit Review 弹窗打开，里面有 round notes 文本框](docs/screenshots/r17-notes-in-submit-modal.png)
+
+*轮次笔记移到了 Submit Review 弹窗里，让你在准备发送的那一刻写总结。和 finding 一起自动保存到同一个 draft。*
+
+### IME 安全的搜索
+
+![搜索框激活了中文 IME 组合输入](docs/screenshots/r17-ime-composition.png)
+
+*所有五个搜索输入（Files、Conversation、Previously discussed、In-diff、Cmd+P 面板）在 IME 组合输入时都能正常工作。按 `Ctrl+F` / `Cmd+F` 输中文不会丢按键。*
+
+### 键盘快捷键一目了然
+
+![Cmd+/ 帮助弹窗打开，显示快捷键网格](docs/screenshots/r17-help-overlay.png)
+
+*按 `Cmd+/`（或 `Ctrl+/`）打开键盘快捷键覆盖层。10 个最常用的快捷键，两列网格排列。*
+
 ---
 
 ## 它能做什么
@@ -104,6 +122,8 @@
 - **Filter Previously-discussed by round** *(R14 新增)* —— 5 轮以上时，按 round 数字过滤历史 tab
 - **★ Cmd+P 文件跳转** *(R15 新增)* —— VS Code 风格的 quick-open 面板。输入文件名直接跳过去
 - **Copy finding as Markdown** *(R16 新增)* —— 每个 finding 上的「Copy as MD」按钮把自包含的 Markdown 片段（轮次 tag、file:line permalink、评论、审计次数、反应）丢到剪贴板。直接粘到 PR 评论或聊天里
+- **IME 安全的搜索** *(R17 新增)* —— 所有五个搜索输入（Files tab、Conversation tab、Previously discussed、In-diff、Cmd+P 面板）在 IME 组合输入时都能正常工作。中文拼音、日语罗马字等都能正常上屏，不会丢按键或回退到 IME 中间态
+- **Cmd+/ 帮助覆盖层** *(R17 新增)* —— 按 `Cmd+/`（Mac）或 `Ctrl+/`（其他）打开两列快捷键网格，10 个最常用的快捷键都在里面。按 `?` 或 `Escape` 关闭
 
 ### 解决 finding
 
@@ -114,6 +134,7 @@
 ### 提交
 
 - **Submit 确认弹窗** *(R15 新增)* —— 提交前弹「Review N findings before submitting」防误操作
+- **轮次笔记在提交弹窗里** *(R17 新增)* —— round notes 文本框现在在 Submit Review 弹窗里。在你准备发送的那一刻写总结，跟 finding 一起自动保存到同一个 draft。sidebar 的 notes 区不再单独显示
 - **Auto-save 指示器** *(R14 新增)* —— 头部显示「Saved 3s ago」，原地更新。不再有侵入式的「Draft saved at 12:34:56」toast
 
 ### 工作流
@@ -171,6 +192,8 @@
 | `Ctrl+F` / `Cmd+F` | 打开 in-diff 搜索 |
 | `/` | 打开 in-diff 搜索（备选） |
 | `Cmd+P` / `Ctrl+P` | 打开文件快速跳转面板 |
+| `Cmd+/` / `Ctrl+/` | 打开键盘快捷键覆盖层 |
+| `?` | 打开键盘快捷键覆盖层（备选） |
 | `Escape` | 关闭任何打开的弹窗 / 覆盖层 |
 | `Enter` | 弹窗中确认默认操作 |
 | `Tab`（焦点在「Ignore ws」按钮上时）| 切换空白折叠开关（用工具栏按钮，没有全局快捷键 —— 让你 review 纯格式调整的 diff 时不被视觉噪声干扰）|

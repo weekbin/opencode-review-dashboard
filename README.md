@@ -58,6 +58,24 @@ If you review pull requests or diffs on a regular basis, this saves you the back
 
 *A confirmation step before final submit so you don't lose work accidentally.*
 
+### Round notes inside the submit modal
+
+![Submit Review modal open with round notes textarea visible](docs/screenshots/r17-notes-in-submit-modal.png)
+
+*Round notes moved into the Submit Review modal so you write the summary at the moment you're ready to send. Auto-saves to the same draft as your findings.*
+
+### IME-safe search
+
+![Search box with Chinese IME composition active](docs/screenshots/r17-ime-composition.png)
+
+*All five search inputs (Files, Conversation, Previously discussed, In-diff, Cmd+P palette) work correctly while an Input Method Editor is composing characters. Press `Ctrl+F` / `Cmd+F` and type Chinese without losing keystrokes.*
+
+### Keyboard shortcuts at a glance
+
+![Cmd+/ help modal open with shortcut grid](docs/screenshots/r17-help-overlay.png)
+
+*Press `Cmd+/` (or `Ctrl+/`) to open the keyboard shortcuts overlay. 10 of the most common shortcuts in a 2-column grid.*
+
 ---
 
 ## What you can do with it
@@ -104,6 +122,8 @@ If you review pull requests or diffs on a regular basis, this saves you the back
 - **Filter Previously-discussed by round** *(added R14)* — when reviewing 5+ rounds, filter the history tab by round number
 - **★ Cmd+P file jumper** *(added R15)* — VS Code-style quick-open palette. Type a filename to jump directly to it
 - **Copy finding as Markdown** *(added R16)* — "Copy as MD" button on each finding drops a self-contained Markdown snippet (round tag, file:line permalink, comment, audit count, reactions) onto your clipboard. Paste it straight into a PR comment or chat
+- **IME-safe search** *(added R17)* — all five search inputs (Files tab, Conversation tab, Previously discussed, In-diff, Cmd+P palette) work correctly while an Input Method Editor is composing characters. Chinese pinyin, Japanese romaji, etc. commit without losing keystrokes or snapping back to partial IME buffers
+- **Cmd+/ help overlay** *(added R17)* — press `Cmd+/` (Mac) or `Ctrl+/` (other) to open a 2-column shortcut grid with the 10 most common shortcuts. Press `?` or `Escape` to close
 
 ### Resolving findings
 
@@ -114,6 +134,7 @@ If you review pull requests or diffs on a regular basis, this saves you the back
 ### Submitting
 
 - **Submit confirm modal** *(added R15)* — before final submit, a modal shows "Review N findings before submitting" to prevent accidental submits
+- **Round notes inside submit modal** *(added R17)* — the round notes textarea now lives inside the Submit Review modal. You write the summary at the moment you're ready to send, with auto-save to the same draft. The sidebar notes section is gone
 - **Auto-save indicator** *(added R14)* — "Saved 3s ago" appears in the header, updates in place. No more intrusive "Draft saved at 12:34:56" toasts
 
 ### Workflow
@@ -171,6 +192,8 @@ That's it. The dashboard opens in your browser at `http://localhost:<port>`.
 | `Ctrl+F` / `Cmd+F` | Open in-diff search |
 | `/` | Open in-diff search (alternative) |
 | `Cmd+P` / `Ctrl+P` | Open file quick-jump palette |
+| `Cmd+/` / `Ctrl+/` | Open the keyboard shortcuts overlay |
+| `?` | Open the keyboard shortcuts overlay (alternative) |
 | `Escape` | Close any open modal / overlay |
 | `Enter` | Confirm default action in modals |
 | `Tab` (when "Ignore ws" toggle focused) | Toggle whitespace-collapse on/off (use the toolbar button — no global shortcut; helps you review reformatted diffs without visual noise) |

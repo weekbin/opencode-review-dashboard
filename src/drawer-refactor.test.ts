@@ -37,16 +37,26 @@ function findHeader(html: string): string {
 }
 
 describe("AC8-1 — state.notes binds to a new always-visible notes surface", () => {
-  it("the notes surface is present in the new top-level location (above the layout)", async () => {
+  it("the notes textarea is rendered inside the Submit Review modal (R17 #32)", async () => {
+    const appTs = await fsPromises.readFile(join(import.meta.dir, "ui", "app.ts"), "utf8");
+    const submitModalIdx = appTs.indexOf("submit-confirm-modal");
+    expect(submitModalIdx).toBeGreaterThan(0);
+    const roundNotesIdx = appTs.indexOf('data-testid="round-notes-textarea"');
+    expect(roundNotesIdx).toBeGreaterThan(submitModalIdx);
+  });
+
+  it("the top-level layout does NOT contain a persistent notes-surface element", async () => {
     const html = await readReviewHtml();
-    expect(html).toContain('data-testid="notes-surface"');
-    expect(html).toContain('data-testid="notes-textarea"');
+    expect(html).not.toContain('data-testid="notes-surface"');
+    expect(html).not.toContain('class="notes-surface"');
   });
 
   it("the notes surface is OUTSIDE the drawer", async () => {
     const html = await readReviewHtml();
     const drawer = findDrawer(html);
     expect(drawer).not.toContain('id="notes"');
+    expect(drawer).not.toContain('data-testid="notes-textarea"');
+    expect(drawer).not.toContain('data-testid="round-notes-textarea"');
   });
 });
 
@@ -56,6 +66,7 @@ describe("AC8-3 — drawer is findings-only (no notes, no submit)", () => {
     const drawer = findDrawer(html);
     expect(drawer).not.toContain('id="notes"');
     expect(drawer).not.toContain('data-testid="notes-textarea"');
+    expect(drawer).not.toContain('data-testid="round-notes-textarea"');
   });
 
   it("drawer does NOT contain the submit button", async () => {

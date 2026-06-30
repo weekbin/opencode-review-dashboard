@@ -833,7 +833,9 @@ function openDiffSearch(initialQuery: string | null = null): void {
     }
   };
 
-  diffSearch.input?.addEventListener("input", runSearch);
+  if (diffSearch.input) {
+    installImeSafeInputListener(diffSearch.input, () => runSearch());
+  }
   diffSearch.input?.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       e.preventDefault();
@@ -898,6 +900,15 @@ window.addEventListener(
     ) {
       event.preventDefault();
       openCmdPPalette();
+      return;
+    }
+    if (
+      (event.key === "/" || event.key === "?") &&
+      (event.metaKey || event.ctrlKey) &&
+      !event.shiftKey
+    ) {
+      event.preventDefault();
+      showHelpModal();
       return;
     }
   },
@@ -993,7 +1004,7 @@ function openCmdPPalette(): void {
       }
     }
   };
-  input.addEventListener("input", () => renderResults(input.value));
+  installImeSafeInputListener(input, (value) => renderResults(value));
   input.addEventListener("keydown", (e) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -1013,6 +1024,39 @@ function openCmdPPalette(): void {
     if (e.target === overlay) close();
   });
   renderResults("");
+}
+
+function showHelpModal(): void {
+  if (state.showHelp) return;
+  state.showHelp = true;
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay help-overlay";
+  const dialog = document.createElement("div");
+  dialog.className = "modal-dialog help-modal";
+  dialog.setAttribute("role", "dialog");
+  dialog.setAttribute("aria-modal", "true");
+  dialog.setAttribute("aria-labelledby", "help-modal-title");
+  dialog.innerHTML = `<h3 id="help-modal-title">Keyboard shortcuts</h3><p class="help-intro">Quick reference for the most common shortcuts. Press <kbd>?</kbd> or <kbd>Esc</kbd> to close.</p><div class="help-grid"><div class="help-row"><kbd>n</kbd><span>Jump to next finding (Conversation tab)</span></div><div class="help-row"><kbd>p</kbd><span>Jump to previous finding (Conversation tab)</span></div><div class="help-row"><kbd>Ctrl+F</kbd> / <kbd>Cmd+F</kbd><span>Find text inside the loaded diff</span></div><div class="help-row"><kbd>/</kbd><span>Find in diffs (alternative, no modifier)</span></div><div class="help-row"><kbd>Cmd+P</kbd> / <kbd>Ctrl+P</kbd><span>Open the file quick-jump palette</span></div><div class="help-row"><kbd>Cmd+/</kbd> / <kbd>Ctrl+/</kbd><span>Open this help overlay</span></div><div class="help-row"><kbd>Enter</kbd><span>Submit finding (when comment is focused)</span></div><div class="help-row"><kbd>Esc</kbd><span>Close any open modal, palette, or search bar</span></div><div class="help-row"><kbd>Tab</kbd><span>Move focus inside forms (works in every input)</span></div><div class="help-row"><kbd>?</kbd><span>Open this help overlay (alternative to Cmd+/)</span></div></div><div class="modal-actions"><button id="help-close" class="primary" type="button">Close</button></div>`;
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+  const close = () => {
+    state.showHelp = false;
+    if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    window.removeEventListener("keydown", onKey);
+  };
+  const closeBtn = dialog.querySelector("#help-close") as HTMLButtonElement;
+  closeBtn.addEventListener("click", close);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) close();
+  });
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === "Escape" || e.key === "?") {
+      e.preventDefault();
+      close();
+    }
+  };
+  window.addEventListener("keydown", onKey);
+  closeBtn.focus();
 }
 
 // ── File-type icon table ──
@@ -1205,7 +1249,6 @@ const findingsRoot = document.querySelector("#findings") as HTMLDivElement;
 const categoryRoot = document.querySelector("#category") as HTMLSelectElement;
 const severityRoot = document.querySelector("#severity") as HTMLSelectElement;
 const commentRoot = document.querySelector("#comment") as HTMLTextAreaElement;
-const notesRoot = document.querySelector("#notes") as HTMLTextAreaElement;
 const selectionRoot = document.querySelector("#selection") as HTMLDivElement;
 const scopeRoot = document.querySelector("#scope") as HTMLSpanElement;
 const statusRoot = document.querySelector("#status") as HTMLDivElement;
@@ -1279,6 +1322,7 @@ const state = {
   priorNotesLoaded: false,
   drawerOpen: false,
   pendingFileFinding: null as string | null,
+  showHelp: false,
 };
 
 function resolvedTheme(): "light" | "dark" {
@@ -1626,8 +1670,8 @@ function renderSearchInput(paneId: string): HTMLElement {
   input.value = currentSearchQuery;
   input.dataset.pane = paneId;
   input.setAttribute("aria-label", "Search current panel");
-  input.addEventListener("input", () => {
-    currentSearchQuery = input.value;
+  installImeSafeInputListener(input, (value) => {
+    currentSearchQuery = value;
     renderActivePane();
   });
   input.addEventListener("keydown", (e) => {
@@ -1636,9 +1680,6 @@ function renderSearchInput(paneId: string): HTMLElement {
     currentSearchQuery = "";
     input.value = "";
     renderActivePane();
-    // Roving focus: return focus to the first focusable element in the pane
-    // (the first sidebar tab, the conversation-filter button, or the
-    // first sidebar item) so the reviewer can keep moving.
     const pane = document.querySelector(`[data-pane="${paneId}"]`);
     if (!pane) return;
     const firstFocusable = pane.querySelector<HTMLElement>(
@@ -4802,6 +4843,24 @@ function scheduleSave() {
   }, 250);
 }
 
+function installImeSafeInputListener(
+  input: HTMLInputElement,
+  onCommit: (value: string) => void,
+): void {
+  let isComposing = false;
+  input.addEventListener("compositionstart", () => {
+    isComposing = true;
+  });
+  input.addEventListener("compositionend", () => {
+    isComposing = false;
+    onCommit(input.value);
+  });
+  input.addEventListener("input", () => {
+    if (isComposing) return;
+    onCommit(input.value);
+  });
+}
+
 function addFinding() {
   const comment = commentRoot.value.trim();
   if (!comment) {
@@ -4902,7 +4961,6 @@ function showPostSubmit(round: number | undefined) {
   clearButton.disabled = true;
   submitButton.disabled = true;
   commentRoot.disabled = true;
-  notesRoot.disabled = true;
   document.body.classList.add("submitted");
 
   const overlay = document.createElement("div");
@@ -4962,7 +5020,7 @@ submitButton.addEventListener("click", () => {
   dialog.className = "modal-dialog submit-confirm-modal";
   dialog.setAttribute("role", "dialog");
   dialog.setAttribute("aria-modal", "true");
-  dialog.innerHTML = `<h3>Submit review?</h3><p>You're about to submit your review.</p><div class="finding-count">${openCount}</div><p style="text-align:center;font-size:13px;color:light-dark(#666,#aaa);margin-bottom:0">open finding${openCount !== 1 ? "s" : ""} will be submitted.</p><div class="modal-actions"><button id="submit-confirm-cancel" type="button">Cancel</button><button id="submit-confirm-ok" class="primary" type="button">Submit</button></div>`;
+  dialog.innerHTML = `<h3>Submit review?</h3><p>You're about to submit your review.</p><div class="finding-count">${openCount}</div><p style="text-align:center;font-size:13px;color:light-dark(#666,#aaa);margin-bottom:0">open finding${openCount !== 1 ? "s" : ""} will be submitted.</p><label for="round-notes" class="round-notes-label">Round notes (appear in next round's "Previously discussed" panel)</label><textarea id="round-notes" data-testid="round-notes-textarea" class="round-notes-textarea" placeholder="Optional global notes for this round" rows="5"></textarea><div class="modal-actions"><button id="submit-confirm-cancel" type="button">Cancel</button><button id="submit-confirm-ok" class="primary" type="button">Submit</button></div>`;
   overlay.appendChild(dialog);
   document.body.appendChild(overlay);
   const close = () => {
@@ -4970,8 +5028,15 @@ submitButton.addEventListener("click", () => {
   };
   const cancelBtn = dialog.querySelector("#submit-confirm-cancel") as HTMLButtonElement;
   const okBtn = dialog.querySelector("#submit-confirm-ok") as HTMLButtonElement;
+  const notesArea = dialog.querySelector("#round-notes") as HTMLTextAreaElement;
+  notesArea.value = state.notes ?? "";
+  notesArea.addEventListener("input", () => {
+    state.notes = notesArea.value;
+    scheduleSave();
+  });
   cancelBtn.addEventListener("click", close);
   okBtn.addEventListener("click", () => {
+    state.notes = notesArea.value;
     close();
     submit();
   });
@@ -4985,6 +5050,7 @@ submitButton.addEventListener("click", () => {
     }
   };
   window.addEventListener("keydown", onKey);
+  notesArea.focus();
 });
 exportButton?.addEventListener("click", () => {
   if (!state.data) {
@@ -5024,11 +5090,6 @@ function updateFileCommentsBadges() {
   }
 }
 
-notesRoot.addEventListener("input", () => {
-  state.notes = notesRoot.value;
-  scheduleSave();
-});
-
 commentRoot.addEventListener("keydown", (event) => {
   if (event.key !== "Enter") return;
   if (!event.metaKey && !event.ctrlKey) return;
@@ -5067,7 +5128,6 @@ async function init() {
   // saved" (the "idle" state).
   state.draftLastSavedAt =
     typeof state.data.draft?.lastSavedAt === "number" ? state.data.draft.lastSavedAt : 0;
-  notesRoot.value = state.notes;
 
   const scope =
     Array.isArray(state.data.filter) && state.data.filter.length

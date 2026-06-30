@@ -501,6 +501,7 @@ export const SCENARIOS = {
   // the launch path with 1 commit; full flow verified via
   // Playwright walkthrough.
   "in-diff-search": { setup: setupInDiffSearch, expect: { kind: "working-tree" } },
+  "search-ime-composition": { setup: setupSearchImeComposition, expect: { kind: "working-tree" } },
 };
 
 /**
@@ -701,6 +702,25 @@ export async function setupMarkAsWontfix(dir) {
  * contract for #22.
  */
 export async function setupInDiffSearch(dir) {
+  await emptyRepo(dir);
+  await sh("echo 'v1' > app.ts", dir);
+  await git(["add", "app.ts"], dir);
+  await git(["commit", "-q", "-m", "first"], dir);
+  return { branch: "main", worktrees: [] };
+}
+
+/**
+ * Scenario 35: R17 #34 — Search IME composition (GH#34).
+ * 1 commit so the dashboard is non-empty. Verifies the dashboard loads
+ * without errors when the search inputs use the new IME-safe listener
+ * (compositionstart / compositionend + input event handlers via
+ * installImeSafeInputListener). Runtime verification (focus #search-input
+ * → dispatch compositionstart + compositionupdate (input events) →
+ * state should NOT update during composition → dispatch compositionend →
+ * state should update with the final committed text) is done via the
+ * Playwright walkthrough. Locks in the AC1-AC5 IME contract for #34.
+ */
+export async function setupSearchImeComposition(dir) {
   await emptyRepo(dir);
   await sh("echo 'v1' > app.ts", dir);
   await git(["add", "app.ts"], dir);
