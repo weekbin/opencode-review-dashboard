@@ -128,3 +128,20 @@ export function __testonlyClearRecentSearches(): void {
     // ignore
   }
 }
+
+/**
+ * R22 #45 — Clear all recent searches.
+ * Empties the localStorage array and cancels any pending debounced commit
+ * to prevent an in-flight query from re-populating history after clear.
+ */
+export function clearRecentSearches(): string[] {
+  if (typeof localStorage !== "undefined") {
+    try {
+      localStorage.setItem(RECENT_SEARCHES_KEY, "[]");
+    } catch {
+      // ignore
+    }
+  }
+  cancelPendingCommit();
+  return [];
+}

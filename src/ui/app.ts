@@ -19,7 +19,7 @@ import {
 // R20 #40: sidebar review progress (X / Y reviewed + visual bar).
 import { formatReviewProgress } from "./review-progress";
 // R20 #42: in-diff search history (recent searches dropdown).
-import { addRecentSearch, commitRecentSearch, commitRecentSearchImmediate, cancelPendingCommit, getRecentSearches, MAX_RECENT } from "./search-history";
+import { addRecentSearch, clearRecentSearches, commitRecentSearch, commitRecentSearchImmediate, cancelPendingCommit, getRecentSearches, MAX_RECENT } from "./search-history";
 
 type Category = "bug" | "style" | "perf" | "question" | "recommend";
 type Severity = "high" | "medium" | "low";
@@ -928,11 +928,22 @@ function openDiffSearch(initialQuery: string | null = null): void {
       return;
     }
     diffSearch.history.innerHTML = "";
-    // Title row (localized via t() — dropdown is dynamic so no data-i18n).
     const title = document.createElement("div");
     title.className = "diff-search-history-title";
     title.textContent = t("search.recent.title");
     diffSearch.history.appendChild(title);
+
+    const clearBtn = document.createElement("button");
+    clearBtn.type = "button";
+    clearBtn.className = "diff-search-history-clear";
+    clearBtn.setAttribute("data-i18n", "search.recent.clear");
+    clearBtn.textContent = t("search.recent.clear");
+    clearBtn.addEventListener("click", () => {
+      clearRecentSearches();
+      showRecentSearches();
+      showToast(t("search.recent.clear.confirm"));
+    });
+    diffSearch.history.appendChild(clearBtn);
 
     for (const entry of recent) {
       const item = document.createElement("button");
