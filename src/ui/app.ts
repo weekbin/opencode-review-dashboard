@@ -8,7 +8,14 @@ import { installModalA11y } from "./modal-a11y";
 // R19 #37: toast notifications (3s auto-dismiss + ARIA live region).
 import { showToast } from "./toast";
 // R19 #33: language toggle (i18n helper).
-import { applyLanguage, onLanguageChange, peekLanguage, setLanguage, t } from "./i18n";
+import {
+  applyLanguage,
+  onLanguageChange,
+  peekLanguage,
+  registerUITranslator,
+  setLanguage,
+  t,
+} from "./i18n";
 
 type Category = "bug" | "style" | "perf" | "question" | "recommend";
 type Severity = "high" | "medium" | "low";
@@ -1397,6 +1404,26 @@ languageToggle?.addEventListener("click", () => {
   applyLanguageToggle();
 });
 onLanguageChange(() => applyLanguageToggle());
+
+// R19 #33 AC1.2 follow-up: register static-HTML elements for i18n re-render.
+registerUITranslator("app.title", () => t("app.title"));
+registerUITranslator("skipLink", () => t("skipLink"));
+registerUITranslator("toolbar.layout.unified", () => t("toolbar.layout.unified"));
+registerUITranslator("toolbar.layout.split", () => t("toolbar.layout.split"));
+registerUITranslator("toolbar.ignoreWs", () => t("toolbar.ignoreWs"));
+registerUITranslator("toolbar.theme.light", () => t("toolbar.theme.light"));
+registerUITranslator("toolbar.theme.auto", () => t("toolbar.theme.auto"));
+registerUITranslator("toolbar.theme.dark", () => t("toolbar.theme.dark"));
+registerUITranslator("toolbar.review", () => t("toolbar.review"));
+registerUITranslator("toolbar.export", () => t("toolbar.export"));
+registerUITranslator("toolbar.submit", () => t("toolbar.submit"));
+registerUITranslator("sidebar.files", () => t("sidebar.files"));
+registerUITranslator("sidebar.commits", () => t("sidebar.commits"));
+registerUITranslator("sidebar.conversation", () => t("sidebar.conversation"));
+registerUITranslator("sidebar.previously", () => t("sidebar.previously"));
+registerUITranslator("sidebar.tree", () => t("sidebar.tree"));
+registerUITranslator("sidebar.flat", () => t("sidebar.flat"));
+registerUITranslator("save.idle", () => t("save.idle"));
 
 // ── Layout toggle ──
 function applyLayout() {

@@ -168,3 +168,56 @@ describe("AC1.1 — toolbar mount the language toggle wired up", () => {
     ).toBe(true);
   });
 });
+
+describe("AC1.2 — toggle re-renders static-HTML labels via registerUITranslator", () => {
+  // R19 AC1.2 follow-up: guards against partial-implementation regression
+  // (every static-HTML element annotated with data-i18n must have a paired
+  // registerUITranslator binding + STRINGS entry).
+  it("review.html annotates every static toolbar/sidebar/save element with data-i18n", async () => {
+    const html = await readSource(HTML);
+    const required = [
+      "app.title",
+      "toolbar.layout.unified",
+      "toolbar.layout.split",
+      "toolbar.ignoreWs",
+      "toolbar.theme.light",
+      "toolbar.theme.auto",
+      "toolbar.theme.dark",
+      "toolbar.review",
+      "toolbar.export",
+      "toolbar.submit",
+      "sidebar.files",
+      "sidebar.commits",
+      "sidebar.conversation",
+      "sidebar.previously",
+      "sidebar.tree",
+      "sidebar.flat",
+      "save.idle",
+      "skipLink",
+    ];
+    for (const key of required) {
+      expect(html.includes(`data-i18n="${key}"`)).toBe(true);
+    }
+  });
+
+  it("app.ts registers every static-HTML translator that review.html annotates", async () => {
+    const html = await readSource(HTML);
+    const src = await readSource(APP_TS);
+    const matches = html.match(/data-i18n="([a-zA-Z.]+)"/g) ?? [];
+    const keysInHtml = new Set(matches.map((m) => m.replace(/data-i18n="|"/g, "")));
+    expect(keysInHtml.size).toBeGreaterThan(10);
+    for (const key of keysInHtml) {
+      expect(src.includes(`registerUITranslator("${key}"`)).toBe(true);
+    }
+  });
+
+  it("i18n.ts STRINGS table contains every key referenced by data-i18n", async () => {
+    const html = await readSource(HTML);
+    const i18n = await readSource(I18N);
+    const matches = html.match(/data-i18n="([a-zA-Z.]+)"/g) ?? [];
+    const keys = Array.from(new Set(matches.map((m) => m.replace(/data-i18n="|"/g, ""))));
+    for (const key of keys) {
+      expect(i18n.includes(`"${key}":`)).toBe(true);
+    }
+  });
+});

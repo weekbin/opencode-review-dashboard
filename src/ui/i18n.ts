@@ -160,6 +160,7 @@ export function setLanguage(lang: Lang): void {
     }
   }
   for (const cb of subscribers) cb(lang);
+  applyUI();
 }
 
 /** Read-only accessor for code that wants to know the active language. */
@@ -173,9 +174,49 @@ export function onLanguageChange(cb: (lang: Lang) => void): () => void {
   return () => subscribers.delete(cb);
 }
 
+/**
+ * Registry for UI elements whose visible text depends on the current language.
+ * Each entry maps a stable key to a function that returns the localized text.
+ * Registered callbacks are re-invoked on every `setLanguage` (and on the
+ * initial `applyLanguage`), so callers do not need to subscribe manually.
+ */
+const uiTranslators = new Map<string, () => string>();
+
+/**
+ * Register a UI translator. The callback is invoked synchronously on the
+ * current language, on every language change, and again when `applyUI()` is
+ * called manually. Returns the unsubscribe function.
+ *
+ * Typical usage:
+ *   registerUITranslator("toolbar.unified", () => t("toolbar.layout.unified"));
+ */
+export function registerUITranslator(key: string, fn: () => string): () => void {
+  uiTranslators.set(key, fn);
+  applyUITranslator(key, fn);
+  return () => {
+    if (uiTranslators.get(key) === fn) uiTranslators.delete(key);
+  };
+}
+
+function applyUITranslator(key: string, fn: () => string): void {
+  try {
+    const text = fn();
+    const targets = document.querySelectorAll<HTMLElement>(`[data-i18n="${CSS.escape(key)}"]`);
+    for (const el of targets) el.textContent = text;
+  } catch {
+    // Element may not yet be in the DOM; setLanguage will re-render once it exists.
+  }
+}
+
+/** Re-render every registered UI translator. Called on `setLanguage` and on demand. */
+export function applyUI(): void {
+  for (const [key, fn] of uiTranslators) applyUITranslator(key, fn);
+}
+
 /** Synchronously adopt the persisted language before any UI renders. */
 export function applyLanguage(): Lang {
   currentLanguage = getLanguage();
+  if (typeof document !== "undefined") applyUI();
   return currentLanguage;
 }
 
