@@ -64,6 +64,20 @@ If you review pull requests or diffs on a regular basis, this saves you the back
 
 *Round notes moved into the Submit Review modal so you write the summary at the moment you're ready to send. Auto-saves to the same draft as your findings.*
 
+### Switch languages (English / Chinese)
+
+![Language toggle button in toolbar showing EN | 中文](docs/screenshots/r19-s1-dashboard-initial.png)
+
+*Click the language toggle in the toolbar to switch between English and Chinese. Your choice persists across reloads via localStorage. Toolbar buttons, sidebar tabs, and modal text update reactively.*
+
+### Toast notifications for your actions
+
+*Brief 3-second confirmation toasts appear in the top-right when you copy a permalink, copy a finding as Markdown, add a finding, or submit a review. Screen readers announce them via `aria-live="polite"`. Replaces the R14-era intrusive toast with a non-blocking alternative.*
+
+### Better keyboard and screen-reader accessibility
+
+*Skip-to-content link at the top of every page. Sidebar tabs have proper `role="tablist"` / `role="tab"` ARIA semantics. Auto-save indicator has `role="status"` so screen readers announce save state. All modals trap focus and close on Escape.*
+
 ### IME-safe search
 
 ![Search box with Chinese IME composition active](docs/screenshots/r17-ime-composition.png)
