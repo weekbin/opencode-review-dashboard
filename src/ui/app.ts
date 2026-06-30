@@ -5,6 +5,8 @@ import { filterByQuery } from "../search-utils";
 import { sortConversationEntries, type SortFindingsBy } from "../sort-utils";
 // R19 #38: additive modal a11y helper (Escape + focus trap + initial focus).
 import { installModalA11y } from "./modal-a11y";
+// R19 #37: toast notifications (3s auto-dismiss + ARIA live region).
+import { showToast } from "./toast";
 
 type Category = "bug" | "style" | "perf" | "question" | "recommend";
 type Severity = "high" | "medium" | "low";
@@ -352,8 +354,10 @@ async function copyFindingPermalinkToClipboard(
       button.textContent = original;
       button.disabled = false;
     }, 1200);
+    showToast(`Copied permalink for ${findingId}`);
     setStatus(`Copied permalink for ${findingId}`);
   } else {
+    showToast("Could not copy permalink — clipboard blocked", { error: true });
     setStatus("Could not copy permalink — clipboard blocked", true);
   }
 }
@@ -425,8 +429,10 @@ async function copyFindingAsMarkdownToClipboard(
       button.textContent = original;
       button.disabled = false;
     }, 1200);
+    showToast("Copied as Markdown");
     setStatus("Copied as Markdown");
   } else {
+    showToast("Could not copy markdown — clipboard blocked", { error: true });
     setStatus("Could not copy markdown — clipboard blocked", true);
   }
 }
@@ -4911,6 +4917,7 @@ function addFinding() {
   renderFindings();
   syncAll();
   scheduleSave();
+  showToast("Finding added");
 }
 
 function addFileFinding(filePath: string) {
@@ -4947,11 +4954,13 @@ async function submit() {
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
     submitButton.disabled = false;
+    showToast(`Submit failed (${response.status})`, { error: true });
     setStatus(`Submit failed (${response.status}) ${detail || "unknown error"}`, true);
     return;
   }
 
   const body = await response.json().catch(() => ({}));
+  showToast(`Review submitted${body?.round ? ` — round ${body.round}` : ""}`);
   showPostSubmit(body?.round);
 }
 
