@@ -169,6 +169,8 @@ const THEME_KEY = "diff-review:theme-mode";
 const LAYOUT_KEY = "diff-review:diff-layout";
 const IGNORE_WHITESPACE_KEY = "diff-review:ignore-whitespace";
 const CONV_FILTER_KEY = "diff-review:conversation-filter";
+// R25 #51: diff virtualization toggle (default ON — renders all hunks eagerly when OFF).
+const DIFF_VIRTUALIZATION_KEY = "diff-review:virtualization";
 const ACTIVE_TAB_KEY = "diff-review:active-tab";
 // R14 #23: localStorage key for the Conversation-panel sort dropdown.
 // localStorage (not sessionStorage) so the choice survives a page reload,
@@ -1486,6 +1488,9 @@ const state = {
   showHelp: false,
 };
 
+// R25 #52: bulk-select set for sidebar multi-select
+const selectedFiles = new Set<string>();
+
 function resolvedTheme(): "light" | "dark" {
   if (state.themeMode === "auto")
     return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
@@ -1597,6 +1602,8 @@ registerUITranslator("settings.layout.unified", () => t("settings.layout.unified
 registerUITranslator("settings.layout.split", () => t("settings.layout.split"));
 registerUITranslator("settings.search.max", () => t("settings.search.max"));
 registerUITranslator("settings.reset", () => t("settings.reset"));
+registerUITranslator("settings.virtualization.label", () => t("settings.virtualization.label"));
+registerUITranslator("settings.virtualization.description", () => t("settings.virtualization.description"));
 
 // ── Layout toggle ──
 function applyLayout() {
@@ -1640,6 +1647,10 @@ ignoreWhitespaceToggle.addEventListener("click", () => {
   setIgnoreWhitespace(!state.ignoreWhitespace);
 });
 
+function isVirtualizationEnabled(): boolean {
+  return localStorage.getItem(DIFF_VIRTUALIZATION_KEY) !== "false";
+}
+
 // R21 #44: Settings modal
 const settingsOverlay = document.querySelector("#settings-overlay") as HTMLElement;
 const settingsModal = document.querySelector("#settings-modal") as HTMLElement;
@@ -1651,6 +1662,7 @@ const settingsSearchMaxSelect = document.querySelector("#settings-search-max") a
 const settingsResetBtn = document.querySelector("#settings-reset") as HTMLButtonElement;
 const settingsOkBtn = document.querySelector("#settings-ok") as HTMLButtonElement;
 const settingsCloseBtn = document.querySelector("#settings-close") as HTMLButtonElement;
+const settingsVirtualizationToggle = document.querySelector("#settings-virtualization-toggle") as HTMLInputElement;
 
 let settingsDispose: (() => void) | null = null;
 
@@ -1665,6 +1677,7 @@ function openSettingsModal(): void {
   } else {
     settingsSearchMaxSelect.value = max;
   }
+  settingsVirtualizationToggle.checked = isVirtualizationEnabled();
   settingsOverlay.hidden = false;
   settingsDispose = installModalA11y(settingsModal, closeSettingsModal);
 }
@@ -1705,6 +1718,9 @@ settingsLanguageSelect?.addEventListener("change", () => {
 settingsSearchMaxSelect?.addEventListener("change", () => {
   const val = settingsSearchMaxSelect.value;
   localStorage.setItem(SEARCH_HISTORY_MAX_KEY, val);
+});
+settingsVirtualizationToggle?.addEventListener("change", () => {
+  localStorage.setItem(DIFF_VIRTUALIZATION_KEY, String(settingsVirtualizationToggle.checked));
 });
 
 // ── Sidebar mode toggle ──
@@ -2773,7 +2789,7 @@ function createView(file: FileEntry, mount: HTMLElement) {
     lineAnnotations: diffAnnotations(file.path),
   });
 
-  const virtualizer = new DiffVirtualizer(mount);
+  const virtualizer = new DiffVirtualizer(mount, { enabled: isVirtualizationEnabled() });
   diffVirtualizers.set(file.path, virtualizer);
 
   const oldContent = state.ignoreWhitespace ? stripWhitespace(file.before || "") : file.before || "";
@@ -2840,7 +2856,7 @@ function createAddedFileView(file: FileEntry, mount: HTMLElement) {
     lineAnnotations: diffAnnotations(file.path),
   });
 
-  const virtualizer = new DiffVirtualizer(mount);
+  const virtualizer = new DiffVirtualizer(mount, { enabled: isVirtualizationEnabled() });
   diffVirtualizers.set(file.path, virtualizer);
 
   const newContent = state.ignoreWhitespace ? stripWhitespace(file.after || "") : file.after || "";
@@ -2903,7 +2919,7 @@ function createDeletedFileView(file: FileEntry, mount: HTMLElement) {
     lineAnnotations: diffAnnotations(file.path),
   });
 
-  const virtualizer = new DiffVirtualizer(mount);
+  const virtualizer = new DiffVirtualizer(mount, { enabled: isVirtualizationEnabled() });
   diffVirtualizers.set(file.path, virtualizer);
 
   const oldContent = state.ignoreWhitespace ? stripWhitespace(file.before || "") : file.before || "";
@@ -2975,6 +2991,17 @@ function makeSidebarItem(file: FileEntry, index: number, extraClass = ""): HTMLB
   if (state.read.has(file.path)) item.setAttribute("data-read", "");
   if (file.source) item.setAttribute("data-source", file.source);
 
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.className = "sidebar-file-checkbox";
+  checkbox.dataset.path = file.path;
+  checkbox.addEventListener("change", (e) => {
+    e.stopPropagation();
+    if (checkbox.checked) selectedFiles.add(file.path);
+    else selectedFiles.delete(file.path);
+    renderBulkButton();
+  });
+
   const dot = document.createElement("span");
   dot.className = `sidebar-dot ${file.status}`;
 
@@ -3009,6 +3036,7 @@ function makeSidebarItem(file: FileEntry, index: number, extraClass = ""): HTMLB
   if (file.deletions) parts.push(`<span class="sd">-${file.deletions}</span>`);
   stats.innerHTML = parts.join(" ");
 
+  item.appendChild(checkbox);
   item.appendChild(dot);
   item.appendChild(typeIcon);
   item.appendChild(name);
@@ -3213,6 +3241,49 @@ function teardownScrollSpy() {
   }
 }
 
+function renderBulkButton(): void {
+  let bulkEl = document.querySelector<HTMLElement>(".sidebar-bulk-toolbar");
+  if (selectedFiles.size === 0) {
+    if (bulkEl) bulkEl.remove();
+    return;
+  }
+  if (!bulkEl) {
+    bulkEl = document.createElement("div");
+    bulkEl.className = "sidebar-bulk-toolbar";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "sidebar-bulk-mark-reviewed";
+    bulkEl.appendChild(btn);
+    btn.addEventListener("click", () => {
+      for (const path of selectedFiles) {
+        if (!state.read.has(path)) {
+          state.read.add(path);
+          const item = state.sidebarItems.get(path);
+          if (item) {
+            item.setAttribute("data-read", "");
+            const reviewed = item.querySelector<HTMLElement>(".sidebar-reviewed");
+            if (reviewed) reviewed.style.display = "";
+          }
+        }
+      }
+      selectedFiles.clear();
+      document.querySelectorAll<HTMLInputElement>(".sidebar-file-checkbox").forEach((cb) => {
+        cb.checked = false;
+      });
+      renderBulkButton();
+      renderReviewProgress();
+    });
+    fileListRoot.appendChild(bulkEl);
+  }
+  const btn = bulkEl.querySelector<HTMLButtonElement>(".sidebar-bulk-mark-reviewed");
+  if (btn) {
+    btn.textContent = `${t("sidebar.bulkDelete")} (${selectedFiles.size})`;
+  }
+  document.querySelectorAll<HTMLInputElement>(".sidebar-file-checkbox").forEach((cb) => {
+    cb.checked = selectedFiles.has(cb.dataset.path ?? "");
+  });
+}
+
 function setActiveFileInSidebar(file: string) {
   activeScrollSpyFile = file;
   for (const [path, item] of state.sidebarItems) {
@@ -3246,6 +3317,7 @@ function renderFilesPane() {
   } else {
     renderFlatSidebar(files);
   }
+  renderBulkButton();
 }
 
 function renderCommitsPane() {
