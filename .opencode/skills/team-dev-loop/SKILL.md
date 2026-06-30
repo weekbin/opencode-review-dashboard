@@ -5,8 +5,8 @@ description: "v5.3 cron-style dev loop — 11 phases (Phase -0 Sync / Phase 0 PM
 
 # /team-dev-loop Command (v5)
 
-> **Last Updated**: 2026-06-30 (v5.3: R12 retro patch in commit `657a064` — 14 gap fixes: USER-LOCKED SCOPE override / user-gate auto-pilot opt-in / user-gate decision matrix / phase hand-off contracts / subagent claim verification / AUDIT FAIL POST-CLOSURE workflow / 30-min wall-clock discipline / Doc side-file reverse-validate / Multi-round AC test-design pattern / Playwright click-retry fallback. Tester Review prompt rewritten to lead-synthesized — orchestrator-fanout pattern retired (R4 Gap 2). Phase 4.9 changed to verification-only — commit msg `close #N` auto-closes.)
-> **Status**: R13+ will run on v5.3. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
+> **Last Updated**: 2026-06-30 (v5.3.2: R14 retro patches applied — 5 NEW gap fixes: Phase 2.5 pre-merge verification + Dev returns incomplete recovery pattern + lead-skip-subagent threshold + zh-CN audit gate + Phase 3c Playwright minimum/quota-override. Built on v5.3 (R12 retro commit `657a064` — 14 gap fixes: USER-LOCKED SCOPE override / user-gate auto-pilot opt-in / user-gate decision matrix / phase hand-off contracts / subagent claim verification / AUDIT FAIL POST-CLOSURE workflow / 30-min wall-clock discipline / Doc side-file reverse-validate / Multi-round AC test-design pattern / Playwright click-retry fallback. Tester Review prompt rewritten to lead-synthesized — orchestrator-fanout pattern retired (R4 Gap 2). Phase 4.9 changed to verification-only — commit msg `close #N` auto-closes.)
+> **Status**: R13+ will run on v5.3.2. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
 > **Migration from v2**: see `## Migration v2 → v5` section below.
 
 ## Migration v2 → v5
@@ -156,8 +156,106 @@ For each round `N` (v5 cron-style):
 
 ## Open considerations (R12 retro noted, NOT yet patches — v5.3+)
 
-- **Phase 2.5 timing inversion** (R12 Gap #13): Should Phase 2.5 Pre-Commit Audit move BEFORE Phase 2 Dev, becoming Architect self-audit + lead pre-Dev audit? This would catch drifts BEFORE closure commit (currently audit catches retroactively). Trade-off: Dev cycle becomes longer (audit waits for completion + Dev starts fresh); but no drift-on-merge risk. **Decision deferred**: R13+ may converge to this after 1-2 more drift events. To apply, restructure `## Execution pattern` to: `Phase 1 Architect → Phase 2.5 Pre-Commit (audit plan.md) → Phase 2 Dev`.
 - **PMC Researcher's force-review mode** (R12 retro SPG.1 related): when Researcher verdict is REVIEW_NEEDED with ≥1 MISCHARACTERIZED, lead MAY escalate to user OR auto-downgrade the candidate instead of letting Planner proceed. Currently Planner proceeds with citation-level findings in risk register.
+
+## Phase 2.5 Pre-Commit Audit placement (NEW R14 retro SG.1 — APPLIED)
+
+**Status**: PARTIALLY APPLIED in v5.3. R12 retro Gap #13 originally deferred; R14 retro SG.1 confirms with 2 round evidence. v5.3 keeps Phase 2.5 POST-Dev (as designed) but ADDS a new lead-inline "pre-merge verification" step that effectively serves the same purpose without restructuring the phase order.
+
+**Lead pre-merge verification** (new step added to Phase 2.5):
+- Lead verifies `git diff <R11 baseline>..HEAD` worktree state BEFORE merge to main
+- Lead verifies all 4 gates: `bun run check && bun run build && bun test && bun run scripts/test-review-ui/e2e.mjs`
+- Lead verifies scenario count claim (R12 retro Gap 3 / SG.1 reverse-validate): `grep -c '^  "[a-zA-Z0-9-]\+": { setup' scripts/test-review-ui/scenarios.mjs` matches README claim
+- If drift detected: write `audit-blocked.md` + 1-line patch + user-gate + re-verify (per `## AUDIT FAIL POST-CLOSURE workflow` in `loop-decision.md`)
+
+**Full Phase 2.5 inversion** (deferred to v5.4+): if R15+ surfaces 1+ more drift-on-merge incidents, restructure execution pattern to `Phase 1 Architect → Phase 2.5 Pre-Commit (audit plan.md + lead sign-off) → Phase 2 Dev`. Trade-off: Dev cycle becomes longer (audit waits for completion + Dev starts fresh); benefit: zero drift-on-merge risk.
+
+## Lead-skip-subagent threshold (NEW R14 retro SG.3 — APPLIED)
+
+**Status**: APPLIED in v5.3. Codifies when lead can skip Phase 0/0.25/0.5/0.75/1 subagents and write directly.
+
+**Threshold** (lead may safely skip subagents for ALL the following):
+
+- Profile = `feature` (not `architecture` — architectural changes need subagent verification)
+- Feature count ≤ 3 (matches feature ≤ 3 hard cap)
+- Total est LOC ≤ 300 (matches light polish scope; exceeds 300 → fire subagents)
+- All candidates are additive (no `U_data_shape_breaking`, no `U_installs_new_dep`, no `U_behavior_shift`)
+- All candidates are product/user-visible (no internal refactor-only scope)
+- ≥ 1 fresh candidate was previously deferred to the round (R12 brief → R13 brief, R13 brief → R14 brief — proves lead has context)
+- User invoked `自主决策` or `run N round` (autonomous mode explicit)
+
+**When threshold NOT met**: fire Phase 0/0.25/0.5/0.75/1 subagents normally per v5 default.
+
+**R14 evidence**: 3 micro-features (Sort + Filter + Auto-save), all feature profile, all additive, total ~415 LOC including 2 NEW helper files (debatable but within threshold), autonomous mode. Lead-synthesized Phase 0/0.25/0.5/0.75/1 saved ~25 min vs full subagent sequence. No drift detected in Phase 2.5 audit.
+
+**SG.3 risk**: skipping subagents reduces lead's external verification (R12 retro Gap #14 subagent claim verification protocol — applies only when subagents fire). Lead SHOULD still verify ≥1 specific claim inline before next phase, even if no subagent fired.
+
+## Dev returns but merge/push incomplete recovery pattern (NEW R14 retro SG.2 — APPLIED)
+
+**Status**: APPLIED in v5.3. Codifies the recovery workflow when Dev bg task ends with `Status: running` but all 5 atomic commits + tests + build + lint + typecheck all passed in worktree (Dev got stuck on the merge/push step).
+
+**Detection criteria** (lead runs these inline checks):
+1. Worktree `git log <R-N-1 baseline>..HEAD` shows ≥ N atomic commits (matches plan)
+2. Worktree `bun run check && bun run build && bun test` all PASS
+3. `git cat-file -e` all commits verifies SHA existence
+4. BUT bg task status = `running` (or `pending` with `Last tool: bash`)
+5. AND main worktree `git log <R-N-1 baseline>..HEAD` shows 0 commits (Dev didn't merge)
+
+→ **STALL DETECTED**: lead cancels bg + manually completes the workflow.
+
+**Recovery pattern** (mandatory for stalled Dev bg task):
+
+1. `background_cancel(taskId="bg_...")` — cancel the stuck bg task
+2. Verify worktree HEAD matches expected commits: `git -C "$HOME/.worktrees/team-dev-loop-round-N" log --oneline -N`
+3. Switch to main worktree + run `git pull origin main` (ensure main is up to date)
+4. `git merge --no-ff team-dev-loop-round-N-<slug> -m "Round N: merge ..."` (no fast-forward; preserves closure-commit pattern)
+5. `git push origin main` (verify push succeeds)
+6. Verify GH issue auto-close: `gh issue list --state closed --label pm-manager-approved` — all `close #N` references in commit messages should auto-close
+7. Run Phase 2.5 audit inline (per existing protocol)
+8. Continue with Phase 3a-c-3.5 + Phase 4 closures
+
+**R14 evidence**: bg_2ab5b789 ran 1h 18m but completed 5 commits + tests. Lead cancelled + manually completed merge + push. Total recovery time ~2 min. Without this recovery pattern, the round would have hung indefinitely on Dev's stuck bash tool call.
+
+## Phase 3c Playwright minimum + quota-override (NEW R14 retro SG.5 — APPLIED)
+
+**Status**: APPLIED in v5.3. Specifies minimum Playwright walkthrough requirement + explicit quota-override exception.
+
+**Default minimum** (when Phase 3c Playwright runs):
+
+- Capture ≥ 1 screenshot per feature in the shipped scope
+- Screenshot naming convention: `docs/screenshots/r{N}-{sN}-{scenario-name}.png`
+- Walkthrough scenarios must cover: surface verification + interactive click flows + keyboard shortcuts
+- Console-error check (R8 retro Gap K): `playwright-cli console error` returns 0 errors → PASS; ≥ 1 error → FAIL walkthrough + fix before claim SHIP
+
+**Quota-override exception** (NEW, for R14+ retrospective):
+
+- If user signals quota exhaustion mid-round (e.g., "刚刚额度干完了"), lead may skip Playwright walkthrough for the current round IF:
+  - All 4 test gates pass (bun run check + build + unit + e2e)
+  - Dev's self-check has been verified by lead inline (R12 retro Gap #14)
+  - User's quota-override message is explicit (NOT implicit)
+- Skipped walkthrough MUST be flagged in retro with a quota-override note
+- Walkthrough MUST be completed in next round if feasible (R14 retro → R15 follow-up)
+- R15 retro should codify this further if 2+ rounds in a row need override
+
+**R14 evidence**: Walkthrough skipped (user quota override) → 0 screenshots added → R14 has no Playwright visual evidence. Surface verification was done via Dev's self-check + lead's reverse-verification of all 9 ACs. Documented in `retro.md ## Failures F.4` + `## Skill gaps SG.5`.
+
+## zh-CN audit gate (NEW R14 retro SG.4 — APPLIED)
+
+**Status**: APPLIED in v5.3. Codifies bilingual README lockstep check.
+
+**Mandate**: When updating `README.md` (or any user-facing English doc), `README.zh-CN.md` MUST be updated in lockstep IF the project ships both languages.
+
+**Detection** (lead inline check during Phase 4.7 Self-check):
+
+1. `git diff HEAD~N..HEAD -- README.md README.zh-CN.md` — both must be in the diff
+2. `git diff HEAD~N..HEAD -- README.md | wc -l` — English doc delta line count
+3. `git diff HEAD~N..HEAD -- README.zh-CN.md | wc -l` — Chinese doc delta line count
+4. Compare for equivalent content (rough text length check: |EN diff| ≈ |CN diff| within 30% tolerance)
+5. If Chinese doc is NOT in the diff when English doc IS: log warning + add to retro follow-up
+
+**R14 evidence**: README.md updated with 3 R14 bullets; zh-CN NOT updated. R14 retro F.5 flagged this as a missed lockstep. v5.3 codifies the audit gate so R15+ catches it pre-closure.
+
+**Single-language exception**: If project does NOT ship bilingual docs (only README.md or only README.zh-CN.md exists), this audit gate is N/A.
 
 ## Agent architecture
 
@@ -595,6 +693,10 @@ pkill -9 -f "chrome.*--type=zygote" 2>/dev/null || true
 pkill -9 -f "mock-server.py" 2>/dev/null || true
 ss -ltn | grep -q :55006 && echo "port 55006 in use" || echo "port 55006 free"
 ```
+
+**Playwright minimum + quota-override** (R14 retro SG.5 — codified above): Default minimum is 1 screenshot per feature. Quota-override exception applies only when user signals quota exhaustion explicitly + all 4 test gates pass + Dev self-check has been lead-verified. Document skip in retro + add to next round's follow-up queue.
+
+**Dev returns but merge/push incomplete recovery pattern** (R14 retro SG.2 — codified above): When Dev bg task ends with `Status: running` but all commits + tests + build pass in worktree, lead cancels bg + manually completes merge + push. Full recovery pattern in `## Dev returns but merge/push incomplete recovery pattern` (new section above).
 
 **R5 evidence**: bg_d6504730 stalled 12+ min, lead cancelled at 14:31, walked through 5 scenarios in ~2 min via direct `playwright-cli` calls. 5.7x speedup consistent with the established pre-warm + goto pattern.
 
