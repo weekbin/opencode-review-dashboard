@@ -659,3 +659,151 @@ describe("AC9.10 — Expand all state visible in toolbar (getCollapsedCount)", (
     expect(virtualizer.getCollapsedCount("count-test.ts")).toBe(0);
   });
 });
+
+const REVIEW_HTML = join(import.meta.dir, "..", "..", "src", "ui", "review.html");
+const I18N = join(import.meta.dir, "..", "..", "src", "ui", "i18n.ts");
+
+describe("AC11.1 — Diff virtualization toggle visible in settings modal Appearance section", () => {
+  it("review.html contains settings-virtualization-toggle checkbox in appearance section", async () => {
+    const html = await readSource(REVIEW_HTML);
+    expect(html).toMatch(/id="settings-virtualization-toggle"/);
+    expect(html).toMatch(/data-section="appearance"/);
+  });
+
+  it("toggle has data-i18n-title for description tooltip", async () => {
+    const html = await readSource(REVIEW_HTML);
+    expect(html).toMatch(/data-i18n-title="settings\.virtualization\.description"/);
+  });
+});
+
+describe("AC11.2 — Toggle defaults to ON", () => {
+  it("DiffVirtualizer with enabled=true creates observer", () => {
+    const container = fakeDoc.createElement("div");
+    const wrapper = fakeDoc.createElement("div");
+    wrapper.setAttribute("data-hunk", "0");
+    container.appendChild(wrapper);
+    const virtualizer = new DiffVirtualizer(container as unknown as HTMLElement, { enabled: true });
+    virtualizer.observe([wrapper as unknown as HTMLElement]);
+    expect(virtualizer).toBeDefined();
+  });
+
+  it("DiffVirtualizer observe() with enabled=true sets up IntersectionObserver", () => {
+    const container = fakeDoc.createElement("div");
+    const wrapper = fakeDoc.createElement("div");
+    wrapper.setAttribute("data-hunk", "0");
+    container.appendChild(wrapper);
+    const virtualizer = new DiffVirtualizer(container as unknown as HTMLElement, { enabled: true });
+    virtualizer.observe([wrapper as unknown as HTMLElement]);
+    expect(wrapper.hasAttribute("data-hunk")).toBe(true);
+  });
+});
+
+describe("AC11.3 — Toggle ON → IntersectionObserver virtualization works (R23 #47 regression)", () => {
+  it("observer.disconnect is called on DiffVirtualizer with enabled=true", () => {
+    const container = fakeDoc.createElement("div");
+    const wrapper = fakeDoc.createElement("div");
+    wrapper.setAttribute("data-hunk", "0");
+    container.appendChild(wrapper);
+    const virtualizer = new DiffVirtualizer(container as unknown as HTMLElement, { enabled: true });
+    virtualizer.observe([wrapper as unknown as HTMLElement]);
+    const disconnectSpy = vi.spyOn(FakeIntersectionObserver.prototype, "disconnect");
+    virtualizer.disconnect();
+    expect(disconnectSpy).toHaveBeenCalled();
+  });
+
+  it("DiffVirtualizer still uses [data-hunk] targets when enabled=true (R23 regression)", async () => {
+    const diffVirtSrc = await readSource(join(import.meta.dir, "diff-virtualization.ts"));
+    expect(diffVirtSrc).toMatch(/data-hunk/);
+    expect(diffVirtSrc).toMatch(/data-hunk-placeholder/);
+  });
+});
+
+describe("AC11.4 — Toggle OFF → all hunks render eagerly (no IntersectionObserver)", () => {
+  it("DiffVirtualizer with enabled=false does not set up IntersectionObserver", () => {
+    const container = fakeDoc.createElement("div");
+    const wrapper = fakeDoc.createElement("div");
+    wrapper.setAttribute("data-hunk", "0");
+    container.appendChild(wrapper);
+    const virtualizer = new DiffVirtualizer(container as unknown as HTMLElement, { enabled: false });
+    virtualizer.observe([wrapper as unknown as HTMLElement]);
+    expect(wrapper.hasAttribute("data-hunk")).toBe(true);
+  });
+
+  it("calling disconnect on disabled virtualizer does not throw", () => {
+    const container = fakeDoc.createElement("div");
+    const wrapper = fakeDoc.createElement("div");
+    wrapper.setAttribute("data-hunk", "0");
+    container.appendChild(wrapper);
+    const virtualizer = new DiffVirtualizer(container as unknown as HTMLElement, { enabled: false });
+    expect(() => virtualizer.disconnect()).not.toThrow();
+  });
+});
+
+describe("AC11.5 — Toggle state persists in localStorage diff-review:virtualization", () => {
+  it("localStorage key diff-review:virtualization is used", async () => {
+    const appSrc = await readSource(APP_TS);
+    expect(appSrc).toMatch(/diff-review:virtualization/);
+    expect(appSrc).toMatch(/isVirtualizationEnabled/);
+  });
+});
+
+describe("AC11.6 — R24 #49 per-hunk collapse still works regardless of toggle (regression)", () => {
+  it("toggleHunk works when enabled=false (collapse independent of virtualization)", () => {
+    const container = fakeDoc.createElement("div");
+    const wrapper = fakeDoc.createElement("div");
+    wrapper.setAttribute("data-hunk", "0");
+    wrapper.dataset.file = "test.ts";
+    wrapper.dataset.hunkStart = "1";
+    wrapper.dataset.hunkEnd = "10";
+    container.appendChild(wrapper);
+    const virtualizer = new DiffVirtualizer(container as unknown as HTMLElement, { enabled: false });
+    virtualizer.markHunkBoundaries([{ hunkIndex: 0, startLine: 1, endLine: 10 }], "test.ts");
+    expect(virtualizer.isCollapsed("test.ts", 0)).toBe(false);
+    virtualizer.toggleHunk("test.ts", 0);
+    expect(virtualizer.isCollapsed("test.ts", 0)).toBe(true);
+    virtualizer.toggleHunk("test.ts", 0);
+    expect(virtualizer.isCollapsed("test.ts", 0)).toBe(false);
+  });
+
+  it("expandAll/collapseAll work when enabled=false", () => {
+    const container = fakeDoc.createElement("div");
+    const virtualizer = new DiffVirtualizer(container as unknown as HTMLElement, { enabled: false });
+    virtualizer.markHunkBoundaries(
+      [{ hunkIndex: 0, startLine: 1, endLine: 10 }],
+      "file2.ts",
+    );
+    virtualizer.collapseAll("file2.ts");
+    expect(virtualizer.isCollapsed("file2.ts", 0)).toBe(true);
+    virtualizer.expandAll("file2.ts");
+    expect(virtualizer.isCollapsed("file2.ts", 0)).toBe(false);
+  });
+});
+
+describe("AC11.7 — 2 new STRINGS keys present in i18n.test.ts regression guard", () => {
+  it("i18n.test.ts contains settings.virtualization.label regression test", async () => {
+    const testSrc = await readSource(join(import.meta.dir, "..", "..", "src", "ui", "i18n.test.ts"));
+    expect(testSrc).toMatch(/settings\.virtualization\.label/);
+    expect(testSrc).toMatch(/Diff virtualization/);
+    expect(testSrc).toMatch(/Diff 虚拟化/);
+  });
+
+  it("i18n.test.ts contains settings.virtualization.description regression test", async () => {
+    const testSrc = await readSource(join(import.meta.dir, "..", "..", "src", "ui", "i18n.test.ts"));
+    expect(testSrc).toMatch(/settings\.virtualization\.description/);
+    expect(testSrc).toMatch(/Render only visible hunks for faster scrolling/);
+    expect(testSrc).toMatch(/仅渲染可见 hunk，加快滚动速度/);
+  });
+});
+
+describe("AC11.8 — Settings modal a11y preserved (R22 #44 installModalA11y regression)", () => {
+  it("app.ts still has installModalA11y for settings modal", async () => {
+    const src = await readSource(APP_TS);
+    expect(src).toMatch(/installModalA11y.*settingsModal/);
+  });
+
+  it("settings modal has role=dialog and aria-modal=true", async () => {
+    const html = await readSource(REVIEW_HTML);
+    expect(html).toMatch(/role="dialog"/);
+    expect(html).toMatch(/aria-modal="true"/);
+  });
+});

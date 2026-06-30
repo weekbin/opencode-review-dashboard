@@ -314,4 +314,19 @@ describe("AC1.2 — toggle re-renders static-HTML labels via registerUITranslato
     expect(i18n.includes('"Expand hunk"')).toBe(true);
     expect(i18n.includes('"展开 hunk"')).toBe(true);
   });
+
+  // R25 #51: STRINGS_USAGE_PLAN regression for settings.virtualization.label + description.
+  it("STRINGS['settings.virtualization.label'] has both en + zh-CN translations", async () => {
+    const i18n = await readSource(I18N);
+    expect(i18n.includes('"settings.virtualization.label":')).toBe(true);
+    expect(i18n.includes('"Diff virtualization"')).toBe(true);
+    expect(i18n.includes('"Diff 虚拟化"')).toBe(true);
+  });
+
+  it("STRINGS['settings.virtualization.description'] has both en + zh-CN translations", async () => {
+    const i18n = await readSource(I18N);
+    expect(i18n.includes('"settings.virtualization.description":')).toBe(true);
+    expect(i18n.includes('"Render only visible hunks for faster scrolling"')).toBe(true);
+    expect(i18n.includes('"仅渲染可见 hunk，加快滚动速度"')).toBe(true);
+  });
 });

@@ -21,6 +21,7 @@ export interface HunkRange {
 export interface DiffVirtualizerOptions {
   rootMargin?: string;
   onHunkVisibilityChange?: (hunkIndex: number, isVisible: boolean) => void;
+  enabled?: boolean;
 }
 
 export class DiffVirtualizer {
@@ -31,11 +32,13 @@ export class DiffVirtualizer {
   private hunkStates: Map<number, { wrapper: HTMLElement; isVisible: boolean }> = new Map();
   private collapsedHunks = new Map<string, Set<number>>();
   private hunkRanges: Map<string, HunkRange[]> = new Map();
+  private readonly enabled: boolean = true;
 
   constructor(container: HTMLElement, options: DiffVirtualizerOptions = {}) {
     this.container = container;
     this.rootMargin = options.rootMargin ?? "200px";
     this.onHunkVisibilityChange = options.onHunkVisibilityChange;
+    this.enabled = options.enabled ?? true;
   }
 
   /**
@@ -116,6 +119,8 @@ export class DiffVirtualizer {
    */
   observe(hunkWrappers: HTMLElement[]): void {
     this.disconnect();
+
+    if (!this.enabled) return;
 
     this.observer = new IntersectionObserver(
       (entries) => {

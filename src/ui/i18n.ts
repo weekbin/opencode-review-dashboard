@@ -76,6 +76,11 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "settings.search.history": { en: "Recent searches", "zh-CN": "最近搜索" },
   "settings.search.max": { en: "Max items", "zh-CN": "最多条数" },
   "settings.reset": { en: "Reset to defaults", "zh-CN": "恢复默认设置" },
+  "settings.virtualization.label": { en: "Diff virtualization", "zh-CN": "Diff 虚拟化" },
+  "settings.virtualization.description": {
+    en: "Render only visible hunks for faster scrolling",
+    "zh-CN": "仅渲染可见 hunk，加快滚动速度",
+  },
   "save.idle": { en: "All changes saved", "zh-CN": "所有更改已保存" },
   "save.fresh": { en: "Saved {seconds}s ago", "zh-CN": "{seconds} 秒前已保存" },
   "status.copiedMarkdown": { en: "Copied as Markdown", "zh-CN": "已复制为 Markdown" },

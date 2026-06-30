@@ -169,6 +169,8 @@ const THEME_KEY = "diff-review:theme-mode";
 const LAYOUT_KEY = "diff-review:diff-layout";
 const IGNORE_WHITESPACE_KEY = "diff-review:ignore-whitespace";
 const CONV_FILTER_KEY = "diff-review:conversation-filter";
+// R25 #51: diff virtualization toggle (default ON — renders all hunks eagerly when OFF).
+const DIFF_VIRTUALIZATION_KEY = "diff-review:virtualization";
 const ACTIVE_TAB_KEY = "diff-review:active-tab";
 // R14 #23: localStorage key for the Conversation-panel sort dropdown.
 // localStorage (not sessionStorage) so the choice survives a page reload,
@@ -1600,6 +1602,8 @@ registerUITranslator("settings.layout.unified", () => t("settings.layout.unified
 registerUITranslator("settings.layout.split", () => t("settings.layout.split"));
 registerUITranslator("settings.search.max", () => t("settings.search.max"));
 registerUITranslator("settings.reset", () => t("settings.reset"));
+registerUITranslator("settings.virtualization.label", () => t("settings.virtualization.label"));
+registerUITranslator("settings.virtualization.description", () => t("settings.virtualization.description"));
 
 // ── Layout toggle ──
 function applyLayout() {
@@ -1643,6 +1647,10 @@ ignoreWhitespaceToggle.addEventListener("click", () => {
   setIgnoreWhitespace(!state.ignoreWhitespace);
 });
 
+function isVirtualizationEnabled(): boolean {
+  return localStorage.getItem(DIFF_VIRTUALIZATION_KEY) !== "false";
+}
+
 // R21 #44: Settings modal
 const settingsOverlay = document.querySelector("#settings-overlay") as HTMLElement;
 const settingsModal = document.querySelector("#settings-modal") as HTMLElement;
@@ -1654,6 +1662,7 @@ const settingsSearchMaxSelect = document.querySelector("#settings-search-max") a
 const settingsResetBtn = document.querySelector("#settings-reset") as HTMLButtonElement;
 const settingsOkBtn = document.querySelector("#settings-ok") as HTMLButtonElement;
 const settingsCloseBtn = document.querySelector("#settings-close") as HTMLButtonElement;
+const settingsVirtualizationToggle = document.querySelector("#settings-virtualization-toggle") as HTMLInputElement;
 
 let settingsDispose: (() => void) | null = null;
 
@@ -1668,6 +1677,7 @@ function openSettingsModal(): void {
   } else {
     settingsSearchMaxSelect.value = max;
   }
+  settingsVirtualizationToggle.checked = isVirtualizationEnabled();
   settingsOverlay.hidden = false;
   settingsDispose = installModalA11y(settingsModal, closeSettingsModal);
 }
@@ -1708,6 +1718,9 @@ settingsLanguageSelect?.addEventListener("change", () => {
 settingsSearchMaxSelect?.addEventListener("change", () => {
   const val = settingsSearchMaxSelect.value;
   localStorage.setItem(SEARCH_HISTORY_MAX_KEY, val);
+});
+settingsVirtualizationToggle?.addEventListener("change", () => {
+  localStorage.setItem(DIFF_VIRTUALIZATION_KEY, String(settingsVirtualizationToggle.checked));
 });
 
 // ── Sidebar mode toggle ──
@@ -2776,7 +2789,7 @@ function createView(file: FileEntry, mount: HTMLElement) {
     lineAnnotations: diffAnnotations(file.path),
   });
 
-  const virtualizer = new DiffVirtualizer(mount);
+  const virtualizer = new DiffVirtualizer(mount, { enabled: isVirtualizationEnabled() });
   diffVirtualizers.set(file.path, virtualizer);
 
   const oldContent = state.ignoreWhitespace ? stripWhitespace(file.before || "") : file.before || "";
@@ -2843,7 +2856,7 @@ function createAddedFileView(file: FileEntry, mount: HTMLElement) {
     lineAnnotations: diffAnnotations(file.path),
   });
 
-  const virtualizer = new DiffVirtualizer(mount);
+  const virtualizer = new DiffVirtualizer(mount, { enabled: isVirtualizationEnabled() });
   diffVirtualizers.set(file.path, virtualizer);
 
   const newContent = state.ignoreWhitespace ? stripWhitespace(file.after || "") : file.after || "";
@@ -2906,7 +2919,7 @@ function createDeletedFileView(file: FileEntry, mount: HTMLElement) {
     lineAnnotations: diffAnnotations(file.path),
   });
 
-  const virtualizer = new DiffVirtualizer(mount);
+  const virtualizer = new DiffVirtualizer(mount, { enabled: isVirtualizationEnabled() });
   diffVirtualizers.set(file.path, virtualizer);
 
   const oldContent = state.ignoreWhitespace ? stripWhitespace(file.before || "") : file.before || "";
