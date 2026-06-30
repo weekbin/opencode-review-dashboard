@@ -1199,7 +1199,15 @@ Steps:
      - Usage example (CLI command, code snippet, or workflow)
 4. Optionally: update README.zh-CN.md (Chinese translation)
 5. Verify the README is now a complete product catalog: "what can this product do?" is fully answered
-6. Commit the README/docs changes (in worktree)
+6. **PRE-COMMIT verify (SG.R25.1)**: For each NEW section added, run `grep -c` counts on README.md AND README.zh-CN.md BEFORE git commit:
+   ```bash
+   # Example for a new section:
+   NEW_SECTION="Bulk delete in Conversation tab"
+   echo "README.md: $(grep -c "$NEW_SECTION" README.md)"
+   echo "README.zh-CN.md: $(grep -c "批量删除对话记录" README.zh-CN.md)"
+   # Counts MUST match (1=1 per language). If not, fix immediately BEFORE commit.
+   ```
+7. Commit the README/docs changes (in worktree)
 
 Output `.omo/round-N/doc-update-report.md`:
 
