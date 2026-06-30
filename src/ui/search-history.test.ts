@@ -27,6 +27,7 @@ import {
   getRecentSearches,
   MAX_RECENT,
   RECENT_SEARCHES_KEY,
+  removeRecentSearches,
   __testonlyClearRecentSearches,
 } from "./search-history";
 
@@ -282,5 +283,53 @@ describe("R22 #45 AC5.6 — max 5 cap + debounce preserved (no regression)", () 
       addRecentSearch(`q${i}`);
     }
     expect(getRecentSearches().length).toBe(MAX_RECENT);
+  });
+});
+
+describe("R23 #48 AC8.4 — removeRecentSearches removes selected entries from localStorage", () => {
+  it("removes the specified queries and returns the new list", () => {
+    addRecentSearch("alpha");
+    addRecentSearch("beta");
+    addRecentSearch("gamma");
+    addRecentSearch("delta");
+    const result = removeRecentSearches(["beta", "gamma"]);
+    expect(result).toEqual(["delta", "alpha"]);
+    expect(getRecentSearches()).toEqual(["delta", "alpha"]);
+  });
+
+  it("returns new list and updates localStorage atomically", () => {
+    addRecentSearch("one");
+    addRecentSearch("two");
+    addRecentSearch("three");
+    const result = removeRecentSearches(["two"]);
+    expect(result).toEqual(["three", "one"]);
+    expect(getRecentSearches()).toEqual(["three", "one"]);
+  });
+
+  it("deduping at add-time preserved after bulk remove", () => {
+    addRecentSearch("foo");
+    addRecentSearch("bar");
+    addRecentSearch("foo");
+    expect(getRecentSearches()).toEqual(["foo", "bar"]);
+    removeRecentSearches(["foo"]);
+    expect(getRecentSearches()).toEqual(["bar"]);
+  });
+});
+
+describe("R23 #48 AC8.6 — removeRecentSearches does not change localStorage key", () => {
+  it("still writes to diff-review:recent-searches key", () => {
+    addRecentSearch("x");
+    addRecentSearch("y");
+    removeRecentSearches(["x"]);
+    expect(fakeStorage.store.has(RECENT_SEARCHES_KEY)).toBe(true);
+    expect(RECENT_SEARCHES_KEY).toBe("diff-review:recent-searches");
+  });
+
+  it("removeRecentSearches is a no-op for empty queries array", () => {
+    addRecentSearch("a");
+    addRecentSearch("b");
+    const result = removeRecentSearches([]);
+    expect(result).toEqual(["b", "a"]);
+    expect(getRecentSearches()).toEqual(["b", "a"]);
   });
 });

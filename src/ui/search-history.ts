@@ -145,3 +145,19 @@ export function clearRecentSearches(): string[] {
   cancelPendingCommit();
   return [];
 }
+
+/**
+ * R23 #48 — Remove specific queries from recent searches.
+ * Filters out queries that match the given array (Set for O(1) lookup).
+ */
+export function removeRecentSearches(queries: string[]): string[] {
+  if (typeof localStorage === "undefined") return getRecentSearches();
+  const toRemove = new Set(queries);
+  const current = getRecentSearches().filter((q) => !toRemove.has(q));
+  try {
+    localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(current));
+  } catch {
+    // ignore
+  }
+  return current;
+}

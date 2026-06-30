@@ -1,5 +1,7 @@
 import { FileDiff, type DiffLineAnnotation } from "@pierre/diffs";
 
+import { DiffVirtualizer } from "./diff-virtualization";
+
 import { cycleTab, TAB_ORDER, tabIndexFor, type TabKey } from "../sidebar-keyboard";
 import { filterByQuery } from "../search-utils";
 import { sortConversationEntries, type SortFindingsBy } from "../sort-utils";
@@ -19,7 +21,7 @@ import {
 // R20 #40: sidebar review progress (X / Y reviewed + visual bar).
 import { formatReviewProgress } from "./review-progress";
 // R20 #42: in-diff search history (recent searches dropdown).
-import { addRecentSearch, clearRecentSearches, commitRecentSearch, commitRecentSearchImmediate, cancelPendingCommit, getRecentSearches, MAX_RECENT } from "./search-history";
+import { addRecentSearch, clearRecentSearches, commitRecentSearch, commitRecentSearchImmediate, cancelPendingCommit, getRecentSearches, MAX_RECENT, removeRecentSearches } from "./search-history";
 
 type Category = "bug" | "style" | "perf" | "question" | "recommend";
 type Severity = "high" | "medium" | "low";
@@ -920,6 +922,8 @@ function openDiffSearch(initialQuery: string | null = null): void {
   });
 
   // R20 #42: focus → show recent searches; blur → hide (with click guard).
+  // R23 #48: multi-select — module-level Set tracks checkbox selections.
+  let recentSearchSelected = new Set<string>();
   const showRecentSearches = () => {
     if (!diffSearch.history) return;
     const recent = getRecentSearches().filter((entry) => entry !== (diffSearch.input?.value ?? ""));
@@ -927,23 +931,26 @@ function openDiffSearch(initialQuery: string | null = null): void {
       diffSearch.history.hidden = true;
       return;
     }
+    // R23 #48: reset selection on every re-render (mutually exclusive with Clear).
+    recentSearchSelected = new Set<string>();
     diffSearch.history.innerHTML = "";
     const title = document.createElement("div");
     title.className = "diff-search-history-title";
     title.textContent = t("search.recent.title");
     diffSearch.history.appendChild(title);
 
-    const clearBtn = document.createElement("button");
-    clearBtn.type = "button";
-    clearBtn.className = "diff-search-history-clear";
-    clearBtn.setAttribute("data-i18n", "search.recent.clear");
-    clearBtn.textContent = t("search.recent.clear");
-    clearBtn.addEventListener("click", () => {
+    // R23 #48: when ≥1 selected → "Delete selected"; when 0 → "Clear" (R22).
+    const actionBtn = document.createElement("button");
+    actionBtn.type = "button";
+    actionBtn.className = "diff-search-history-clear"; // keep same class for styling
+    actionBtn.setAttribute("data-i18n", "search.recent.clear");
+    actionBtn.textContent = t("search.recent.clear");
+    actionBtn.addEventListener("click", () => {
       clearRecentSearches();
       showRecentSearches();
       showToast(t("search.recent.clear.confirm"));
     });
-    diffSearch.history.appendChild(clearBtn);
+    diffSearch.history.appendChild(actionBtn);
 
     for (const entry of recent) {
       const item = document.createElement("button");
@@ -953,6 +960,39 @@ function openDiffSearch(initialQuery: string | null = null): void {
       item.dataset.query = entry;
       item.textContent = entry;
       diffSearch.history.appendChild(item);
+
+      // R23 #48: per-item checkbox for multi-select bulk delete.
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.className = "diff-search-history-checkbox";
+      checkbox.dataset.query = entry;
+      checkbox.setAttribute("aria-label", t("search.recent.select"));
+      checkbox.addEventListener("change", () => {
+        if (checkbox.checked) {
+          recentSearchSelected.add(entry);
+        } else {
+          recentSearchSelected.delete(entry);
+        }
+        // Mutually exclusive: update button text + behavior based on selection count.
+        if (recentSearchSelected.size > 0) {
+          actionBtn.textContent = `${t("search.recent.bulkDelete")} (${recentSearchSelected.size})`;
+          actionBtn.setAttribute("data-i18n", "search.recent.bulkDelete");
+          actionBtn.onclick = () => {
+            removeRecentSearches([...recentSearchSelected]);
+            recentSearchSelected = new Set<string>();
+            showRecentSearches();
+          };
+        } else {
+          actionBtn.textContent = t("search.recent.clear");
+          actionBtn.setAttribute("data-i18n", "search.recent.clear");
+          actionBtn.onclick = () => {
+            clearRecentSearches();
+            showRecentSearches();
+            showToast(t("search.recent.clear.confirm"));
+          };
+        }
+      });
+      diffSearch.history.insertBefore(checkbox, item);
     }
     diffSearch.history.hidden = false;
   };
@@ -1951,6 +1991,8 @@ let dragPreviewWidth = 0;
 let activeScrollSpyFile: string | null = null;
 let scrollSpyObserver: IntersectionObserver | null = null;
 let priorNotesController: AbortController | null = null;
+// R23 #47: per-file diff virtualizers (keyed by file path)
+const diffVirtualizers = new Map<string, DiffVirtualizer>();
 
 // R8 #1: in-tab search state — survives tab switches within the session.
 let currentSearchQuery = "";
@@ -2731,6 +2773,9 @@ function createView(file: FileEntry, mount: HTMLElement) {
     lineAnnotations: diffAnnotations(file.path),
   });
 
+  const virtualizer = new DiffVirtualizer(mount);
+  diffVirtualizers.set(file.path, virtualizer);
+
   return {
     kind: "diff" as const,
     instance,
@@ -2784,6 +2829,9 @@ function createAddedFileView(file: FileEntry, mount: HTMLElement) {
     lineAnnotations: diffAnnotations(file.path),
   });
 
+  const virtualizer = new DiffVirtualizer(mount);
+  diffVirtualizers.set(file.path, virtualizer);
+
   return { kind: "diff" as const, instance };
 }
 
@@ -2833,6 +2881,9 @@ function createDeletedFileView(file: FileEntry, mount: HTMLElement) {
     containerWrapper: mount,
     lineAnnotations: diffAnnotations(file.path),
   });
+
+  const virtualizer = new DiffVirtualizer(mount);
+  diffVirtualizers.set(file.path, virtualizer);
 
   return { kind: "diff" as const, instance };
 }
@@ -4525,6 +4576,10 @@ function renderDiffPanel() {
   diffSearch.currentIndex = -1;
   updateDiffSearchCounter();
   diffsRoot.innerHTML = "";
+  for (const v of diffVirtualizers.values()) {
+    v.disconnect();
+  }
+  diffVirtualizers.clear();
   state.views.clear();
   state.cards.clear();
 

@@ -56,6 +56,8 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "search.recent.title": { en: "Recent searches", "zh-CN": "最近搜索" },
   "search.recent.clear": { en: "Clear", "zh-CN": "清空" },
   "search.recent.clear.confirm": { en: "Recent searches cleared", "zh-CN": "最近搜索已清空" },
+  "search.recent.select": { en: "Select", "zh-CN": "选择" },
+  "search.recent.bulkDelete": { en: "Delete selected", "zh-CN": "删除选中" },
   "toolbar.settings": { en: "Settings", "zh-CN": "设置" },
   "settings.title": { en: "Settings", "zh-CN": "设置" },
   "settings.section.appearance": { en: "Appearance", "zh-CN": "外观" },
