@@ -78,6 +78,24 @@ If you review pull requests or diffs on a regular basis, this saves you the back
 
 *Skip-to-content link at the top of every page. Sidebar tabs have proper `role="tablist"` / `role="tab"` ARIA semantics. Auto-save indicator has `role="status"` so screen readers announce save state. All modals trap focus and close on Escape.*
 
+### Sidebar review progress indicator
+
+![Sidebar showing "1 / 3 reviewed (33%)" progress counter](docs/screenshots/r20-s1-progress-1of3.png)
+
+*Live counter at the top of the sidebar — "X / Y reviewed (Z%)" with a subtle progress bar — so you can see at a glance how much of the diff you've worked through. Updates the moment you click the read button on a file card.*
+
+### Filter to unread files only
+
+![Sidebar filter chip "Show only unread" — read files hidden](docs/screenshots/r20-s2-filter-active.png)
+
+*Toggle the "Show only unread" chip in the sidebar header to hide files you've already marked as reviewed. State persists across reloads. Mirrors GitLab MR's "Hide reviewed" toggle.*
+
+### Recent searches dropdown
+
+![In-diff search bar focused showing recent searches dropdown](docs/screenshots/r20-s1-progress-1of3.png)
+
+*Focus the in-diff search bar (`Ctrl+F` / `Cmd+F`) to see your last 5 searches as a dropdown. Click any recent search to re-run it. State persists across reloads.*
+
 ### IME-safe search
 
 ![Search box with Chinese IME composition active](docs/screenshots/r17-ime-composition.png)

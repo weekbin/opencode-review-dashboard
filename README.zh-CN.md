@@ -78,6 +78,24 @@
 
 *每页顶部都有「跳到主要内容」链接。侧边栏标签带有正确的 `role="tablist"` / `role="tab"` ARIA 语义。自动保存指示器带有 `role="status"`，让屏幕阅读器朗读保存状态。所有弹窗都启用焦点陷阱，并支持 Escape 键关闭。*
 
+### 侧边栏审查进度指示器
+
+![侧边栏显示「1 / 3 reviewed (33%)」进度计数器](docs/screenshots/r20-s1-progress-1of3.png)
+
+*侧边栏顶部有实时计数器 —「X / Y reviewed (Z%)」并配有一条细长的进度条 — 这样你可以一眼看出已经审查过多少文件。点击文件卡上的 read 按钮后计数器会立即更新。*
+
+### 仅显示未审查文件
+
+![侧边栏筛选 chip「仅显示未审查」 — 已审查的文件被隐藏](docs/screenshots/r20-s2-filter-active.png)
+
+*在侧边栏顶部切换「仅显示未审查」chip 来隐藏已经标记为已审查的文件。状态在刷新后会保留。和 GitLab MR 的「Hide reviewed」开关一致。*
+
+### 最近搜索下拉
+
+![聚焦的 diff 搜索栏显示最近搜索下拉](docs/screenshots/r20-s1-progress-1of3.png)
+
+*聚焦 diff 搜索栏（`Ctrl+F` / `Cmd+F`）会显示你最近 5 次搜索作为下拉菜单。点击任何最近搜索可重新运行。状态在刷新后会保留。*
+
 ### IME 安全的搜索
 
 ![搜索框激活了中文 IME 组合输入](docs/screenshots/r17-ime-composition.png)
