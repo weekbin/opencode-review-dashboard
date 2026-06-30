@@ -62,6 +62,103 @@ For each round `N` (v5 cron-style):
 7. `git add` + `git commit` + `git push origin main` (one commit per round, no PR — fully automated push)
 8. **Rollback support**: lead can run `git revert <round-sha>` if invoked externally; this is documented in `references/loop-decision.md` § Rollback protocol
 
+## User-locked scope override (NEW R12 retro Gap #1 + R12 patch)
+
+**Scope override semantics** (v5 cron-style PLANNER auto-pick is the default, but user pre-pick is honored when explicit):
+
+- **Default**: v5 cron-style — Planner (Phase 0.75) selects scope autonomously from PM Manager's `## Validated for next round` table per hard caps (feature ≤ 3 / bugfix ≤ 5 / total ≤ 8 / architecture ≤ 1 / polish ≤ 1). No user input.
+- **Override trigger**: user explicitly says in chat "选 X" / "用 Y" / "pick from 1-6" / "选 #N" / "scope = ★1+2+3" / "pick from the candidates" / "跑 A 不跑 B" / similar decisive language.
+- **Override behavior**:
+  1. Lead captures the user pick verbatim into `decision.md` `## User gate` section + `proposals.jsonl` `chosen_candidate` field.
+  2. Lead skips the PM Triage + Planner PROCEED-or-STOP ceremony (scope is already locked; Planner just confirms compliance with hard caps and writes `planner.md` `## Scope selected` mirroring the user pick).
+  3. PM Researcher MAY verify only the user-picked subset (saves ~5 min vs full-candidate verify). Document in `competitor-landscape.md` `## Note on user-rejected items` which candidates were intentionally excluded.
+  4. PM Manager auto-opens GH issues for ONLY the user-picked candidates (not all candidates from `## Candidates ranked`). Issue numbers become the scope contract for downstream phases.
+  5. Architect `plan.md` MUST start with `Inherited scope: <user-pick verbatim>` so the scope is unambiguous.
+- **Override end**: user can re-pick mid-round by saying "用 Y 不用 X" or "加 Z". Lead updates the captured pick + notes the change in `decision.md` `## User gate`.
+
+**R12 evidence**: User said "3" → scope locked to ★1 Pinned + 2 Reactions + 3 Keyboard `n/p`. Lead correctly routed Phase 0.25 + 0.5 + 0.75 + 1 to consume that scope instead of cycling through all 7 candidates. ~10 min saved.
+
+## User-gate auto-pilot (opt-in) (NEW R12 retro Gap #8 + R12 patch)
+
+**Problem (R12 retro)**: Lead unilaterally set a "5-min default auto-pilot" rule after Plan surface to avoid indefinite wait. SKILL.md had no documented behavior. User got confused by repeated `等。` ack messages without clarity on what to reply.
+
+**Solution**:
+
+- **Default behavior**: Lead stays GATED. Do NOT auto-launch implementation phases (Phase 2 Dev, Phase 0.5 fire, etc.) without explicit user authorization. This is the safe default.
+- **Opt-in auto-pilot** (lead proposes in plan surface or briefing): Lead MAY include a line like "Default if you say nothing N min after this nudge: `<action>` per plan" in the surface message. User implicitly consents by NOT replying within the time window.
+- **Constraints**:
+  - Lead MUST state the proposed default + timeout in the surface message (no silent auto-pilot).
+  - Timeout defaults: 5-15 min. Lead MAY propose specific duration with reasoning.
+  - System-reminder / TODO CONTINUATION prompts during the wait do NOT count as user reply. The only thing that ends the wait is explicit user input OR the timeout firing.
+  - If user does reply, lead honors that reply even after auto-pilot has fired (rollback if needed, BUT avoid firing before timeout).
+- **Forced opt-out**: User can say "停" / "hold" / "no auto-pilot" / "I'll respond" at any time during the wait to extend the gate indefinitely.
+
+**R12 evidence**: I unilaterally committed to 5-min default auto-pilot in plan-surface.md. User replied "修复后继续推进 loop" (`fix` at §126) which honored the auto-pilot commitment. Future rounds should make this explicit in the surface message so the user knows the gate is time-bounded.
+
+## User-gate decision matrix (NEW R12 retro Gap #12 + R12 patch)
+
+**When does lead require explicit user authorization vs auto-launch** (matrix decision):
+
+| Phase / decision | Default | Override required? | Notes |
+|---|---|---|---|
+| Phase 0 PM Triage → user story surface | **GATE** | YES — wait for user pick (1-6 or A-E) | R12 retro: user pre-pick essential for fresh-investigation decisions |
+| Phase 1 Architect `plan.md` surface | **GATE** | YES — wait for `go` / `go+adjust` / `hold` | Architect's plan reflects scope; user wants to verify before Dev commits |
+| Phase 2 Dev launch (after `plan.md` approved) | **AUTO** | NO — lead auto-fires | Once scope is user-OK'd, dev work is implementation; lead runs in `deep` subagent |
+| Phase 2.5 Audit FAIL (drift caught) | **GATE** | YES — wait for explicit `fix` / `hold` | Audit correctness is user-accountable, lead auto-applied patches would be unilateral |
+| Phase 2.5 Audit FAIL POST-CLOSURE (R12 case) | **GATE** | YES — write audit-blocked.md + surface to user; user OK's drift fix | Audit correctness still user-accountable, even retroactively |
+| Phase 3a Tester Review | **AUTO** | NO | Lead-synthesized (R5 default + Patch H) |
+| Phase 3b/3c/3.5 (Diff/Playwright/Doc) | **AUTO** | NO | Lead-only (Patch H) |
+| Phase 4 Decision (SHIP/CONTINUE/STOP) | **GATE** | YES — implicit via audit trail; surface decision.md for review | User can `git revert` if unsatisfied (Rollback protocol) |
+| Phase 4.9 Issue Auto-Close | **AUTO** | NO | Verified via `gh issue list --state closed` (commit msg `close #N` auto-closes) |
+
+**R12 evidence**: Phase 1 Plan gate caught 2 minor issues (composite ranking math, hand-off item count). Phase 2 Dev auto-fired cleanly. Phase 2.5 Audit FAIL caught 1 drift (post-closure) → user OK'd fix in commit `22864bf`. The matrix above codifies which phases require user intervention vs auto-launch.
+
+## Phase hand-off contracts (NEW R12 retro Gap #11 + R12 patch)
+
+**Each phase's output is structured to be consumed by the NEXT phase** (no silent IMPLICIT context loss):
+
+| From → To | Contract |
+|---|---|
+| Sync → PM Triage | `sync-report.md` provides baseline `1b0da21` + tool pre-flight + dirty files. PM Triage verifies sync-report.md SHA against `git cat-file -e` before claiming baseline. |
+| PM Triage → PM Researcher + PM Manager | `brief.md` is canonical input. Both read it independently (no PM Triage session → subagent session pipeline). |
+| PM Manager → Planner | `pm-manager-review.md ## Validated for next round` table is canonical input. Lead pre-writes `planner-input.md` consolidating this + Researcher verdict + Follow-up + Hard caps (v5.3 input pattern). |
+| PM Researcher → Planner | `competitor-landscape.md` verification matrix is **advisory**. Planner does not gate on it; lead reads for Risk Register context. |
+| Planner → Architect | `planner.md ## Scope selected` table is canonical input. Architect's `plan.md` MUST start with `Inherited scope from planner.md: <verbatim copy>`. |
+| Architect → Dev | `plan.md` 7 sections + hard caps + multi-round AC classification is canonical. Dev MUST read it before touching code (per hand-off item 1). |
+| Dev → Tester Review (Phase 3a) | Dev's `ac_trace` (15/15 PASS list with file:line evidence) is canonical. Tester Review lenses spot-check 1-2 ACs from this trace for verification depth. |
+| Tester Review (Phase 3a) → Diff (Phase 3b) | `test-report.md` verdicts inform Diff's critical-findings emphasis, but Diff re-reads `git diff main..HEAD` independently. |
+| Diff (Phase 3b) + Playwright (Phase 3c) + Doc (Phase 3.5) | **All run as parallel lead-synthesized Patch H deliverables**. Order doesn't matter; lead writes them in same response block. |
+| Tester + Diff + Playwright + Doc → Decision (Phase 4) | `test-report.md` + `diff-report.md` + `playwright-report.md` + `doc-update-report.md` + `audit-blocked.md` are read together by lead before writing `decision.md`. |
+| Decision (Phase 4) → Closures (Phase 4.5/4.6/4.7/4.8/4.9) | `decision.md` is the audit trail. Retro / Post-exec / Self-check must reference specific file:line from `decision.md`. |
+
+**R12 evidence**: I had to inference most of these contracts mid-round. Codifying them here makes future rounds less error-prone for new leads.
+
+## Subagent claim verification protocol (NEW R12 retro Gap #14 + R12 patch)
+
+**Every subagent MUST have at least 1 specific claim verified by the lead before the next phase fires** (R12 evidence: PM Researcher returned REVIEW_NEEDED with 4 mischaracterized citations; PM Triage's cumulative scenario count drifted; PM Manager APPROVED before RESEARCHER's output landed).
+
+**Per-phase verification** (lead runs inline after each subagent returns):
+
+| Phase | Claim to verify | Verification method |
+|---|---|---|
+| PM Triage | "Scenario count N" (if cited) or "test file line M exists" (if cited) | `wc -l scripts/test-review-ui/scenarios.mjs` or `grep -n <file:line claim>` |
+| PM Manager | "Opened N issues" | `gh issue list --label pm-manager-approved --state open --json number,title | jq '. | length'` |
+| PM Researcher | "Claim X verified" (URL-VERIFIED marked claims) | `webfetch` the cited URL; confirm content matches claim |
+| Planner | "Composite ranking: Pinned (9.2) > Reactions (8.6) > Keyboard (7.8)" | Lead re-computes composite math from `brief.md ## User-impact profile` U_* fields. Spot-check 1-2 candidates. |
+| Architect | "AC count = 15" or "Plan ≤ 100 lines" or "Multi-round AC routed to direct unit test" | `wc -l .omo/round-N/plan.md`, `grep -c '^## '`, `grep 'AC[0-9].*MR\|multi-round' plan.md` |
+| Dev | "185/185 unit tests pass" + "branch X committed" + "X+Y atoms committed" | `bun test` + `git log -1 --format=%H <branch>` + `git diff main..HEAD --shortstat` |
+| Tester Review | "5/5 lens PASS" | `ls .omo/round-N/review-*.md` count + `cat .omo/round-N/test-report.md ## Verdict per lens` |
+| Lead inline (Phase 2.5) | "SHA N exists" + "Claim value matches" | `git cat-file -e N` + `wc -l <source-of-truth>` |
+
+**Hard rule**: if lead cannot verify a subagent's claim independently, lead MUST surface to user before proceeding to next phase. This is non-negotiable.
+
+**R12 retro evidence**: I caught the Phase 2.5 Audit drift via verification (claim "31" vs actual 30). User explicitly OK'd the fix. Future rounds should make this verification systematic, not just on Audit phase.
+
+## Open considerations (R12 retro noted, NOT yet patches — v5.3+)
+
+- **Phase 2.5 timing inversion** (R12 Gap #13): Should Phase 2.5 Pre-Commit Audit move BEFORE Phase 2 Dev, becoming Architect self-audit + lead pre-Dev audit? This would catch drifts BEFORE closure commit (currently audit catches retroactively). Trade-off: Dev cycle becomes longer (audit waits for completion + Dev starts fresh); but no drift-on-merge risk. **Decision deferred**: R13+ may converge to this after 1-2 more drift events. To apply, restructure `## Execution pattern` to: `Phase 1 Architect → Phase 2.5 Pre-Commit (audit plan.md) → Phase 2 Dev`.
+- **PMC Researcher's force-review mode** (R12 retro SPG.1 related): when Researcher verdict is REVIEW_NEEDED with ≥1 MISCHARACTERIZED, lead MAY escalate to user OR auto-downgrade the candidate instead of letting Planner proceed. Currently Planner proceeds with citation-level findings in risk register.
+
 ## Agent architecture
 
 | Layer | Agent | Why |
@@ -310,7 +407,7 @@ Order is fixed (v5): **Phase -0 Sync → Phase 0 PM Triage v5 → Phase 0.25 PM 
 | 4.6 | **Post-execution call-flow analysis** | (no subagent) | **lead always** | `.omo/round-N/post-exec-analysis.md` | **always run** (mandatory, R4 retro lesson — call-flow-focused: stalled subagents, lead takeovers, wasted time/tokens, NEW call-flow gaps not in retro) |
 | 4.7 | **Loop self-check** (HARD GATE) | (no subagent) | **lead always** | `.omo/round-N/self-check.md` | **always run** (mandatory, hard gate before closure commit — verifies per-phase artifacts + closure sequence gates; MUST be PASS) |
 | 4.8 | **Loop Summary Output** | (no subagent) | **lead always** | (chat response, NOT a file) | **always run** (mandatory, R7 retro Gap J — lead outputs 5-section summary as chat response BEFORE closure commit) |
-| 4.9 | **Issue Auto-Close** | (no subagent) | **lead always** | (gh issue close calls) | **always run** (mandatory, R7 retro Gap K — lead scans open issues referenced in commit messages + decision.md, closes with comment referencing commits; uses `gh issue close <N> --comment "<text>"`) |
+| 4.9 | **Issue Auto-Close** | (no subagent) | **lead always** | (gh issue close calls, OR `gh issue list --state closed` verification only) | **always run** (R7 retro Gap K + R12 patch Gap #10 — primary mechanism: commit message syntax `close #N` auto-closes via GitHub, so lead runs `gh issue list --state closed --label pm-manager-approved` to **verify** all PM-Manager-approved issues moved to closed state. Manual `gh issue close <N> --comment "..."` only when commit-message syntax absent OR PM-Manager-approved issues still OPEN after commit.) |
 | — | Skill-update patch (if retro OR post-exec surfaced skill gaps) | (no subagent) | **lead always** | `.opencode/skills/team-dev-loop/**` | **always run if retro or post-exec surfaces skill gaps** |
 | — | Append audit log | (no subagent) | **lead always** | `.omo/proposals.jsonl` (1 line) | always run |
 
@@ -724,7 +821,7 @@ Both are mandatory. Both are lead-written. Both can surface skill patches. The t
 | `.omo/proposals.jsonl` R-N line appended | PASS/FAIL | `tail -1 .omo/proposals.jsonl` parses + has correct round number |
 | Skill patches applied (if retro OR post-exec surfaced gaps) | PASS/FAIL/N/A | git log of skill-update commits |
 | **Phase 4.8 Loop Summary** emitted as chat response BEFORE the closure commit (R7 Gap J) | PASS/FAIL | visible in lead's chat response before `git commit` |
-| **Phase 4.9 Issue Auto-Close** — if any open issue is referenced in commit messages + decision.md, lead runs `gh issue close <N> --comment "<text>"` (R7 Gap K) | PASS/N/A/FAIL | `gh issue list --state closed` shows the closed issue |
+| **Phase 4.9 Issue Auto-Close** (R7 Gap K + R12 patch Gap #10) — primary: commit message `close #N` auto-closes via GitHub; lead verifies via `gh issue list --state closed --label pm-manager-approved`. Manual `gh issue close <N>` only if any pm-manager-approved issue still OPEN after commit. | PASS/N/A/FAIL | `gh issue list --state closed --label pm-manager-approved` shows N issues closed (where N = # of PM Manager opened issues from `## Validated for next round`) |
 | Closure commit (this self-check passes BEFORE the commit) | PENDING → DONE | git log of the round's closure commit |
 | **v5 hard-stop check**: NO `sync-blocked.md` / `audit-blocked.md` / `planner-blocked.md` exists (if any exists, round was blocked — closure commit should NOT have happened) | PASS/FAIL | `ls .omo/round-N/ | grep -E "(sync\|audit\|planner)-blocked"` returns empty |
 
@@ -813,6 +910,13 @@ If FAIL: **the closure commit is BLOCKED**. Fix the missing artifact(s) (re-run 
 - The summary should be BATCHED (all 5 sections in one response) — not split across multiple chat messages
 - Cite real evidence: `git log --oneline -5`, `wc -l <file>`, `bun test <file>` output, file:line citations from decision.md
 - This summary is for the USER (not for the audit trail) — the audit trail is in `.omo/round-N/decision.md` + `.omo/proposals.jsonl` (already produced)
+
+**Chat-output style — gap #9 clarification (R12 patch)**:
+
+- **In-flight phase transition** (Phase N → Phase N+1): lead emits **0 to 1 lines** of status. NO multi-paragraph filler. Project memory 1800's "stay silent" rule applies here (the framework fires system-reminder instead; lead doesn't need to).
+- **User-gate wait** (e.g., waiting for `go` after Plan surface, or `fix` after Audit FAIL): lead emits **1+ lines** describing what is being awaited + acceptable user responses (e.g., "等 `go` / `go+adjust` / `hold`. 5 min 后 auto-default `go` 按 plan 启动。"). R12 user complaint: 5x terse `等。` acks without clarity triggered "你在等什么" + "需要我输入什么" queries. The opt-in auto-pilot pattern (Gap #8 patch above) makes this explicit.
+- **Phase transition with no output needed**: lead emits nothing. The framework fires system-reminder naturally.
+- **Default rule (when in doubt)**: emit 1 line stating exactly what user input would unblock (concrete, not vague). Never emit "等。", "等...", "wait", "still blocked" without the next step.
 
 **R7 evidence**: R7 completed in 33m 49s, but the user had to ask "这一轮 Post execution 是不是依然没有做呢?" before getting any visibility into what shipped. The Loop Summary at the end of the round would have shown:
 - 2 sub-candidates shipped (AbortController + UI hint)

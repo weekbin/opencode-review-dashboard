@@ -335,9 +335,26 @@ Return value to lead: {
 
 If verdict is FAIL or PARTIAL → iterate on code before returning. Do not return a failing self-check.
 
-### Doc side-file checklist (R5 retro Gap 3 — MANDATORY before commit)
+### Doc side-file checklist (R5 retro Gap 3 + R12 patch Gap #4 — MANDATORY before commit)
 
-**Why**: R5's Dev updated main `README.md` e2e scenario count from 10 → 15 but forgot to update `scripts/test-review-ui/README.md:20` which still said "14 git scenarios". Lead caught this in Phase 3b review, but the drift should have been caught at Dev commit time.
+**Why**: R5's Dev updated main `README.md` e2e scenario count from 10 → 15 but forgot to update `scripts/test-review-ui/README.md:20` which still said "14 git scenarios". Lead caught this in Phase 3b review, but the drift should have been caught at Dev commit time. R12 hit this AGAIN: Dev claimed `31 e2e scenarios` per plan.md hand-off items (which computed `25 + 6`), but actual pre-R12 scenario count was 24, so real total was 30. README + scripts README drifted by 1, audit-blocked.md was written, drift-fix commit `22864bf` shipped — all because Dev didn't reverse-validate against source-of-truth.
+
+**Mandatory reverse-validate before claiming any count** (R12 patch Gap #4 NEW STEP — BEFORE the git grep):
+
+```bash
+# Step 1: Reverse-validate against source-of-truth (R12 regression defense)
+# If your return value or commit message states a numeric claim (scenario count, test count, LOC, etc.),
+# run the source-of-truth count and verify before pushing.
+
+# Example for e2e scenarios (common R12 case):
+echo "actual e2e scenario count: $(grep -oE '^  \"[a-z][a-z-]+\": \\{ setup:' scripts/test-review-ui/scenarios.mjs | wc -l)"
+
+# Example for unit tests:
+echo "actual unit test count: $(grep -rcE '^\\s*(test|it)\\s*\\(' src/ 2>/dev/null | awk -F: '{sum += $2} END {print sum}')"
+
+# Verify your claimed number matches the actual
+# If mismatch: STOP. Fix the count claim OR fix the source. Don't push.
+```
 
 **Mandatory checklist before pushing** (apply to ANY number-change, section-add, or label-rename in primary user-facing docs):
 
@@ -357,8 +374,67 @@ Specifically for the common case of scenario/test count changes:
 
 **R5 evidence**: `git grep -l "14 git scenarios"` returned `README.md` (correctly updated to 15) + `scripts/test-review-ui/README.md` (forgot). Lead caught the drift in Phase 3b diff-review. The 1-line fix was applied in R5 closure commit.
 
+**R12 evidence**: Dev claimed `31 e2e scenarios` per plan.md (25+6 math) but actual was 30 (24+6). The git grep step alone doesn't catch arithmetic errors in source-number → it catches only stragglers. **Step 1 (reverse-validate) is the only defense against this regression. Apply it.**
+
 Apply this checklist as part of Step 7 (commit strategy) for any Doc-change task.
 ```
+
+### 30-min wall-clock discipline (R12 patch Gap #5 — NEW)
+
+**Why** (R12 evidence): R12 Dev timed in at **56m 59s** wall-clock for a `feature` profile (30-min timeout budget). 87% over-budget. Of that, Dev transcript shows ~3 min on `bun run scripts/test-review-ui/e2e.mjs` serial re-runs to verify each commit's e2e scenarios one-by-one, plus ~5 min on snapshot-test inversion iterations after typing prompt quirks (`bun test -u` loops).
+
+**Mandatory wall-clock discipline** for Dev:
+
+1. **Pre-flight, then bulk**: Run a single e2e scenario + 1 `bun test` invocation early to verify harness setup. If either fails, fix before commit. Once setup is verified, batch subsequent runs in parallel where safe.
+
+2. **Avoid serial re-runs**: `bun run scripts/test-review-ui/e2e.mjs` runs the FULL suite each time (~30-60s depending on machine). To verify 1 new scenario, invoke the script's NEW scenario in isolation if the harness supports it, OR accept that you already verified via `bun test` for unit-level guarantees. Don't re-run the full e2e more than 2x per round.
+
+3. **Snapshot-test fixes via 1 try**: If `bun test` fails on a snapshot mismatch, run `bun test -u` ONCE, diff the resulting snapshot for correctness (read the .test.ts file directly), commit. Don't loop `-u` blindly — that just pushes the drift into committed test state.
+
+4. **Profile-based time budget** (already documented in SKILL.md):
+   - `bugfix` profile: 20 min
+   - `feature` profile: 30 min
+   - `architecture` profile: 45 min (R9 retro Gap L applied)
+   - Lead should declare which profile applies in `decision.md ## Round profile`. Dev must respect.
+
+5. **20-min mark**: If Dev hits 20 min and test sign-off is incomplete, lead MAY take over with `lead-takeover-tester-review.md` + manually `bun run scripts/test-review-ui/e2e.mjs` to finish (similar to R5 retro "lead by default" pattern).
+
+6. **Per-feature commit discipline**: After each atomic feature commit, run `bun run check` (format + lint + typecheck) to catch issues early. Don't defer all checks to the end. But skip `bun run scripts/test-review-ui/e2e.mjs` per commit (do it ONCE after ALL feature commits land).
+
+### Multi-round AC test-design pattern (R12 patch Gap #7 — NEW canonical example)
+
+**Why** (R12 evidence): R12 AC6 (`pinned-survives-round-2`) + AC9 (`reactions-survives-round-2`) required direct unit tests on a round-transition helper. Dev hand-rolled fixtures without a canonical pattern. Future rounds with `multi-round` ACs (per Plan # Multi-round AC check) will hit the same problem.
+
+**Canonical pattern** — replace ad-hoc fixtures with this template:
+
+```typescript
+// In src/<feature>.test.ts (or equivalent test file)
+
+import { buildRoundNState } from "../src/<helpers>"; // import your round-transition helper
+
+describe("AC#: <feature> persists across round N → round N+1", () => {
+  test("round N has <feature> set, round N+1 stale auto-close fires, <feature> survives", () => {
+    // 1. Build round 1 state with the <feature> applied
+    const round1 = buildRoundNState({
+      round: 1,
+      findings: [makeFinding({ pinned: { by: "user", at: 1 } })],
+    });
+
+    // 2. Trigger round 2 transition (apply stale auto-close + carry-forward)
+    const round2 = applyRoundTransition(round1);
+
+    // 3. Assert: <feature> flag is preserved across the round-transition
+    expect(round2.findings[0].pinned).toEqual({ by: "user", at: 1 });
+  });
+});
+```
+
+The keys:
+- Use a `buildRoundNState(opts)` helper to construct round-N state deterministically (no random IDs, no time.now() — use hardcoded `at: 1`).
+- Use a pure `applyRoundTransition(state)` helper that returns the next-round state without side effects (mock disk + atomic-write).
+- Assert the feature flag persists through the round transition.
+
+R3 lesson: AC6 was originally written as e2e and silently asserted nothing because the harness runs each scenario as a single round. Direct unit tests on round-transition helpers are the ONLY way to verify multi-round ACs in this codebase.
 
 ### New behavior e2e scenario requirement (R7 retro Gap I — MANDATORY for git-state-based new behavior)
 
@@ -377,33 +453,29 @@ Apply this checklist as part of Step 7 (commit strategy) for any new-behavior im
 
 ---
 
-## 5. Tester Review prompt (Phase 3a — orchestrates 5 parallel lenses)
+## 5. Tester Review prompt (Phase 3a — REWRITTEN R12 patch Gap #2 — lead-by-default)
 
 ```
-You are the Tester Review orchestrator for @weekbin/opencode-review-dashboard. You run 5 parallel review-work lenses on the Dev's work, then synthesize a single test-report.md.
+You are a `lead`-synopsizing subagent — **DO NOT use the orchestrator-fanout pattern that this prompt previously described** (R12 patch Gap #2). The 5-lens patterns of fanout subagents + `Promise.all` + `background_cancel` STALL for 7+ min in practice (R4 evidence: 341s idle, all 5 lens tasks waited forever). Per R4 retro Gap 2 + R5 default + R12 patch, Phase 3a is **lead-synthesized** — lead writes the 5 review-*.md files + 1 test-report.md synthesis directly. This prompt is retained as a CANONICAL TEMPLATE for what each lens review should cover; lead reads it for guidance but does NOT spawn subagent tasks for it.
 
-Inputs:
-- `.omo/round-N/brief.md` (what should have been built)
-- `.omo/round-N/plan.md` (what was planned)
-- Dev's return value (ac_trace + verdict)
+TASK: Lead inline produces 5 review-*.md files + 1 test-report.md synthesis based on:
+- `.omo/round-N/brief.md` (what should have been built — user-story framing + Product-value gate 3-test)
+- `.omo/round-N/plan.md` (what was planned — Goal / AC / File changes / Steps / Test plan / Risk register / Hand-off)
+- Dev's return value (ac_trace + verdict + branch + commit_sha) — refer to `## Dev Self-Check (AC1-ACn trace)` of `decision.md`
 - Worktree: `<worktree-path>`
 - Branch: `<branch-name>`
 - Commit: `<commit-sha>`
+- Lead's own verification per `## Subagent claim verification protocol` in SKILL.md
 
-Step 1: Fire 5 parallel review-work lenses via `task()` with `run_in_background=true`. Use the 5 lens prompts below (Goal / QA / Code / Security / Context). **Each lens task has a 5-minute (300000ms) timeout** — if a lens exceeds the timeout without writing its `review-*.md` file, cancel it via `background_cancel` and mark that lens as `LEAD_SYNTHESIZED` in the test-report synthesis (lead will write the verdict for that lens based on the Dev AC trace + lead verification).
+Each lens review covers (lead inline writes directly):
 
-Each lens writes to its own file:
-- `.omo/round-N/review-goal.md`
-- `.omo/round-N/review-qa.md`
-- `.omo/round-N/review-code.md`
-- `.omo/round-N/review-security.md`
-- `.omo/round-N/review-context.md`
+- `.omo/round-N/review-goal.md` — Lens #1: Goal/AC verifier. Goal match percentage = (passing ACs / total ACs) × 100. Classify deviations. Hidden gaps from brief.
+- `.omo/round-N/review-qa.md` — Lens #2: QA hands-on tester. Cross-check test_summary claims. Reverse-verify `bun test`, `bun run lint`, `bun run typecheck`, `bun run format:check`, `bun run build` outputs from the worktree.
+- `.omo/round-N/review-code.md` — Lens #3: Code quality. CRITICAL/MAJOR/MINOR/NIT findings. Plan-design fidelity table. Complexity hotspots. Test quality.
+- `.omo/round-N/review-security.md` — Lens #4: Security/privacy. Threat model. CRITICAL/HIGH/MEDIUM/LOW findings.
+- `.omo/round-N/review-context.md` — Lens #5: Repo-fit/honesty. Out-of-scope changes. Commit honesty. README alignment. Future rounds impact. (Also catches R5 retro Gap 3 doc-side-file drift pattern.)
 
-**R4 loop meta-review lesson**: the previous Tester Review orchestrator (R4) fired 5 parallel lens tasks and went idle for 341s. All 5 lens tasks ran 7+ minutes each without writing any result file. The orchestrator was waiting indefinitely. The fix is (a) per-lens 5-min timeout + (b) `background_cancel` for any lens that exceeds the timeout, then (c) mark the cancelled lens as `LEAD_SYNTHESIZED` in the test-report so lead can write that lens's verdict from the Dev AC trace + its own verification. This pattern prevents the orchestrator from being a single point of failure.
-
-Step 2: After all 5 lenses complete (or timeout) — use `Promise.all` with `background_output` (timeout: 300000ms per lens) to collect. If any lens returns empty / BLOCKED / context-exhausted / timed out — write `.omo/round-N/lead-takeover-tester-review.md` with the failure note (per-lens status: completed vs. timeout vs. empty), then write the deliverable yourself. For `LEAD_SYNTHESIZED` lenses, base the verdict on (a) Dev's AC trace in `.omo/round-4/decision.md` + (b) lead's independent verification (worktree test re-run, R3-fabricated-field cross-check, partial diff review). Lead will be notified via the proposals.jsonl `lead_takeovers` field.
-
-Synthesize `.omo/round-N/test-report.md`:
+Synthesis — `.omo/round-N/test-report.md`:
 
 ```
 # Test Report — Round <N>: <one-line title>
@@ -418,11 +490,11 @@ Synthesize `.omo/round-N/test-report.md`:
 
 | Lens | Reviewer type | Verdict | Source |
 |---|---|---|---|
-| #1 Goal | Goal/AC verifier | PASS/FAIL | <lens-task / LEAD_SYNTHESIZED> |
-| #2 QA | Hands-on tester | PASS/FAIL | <lens-task / LEAD_SYNTHESIZED> |
-| #3 Code | Code-quality | PASS/FAIL | <lens-task / LEAD_SYNTHESIZED> |
-| #4 Security | Security/privacy | PASS/FAIL | <lens-task / LEAD_SYNTHESIZED> |
-| #5 Context | Repo-fit/honesty | PASS/FAIL | <lens-task / LEAD_SYNTHESIZED> |
+| #1 Goal | Goal/AC verifier | PASS/FAIL | LEAD_SYNTHESIZED |
+| #2 QA | Hands-on tester | PASS/FAIL | LEAD_SYNTHESIZED |
+| #3 Code | Code-quality | PASS/FAIL | LEAD_SYNTHESIZED |
+| #4 Security | Security/privacy | PASS/FAIL | LEAD_SYNTHESIZED |
+| #5 Context | Repo-fit/honesty | PASS/FAIL | LEAD_SYNTHESIZED |
 
 **Combined verdict: PASS / FAIL**
 
@@ -432,16 +504,18 @@ Synthesize `.omo/round-N/test-report.md`:
 
 ## Follow-up candidates
 
-(candidates #2-#5 from brief.md that weren't picked this round)
+(candidates from brief.md that weren't picked this round)
 
 ## Audit trail
 
-All 5 lens reports in `.omo/round-N/review-{goal,qa,code,security,context}.md` (or note which are `LEAD_SYNTHESIZED` due to timeout).
+All 5 lens reports in `.omo/round-N/review-{goal,qa,code,security,context}.md`. All written by lead inline (LEAD_SYNTHESIZED); no subagent stalls.
 ```
 
-Return value to lead: `{ verdict: "PASS|FAIL", per_lens: { goal: "PASS|FAIL", qa: "PASS|FAIL", code: "PASS|FAIL", security: "PASS|FAIL", context: "PASS|FAIL" }, per_lens_source: { goal: "lens|LEAD_SYNTHESIZED", ... }, critical_count: <N>, major_count: <N>, minor_count: <N> }`.
+R10 retro Patch H applied: 3a + 3b + 3c + 3.5 lead-synthesized in same response block (saves 3-4 min per round vs sequential).
 
-### Known harness limitations (Round 3 lesson — `ctx.client.app.log`)
+Return shape: just the verdict + key finding list in lead's chat response. Files are the artifacts.
+
+### Known harness limitations (Round 3 lesson — `ctx.client.app.log`) — kept verbatim from v2 prompt
 
 The lead sets up the test invocation with a mock `ctx` object because the real OpenCode runtime isn't available in subagent runs. Most plugins (including this dashboard's reviewer-diffs plugin) emit a `ctx.client.app.log(...)` call AFTER the server-side JSON response has already been written. In the mock environment that call throws (`undefined is not an object (evaluating 'ctx.client.app')`) and the JS return value is lost — only the side-effect (state.json on disk, browser session terminated) survives.
 
@@ -450,8 +524,10 @@ Consequences for test design:
 - To verify payload shape end-to-end, **stash the side-effect (state.json content) onto `setupInfo` BEFORE the test cleanup deletes it**, and read from the stash inside `check()`. See e2e.mjs `runScenario()` around the `_stateContent` field for the reference pattern.
 - For verifying "what round N>1 sees" (multi-round AC), prefer **direct unit tests on the function that builds the payload** (e.g., `format()` in this codebase) over e2e — the harness runs each scenario as a single round, so multi-round assertions are structurally impossible e2e (Round 3 AC6 was originally written as e2e and silently asserted nothing — caught by Goal lens because the harness never produced a resolved-finding state for round 1 to verify against).
 
-Both limitations are now first-class test-design constraints. The Tester Review orchestrator must surface them to each lens prompt when the brief contains a multi-round AC or a payload-shape AC.
+Both limitations are now first-class test-design constraints. The Tester Review lead must surface them when the brief contains a multi-round AC or a payload-shape AC.
 ```
+
+> **Note to future prompts**: the old "orchestrator + 5 subagents + Promise.all" pattern is **DEAD** (R4 retro Gap 2 retired it). The "5-min heartbeat check" pattern is also DEAD (lead-written tasks never stall). Do NOT resurrect these as legitimate patterns in future rounds. Phase 3a is always **lead-synthesized**.
 
 ---
 
@@ -953,6 +1029,42 @@ For this project specifically, ALWAYS test:
 - Header Submit (R5 #8): the only submit action
 
 Capture a screenshot at EACH meaningful step. Save to `docs/screenshots/r5-s{N}-{name}.png`.
+
+### Click-retry fallback to JS evaluate (R12 patch Gap #6 — NEW)
+
+**Why** (R12 evidence): R12 walkthrough hit a tab-switch focus issue where `playwright-cli click e380` (Conversation tab) retried indefinitely due to auto-save PUT request interleaving with the click event. Tab-clicks adjacent to focus-stealing operations retry without resolving. This blocked 1 of 4 interactive scenarios in R12.
+
+**Fallback pattern** — if `playwright-cli click <target>` retries >2 times on a tab element (or any element that auto-retries), switch to direct JS evaluate:
+
+```bash
+# 1. Try the canonical click first
+playwright-cli click e380
+
+# 2. If retries observed in output, fall back to JS evaluate
+playwright-cli eval "() => {
+  // Find the same element via querySelector (use stable selectors, not ref)
+  const tab = document.querySelector('[role=\"tab\"][aria-controls*=\"conversation\"]') ||
+              [...document.querySelectorAll('[role=\"tab\"]')].find(t => t.textContent.includes('Conversation'));
+  if (tab) {
+    tab.focus();
+    tab.click();
+    return 'clicked via JS evaluate';
+  }
+  return 'element not found';
+}"
+```
+
+Then re-snapshot via `playwright-cli snapshot` to confirm the click landed.
+
+**Rule**: if click retries >2 on the SAME element, switch to JS evaluate. Don't loop the canonical click.
+
+**Stable selectors**: when using JS evaluate as fallback, prefer:
+- `[role="tab"][aria-controls*="..."]` (semantic)
+- `[data-testid="..."]` (test-id — if your UI exposes one)
+- Stable class names (`.conversation-tab`, not `.css-abc123`)
+- Text content match (`text.includes('Conversation')`)
+
+Avoid using playwright-cli's `ref=` identifiers in JS evaluate (refs are session-local to playwright-cli).
 
 ### Post-test cleanup (MANDATORY)
 

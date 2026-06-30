@@ -34,7 +34,7 @@ In v5, "soft stop" conditions (3 no-progress rounds / stagnation / quality regre
 | **Planner v5 (Phase 0.75)** | STOP (0 candidates selected) | **HARD STOP** → write `planner-blocked.md`, exit round. Next round leads spawns `explore` for fresh-investigation. |
 | **Architect (Phase 1)** | Plan too vague | Loop back to Phase 1 (Architect retries with feedback) — max 2 retries |
 | **Dev (Phase 2)** | Implementation FAIL or self-check FAIL | Loop back to Phase 2 (Dev iterates) — max 2 retries |
-| **Pre-Commit Audit (Phase 2.5)** | SHA missing OR claim unverified | **HARD STOP** → write `audit-blocked.md`, exit round (no closure commit) |
+| **Pre-Commit Audit (Phase 2.5)** | SHA missing OR claim unverified | **HARD STOP** → write `audit-blocked.md`, exit round (no closure commit) [see ALSO Gap #3 below for the POST-CLOSURE variant: audit catches drift AFTER `git push` already landed] |
 | **Tester Review (Phase 3a)** | Any of 5 lenses FAIL | Loop back to Phase 2 with review report — max 1 retry |
 | **Tester Diff (Phase 3b)** | FAIL | Loop back to Phase 2 with diff report — max 1 retry |
 | **Tester Playwright (Phase 3c)** | FAIL | Loop back to Phase 2 with Playwright report — max 1 retry |
@@ -67,6 +67,50 @@ Lead takes over:
 5. **Count takeovers** in `proposals.jsonl`: `"lead_takeovers": ["tester-diff", "tester-playwright"]`.
 
 **Why this is a design feature, not a failure mode**: v1 had a 43% rescue rate (3 of 7 members needed lead takeover in Round 1). Reframing as a designed protocol (a) eliminates the "did we succeed or fail" ambiguity, (b) lets us track takeover rate as a metric, (c) makes the failure mode cheaper to invoke (5-10 line note vs debugging a stuck chat session).
+
+## AUDIT FAIL POST-CLOSURE workflow (NEW R12 patch Gap #3)
+
+**When** Phase 2.5 Pre-Commit Audit runs LEAD-INLINE AFTER Phase 2 Dev has already committed and pushed to `origin/main` (e.g., closure merge commit already landed + `git push` already executed before audit detected the drift).
+
+**Why this case matters** (R12 retro evidence): the SKILL.md hard-stop table says "Round N ends; closure commit BLOCKED" — but **closure commit is ALREADY LANDED** in this case. The pre-closure hard-stop doesn't apply retroactively. R12 hit this scenario exactly: Phase 2 Dev merged `6e0e047` first, audit caught drift post-merge (scenario count 31 claimed vs 30 actual), lead improvised this workflow.
+
+**The protocol**:
+
+1. **WRITE** `.omo/round-N/audit-blocked.md` (do NOT delete or rename) — it serves as audit-trail record + R8 retro "don't hide bugs" discipline. Example body: see R12 `.omo/round-12/audit-blocked.md`.
+
+2. **REVERT closure commit if drift is critical** (lead judgment): `git revert <closure-sha> --no-edit`. Only if the drift would break deployed product behavior. For doc-only drifts (e.g., R12 scenario count 31→30 README claim), skip revert.
+
+3. **FIX in a separate patch commit**: lead applies minimal patch (typically 1-2 lines in 1-2 files). For R12 drift: `sed -i 's|31 git scenarios|30 git scenarios|' README.md scripts/test-review-ui/README.md` + commit + push.
+
+4. **USER GATE before patch** (per Gap #12 user-gate decision matrix + R12 retro Gap #1): lead surfaces audit-blocked.md + proposed minimal fix in chat. User replies `fix` / `hold` / `go+adjust`. Default 5-min auto-pilot opt-in (Gap #8) MAY apply.
+
+5. **RE-VERIFICATION**: lead runs the failed audit check again to confirm PASS, then proceeds to Phase 3a-c-3.5 + Phase 4 closures as planned.
+
+6. **DOCUMENT** in `decision.md ## Pre-Commit Audit section`: cite both the original FAIL + the patch commit SHA + `audit-blocked.md` as the audit-trail record. R8 retro "don't hide bugs" — never delete `audit-blocked.md`.
+
+**Key clarification**: `audit-blocked.md` is a **historical record**, not a current "round blocked" signal. Future rounds can OPEN the file to learn from past drift patterns.
+
+**Long-term consideration** (R12 retro Gap #13 deferred): arguably Phase 2.5 should move BEFORE Phase 2 Dev (becoming Architect self-audit + lead pre-Dev audit). Trade-off: Dev cycle becomes longer (audit waits for completion + Dev starts fresh); but no drift-on-merge risk. Decision deferred to v5.3+.
+
+## Subagent claim verification protocol (NEW R12 patch Gap #14, also see SKILL.md `## Subagent claim verification protocol`)
+
+For every `task()` return, lead verifies AT LEAST ONE specific claim inline before proceeding to next phase. Per-phase verification table is in SKILL.md `## Subagent claim verification protocol`. Failure to verify → surface to user before next phase. The audit protocol above is the most critical case (it caught R12 drift); the rest of the verification table catches everything else.
+
+## User-gate auto-pilot opt-in (NEW R12 patch Gap #8, also see SKILL.md `## User-gate auto-pilot (opt-in)`)
+
+Lead MAY opt-in to auto-pilot when surfacing plan/audit/diff requests. Default is GATED. The opt-in commitment + 5-15 min timeout MUST be stated in the surface message.
+
+## User-gate decision matrix (NEW R12 patch Gap #12, also see SKILL.md `## User-gate decision matrix`)
+
+Codified rules for which phase requires explicit user authorization vs auto-launch. The matrix is the source of truth for lead behavior at each phase boundary.
+
+## Phase hand-off contracts (NEW R12 patch Gap #11, also see SKILL.md `## Phase hand-off contracts`)
+
+Each phase's output contracts with the next phase's input. These are codified in SKILL.md so future leads don't have to inference them.
+
+## Lead communication style (NEW R12 patch Gap #9, also see SKILL.md `## Chat-output style`)
+
+In-flight phase transitions: 0-1 line. User-gate wait: 1+ lines stating what is awaited + acceptable responses. NEVER bare `等。` or `wait` without next-step disclosure.
 
 ## Per-role category (sub-model) selection
 
