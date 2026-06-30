@@ -16,6 +16,24 @@
         margin: 0;
       }
 
+      /* R19 #38: skip-to-content — hidden off-screen until keyboard-focused. */
+      .skip-link {
+        position: absolute;
+        left: -9999px;
+        top: 8px;
+        padding: 6px 12px;
+        background: var(--pierre-accent, #2563eb);
+        color: #fff;
+        border-radius: var(--radius);
+        z-index: 10000;
+        font-weight: 600;
+      }
+      .skip-link:focus,
+      .skip-link:focus-visible {
+        left: 8px;
+        outline: 2px solid currentColor;
+      }
+
       body {
         font-family:
           system-ui,
@@ -310,6 +328,25 @@
 
       .theme-toggle button:hover {
         color: light-dark(#333, #ccc);
+      }
+
+      /* R19 #33: language toggle — single button group, matches theme-toggle look. */
+      .language-toggle button {
+        background: transparent;
+        color: inherit;
+        border: 1px solid light-dark(#d0d0d0, #444);
+        border-radius: 6px;
+        padding: 4px 10px;
+        font: inherit;
+        font-size: 13px;
+        cursor: pointer;
+        margin-left: 6px;
+      }
+      .language-toggle button:hover {
+        background: light-dark(#f3f3f3, #2a2a2a);
+      }
+      .language-toggle button:focus-visible {
+        outline: 2px solid var(--pierre-accent, #2563eb);
       }
 
       .theme-toggle button[aria-pressed="true"] {
@@ -2582,6 +2619,8 @@
     </style>
   </head>
   <body>
+    <!-- R19 #38: skip-to-content, first focusable, styled via .skip-link -->
+    <a href="#diffs" class="skip-link">Skip to main content</a>
     <header>
       <div class="header-left">
         <h1>Review Dashboard</h1>
@@ -2591,6 +2630,7 @@
           class="save-indicator"
           id="save-indicator"
           data-state="idle"
+          role="status"
           title="Auto-save status"
           aria-live="polite"
           >All changes saved</span
@@ -2627,6 +2667,7 @@
           <button data-theme="auto" aria-pressed="false">Auto</button>
           <button data-theme="dark" aria-pressed="true">Dark</button>
         </div>
+        <div class="language-toggle" id="language-toggle"></div>
         <button class="drawer-toggle" id="drawer-toggle" type="button">
           Review <span class="count" id="finding-count">0</span>
         </button>

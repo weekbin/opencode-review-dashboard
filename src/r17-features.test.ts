@@ -17,6 +17,7 @@ import { describe, expect, it } from "bun:test";
 const ROOT = import.meta.dir;
 const APP_TS = join(ROOT, "ui", "app.ts");
 const REVIEW_HTML = join(ROOT, "ui", "review.html");
+const HELPER = join(ROOT, "ui", "modal-a11y.ts");
 
 async function readSource(path: string): Promise<string> {
   return fsPromises.readFile(path, "utf8");
@@ -281,8 +282,10 @@ describe("AC3 — Modal closes on Escape and on backdrop click", () => {
     const fnStart = src.indexOf("function showHelpModal");
     const fnEnd = src.indexOf("\nfunction ", fnStart + 1);
     const fnBody = src.slice(fnStart, fnEnd);
-    expect(fnBody).toMatch(/e\.key\s*===\s*"Escape"/);
+    expect(fnBody).toMatch(/installModalA11y\(dialog,\s*close\)/);
     expect(fnBody).toMatch(/state\.showHelp\s*=\s*false/);
+    const helper = await readSource(HELPER);
+    expect(helper).toMatch(/e\.key\s*===\s*"Escape"/);
   });
 
   it("T36.3b click on overlay backdrop closes the modal", async () => {

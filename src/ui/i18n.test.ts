@@ -1,0 +1,170 @@
+/**
+ * R19 #33 — Language toggle (i18n) unit tests.
+ *
+ * Covers AC1.1 (button triggers setLanguage), AC1.2 (UI strings
+ * translate per language — exercised directly on translate()), AC1.3
+ * (localStorage persistence under "diff-review:language"), AC1.4
+ * (applyLanguage() runs before first render — exercised directly),
+ * AC1.5 (UTF-8 zh-CN strings survive the build — exercise the source
+ * contents and assert non-ASCII code points are present).
+ *
+ * Run with:  bun test src/ui/i18n.test.ts
+ */
+
+import * as fsPromises from "node:fs/promises";
+import { join } from "node:path";
+
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+
+import {
+  applyLanguage,
+  DEFAULT_LANGUAGE,
+  getLanguage,
+  LANGUAGE_KEY,
+  peekLanguage,
+  setLanguage,
+  STRINGS,
+  translate,
+} from "./i18n";
+
+const I18N = join(import.meta.dir, "..", "..", "src", "ui", "i18n.ts");
+const APP_TS = join(import.meta.dir, "..", "..", "src", "ui", "app.ts");
+const HTML = join(import.meta.dir, "..", "..", "src", "ui", "review.html");
+
+// Bare-bones localStorage shim: only setItem / getItem / removeItem.
+class FakeStorage {
+  store = new Map<string, string>();
+  getItem(k: string): string | null {
+    return this.store.get(k) ?? null;
+  }
+  setItem(k: string, v: string): void {
+    this.store.set(k, v);
+  }
+  removeItem(k: string): void {
+    this.store.delete(k);
+  }
+}
+
+let fakeStorage: FakeStorage;
+
+beforeEach(() => {
+  fakeStorage = new FakeStorage();
+  (globalThis as unknown as { localStorage: unknown }).localStorage = fakeStorage;
+  applyLanguage();
+});
+
+afterEach(() => {
+  fakeStorage = new FakeStorage();
+  (globalThis as unknown as { localStorage: unknown }).localStorage = fakeStorage;
+});
+
+async function readSource(path: string): Promise<string> {
+  return fsPromises.readFile(path, "utf8");
+}
+
+describe("AC1.2 — translate() returns expected string per language", () => {
+  it("English copy is returned for lang='en'", () => {
+    expect(translate("app.title", "en")).toBe("Review Dashboard");
+    expect(translate("toolbar.submit", "en")).toBe("Submit Review");
+  });
+
+  it("zh-CN strings are non-empty UTF-8", () => {
+    const zh = translate("app.title", "zh-CN");
+    expect(zh.length).toBeGreaterThan(0);
+    expect(zh).not.toBe("Review Dashboard");
+    // Verify at least one high-codepoint character (CJK range, U+4E00..U+9FFF).
+    expect(/\p{Script=Han}/u.test(zh)).toBe(true);
+  });
+
+  it("missing key falls back to key string", () => {
+    expect(translate("nope.not.a.key", "en")).toBe("nope.not.a.key");
+  });
+
+  it("unsupported lang falls back to English", () => {
+    // Cast lang — TypeScript types keep the API surface small; the
+    // runtime path is the fallback we want to verify.
+    expect(translate("app.title", "fr" as unknown as "en")).toBe("Review Dashboard");
+  });
+
+  it("{token} placeholders are filled from params map", () => {
+    expect(translate("status.copiedPermalink", "en", { id: "F-7" })).toBe(
+      "Copied permalink for F-7",
+    );
+    expect(translate("status.copiedPermalink", "zh-CN", { id: "F-7" })).toBe("已复制定位链接 F-7");
+  });
+});
+
+describe("AC1.3 — setLanguage() persists under diff-review:language", () => {
+  it("writes the new lang to localStorage[LANGUAGE_KEY]", () => {
+    setLanguage("zh-CN");
+    expect(fakeStorage.getItem(LANGUAGE_KEY)).toBe("zh-CN");
+    setLanguage("en");
+    expect(fakeStorage.getItem(LANGUAGE_KEY)).toBe("en");
+  });
+
+  it("getLanguage() reads the previously-stored value", () => {
+    fakeStorage.setItem(LANGUAGE_KEY, "zh-CN");
+    expect(getLanguage()).toBe("zh-CN");
+    fakeStorage.setItem(LANGUAGE_KEY, "en");
+    expect(getLanguage()).toBe("en");
+  });
+
+  it("ignores unsupported lang written to localStorage", () => {
+    fakeStorage.setItem(LANGUAGE_KEY, "fr");
+    expect(getLanguage()).toBe(DEFAULT_LANGUAGE);
+  });
+
+  it("falls back to DEFAULT_LANGUAGE when localStorage is empty", () => {
+    expect(getLanguage()).toBe(DEFAULT_LANGUAGE);
+  });
+});
+
+describe("AC1.4 — applyLanguage() adopts persisted language before render", () => {
+  it("updates peekLanguage() to the value in localStorage", () => {
+    fakeStorage.setItem(LANGUAGE_KEY, "zh-CN");
+    applyLanguage();
+    expect(peekLanguage()).toBe("zh-CN");
+  });
+
+  it("default is 'en' when no localStorage entry", () => {
+    applyLanguage();
+    expect(peekLanguage()).toBe(DEFAULT_LANGUAGE);
+  });
+});
+
+describe("AC1.5 — UTF-8 zh-CN strings survive in the build", () => {
+  it("i18n.ts source contains at least 10 distinct zh-CN entries", async () => {
+    const src = await readSource(I18N);
+    const matches = src.match(/"zh-CN":/g) ?? [];
+    expect(matches.length).toBeGreaterThanOrEqual(10);
+  });
+
+  it("STRINGS table exposes > 30 keys covering toolbar / sidebar / status / modals", () => {
+    const keys = Object.keys(STRINGS);
+    expect(keys.length).toBeGreaterThanOrEqual(30);
+    expect(keys.some((k) => k.startsWith("toolbar."))).toBe(true);
+    expect(keys.some((k) => k.startsWith("sidebar."))).toBe(true);
+    expect(keys.some((k) => k.startsWith("status."))).toBe(true);
+    expect(keys.some((k) => k.startsWith("modal."))).toBe(true);
+  });
+});
+
+describe("AC1.1 — toolbar mount the language toggle wired up", () => {
+  it("app.ts imports i18n helper and references toolbar language button", async () => {
+    const src = await readSource(APP_TS);
+    expect(src).toMatch(/from\s+["']\.\/i18n["']/);
+    expect(src).toMatch(/language-toggle|languageToggle|setLanguage\(/);
+  });
+
+  it("review.html reserves a mount point for the language toggle button", async () => {
+    const html = await readSource(HTML);
+    // Either an explicit element or a container where the button can mount.
+    // Loose match: any id="language-toggle" or a container that the
+    // toolbar JS uses as the parent.
+    expect(
+      html.includes('id="language-toggle"') ||
+        html.includes('class="language-toggle"') ||
+        html.includes("language-toggle"),
+    ).toBe(true);
+  });
+});

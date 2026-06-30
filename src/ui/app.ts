@@ -3,6 +3,12 @@ import { FileDiff, type DiffLineAnnotation } from "@pierre/diffs";
 import { cycleTab, TAB_ORDER, tabIndexFor, type TabKey } from "../sidebar-keyboard";
 import { filterByQuery } from "../search-utils";
 import { sortConversationEntries, type SortFindingsBy } from "../sort-utils";
+// R19 #38: additive modal a11y helper (Escape + focus trap + initial focus).
+import { installModalA11y } from "./modal-a11y";
+// R19 #37: toast notifications (3s auto-dismiss + ARIA live region).
+import { showToast } from "./toast";
+// R19 #33: language toggle (i18n helper).
+import { applyLanguage, onLanguageChange, peekLanguage, setLanguage, t } from "./i18n";
 
 type Category = "bug" | "style" | "perf" | "question" | "recommend";
 type Severity = "high" | "medium" | "low";
@@ -350,8 +356,10 @@ async function copyFindingPermalinkToClipboard(
       button.textContent = original;
       button.disabled = false;
     }, 1200);
+    showToast(`Copied permalink for ${findingId}`);
     setStatus(`Copied permalink for ${findingId}`);
   } else {
+    showToast("Could not copy permalink — clipboard blocked", { error: true });
     setStatus("Could not copy permalink — clipboard blocked", true);
   }
 }
@@ -423,8 +431,10 @@ async function copyFindingAsMarkdownToClipboard(
       button.textContent = original;
       button.disabled = false;
     }, 1200);
+    showToast("Copied as Markdown");
     setStatus("Copied as Markdown");
   } else {
+    showToast("Could not copy markdown — clipboard blocked", { error: true });
     setStatus("Could not copy markdown — clipboard blocked", true);
   }
 }
@@ -1042,20 +1052,13 @@ function showHelpModal(): void {
   const close = () => {
     state.showHelp = false;
     if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-    window.removeEventListener("keydown", onKey);
   };
   const closeBtn = dialog.querySelector("#help-close") as HTMLButtonElement;
   closeBtn.addEventListener("click", close);
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) close();
   });
-  const onKey = (e: KeyboardEvent) => {
-    if (e.key === "Escape" || e.key === "?") {
-      e.preventDefault();
-      close();
-    }
-  };
-  window.addEventListener("keydown", onKey);
+  installModalA11y(dialog, close);
   closeBtn.focus();
 }
 
@@ -1363,6 +1366,37 @@ themeToggle.addEventListener("click", (event) => {
   if (!btn) return;
   setTheme(btn.dataset.theme as ThemeMode);
 });
+
+// R19 #33: language toggle — one toolbar button flips en ↔ zh-CN.
+applyLanguage();
+const languageToggle = document.querySelector("#language-toggle");
+function applyLanguageToggle(): void {
+  if (!(languageToggle instanceof HTMLElement)) return;
+  const lang = peekLanguage();
+  const btn = languageToggle.querySelector<HTMLButtonElement>("button");
+  if (btn) {
+    btn.textContent = t("toolbar.lang.toggle");
+    btn.setAttribute("aria-label", t("toolbar.lang.ariaLabel"));
+    btn.dataset.lang = lang;
+  }
+}
+function buildLanguageToggle(): void {
+  if (!(languageToggle instanceof HTMLElement)) return;
+  languageToggle.innerHTML = "";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "language-toggle-btn";
+  btn.id = "language-toggle-btn";
+  languageToggle.appendChild(btn);
+  applyLanguageToggle();
+}
+buildLanguageToggle();
+languageToggle?.addEventListener("click", () => {
+  const next = peekLanguage() === "zh-CN" ? "en" : "zh-CN";
+  setLanguage(next);
+  applyLanguageToggle();
+});
+onLanguageChange(() => applyLanguageToggle());
 
 // ── Layout toggle ──
 function applyLayout() {
@@ -1873,6 +1907,7 @@ function showReopenReasonModal(_findingId: string): Promise<string | null> {
       resolve(value);
     };
 
+    installModalA11y(dialog, () => closeWith(null));
     textarea?.focus();
     cancelBtn?.addEventListener("click", () => closeWith(null));
     submitBtn?.addEventListener("click", () => {
@@ -1938,6 +1973,7 @@ function showResolveReasonModal(_findingId: string): Promise<ResolveReasonModalR
       resolve(value);
     };
 
+    installModalA11y(dialog, () => closeWith(null));
     textarea?.focus();
     cancelBtn?.addEventListener("click", () => closeWith(null));
     submitBtn?.addEventListener("click", () => {
@@ -2027,6 +2063,7 @@ function showMarkAsWontfixModal(_findingId: string): Promise<MarkAsWontfixResult
       resolve(value);
     };
 
+    installModalA11y(dialog, () => closeWith(null));
     const firstRadio = dialog.querySelector<HTMLInputElement>('input[name="wontfix-kind"]');
     firstRadio?.focus();
     cancelBtn?.addEventListener("click", () => closeWith(null));
@@ -3241,6 +3278,7 @@ function showExportModal(): void {
   const close = () => {
     if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
   };
+  installModalA11y(dialog, close);
   cancelBtn?.addEventListener("click", close);
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) close();
@@ -4912,6 +4950,7 @@ function addFinding() {
   renderFindings();
   syncAll();
   scheduleSave();
+  showToast("Finding added");
 }
 
 function addFileFinding(filePath: string) {
@@ -4948,11 +4987,13 @@ async function submit() {
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
     submitButton.disabled = false;
+    showToast(`Submit failed (${response.status})`, { error: true });
     setStatus(`Submit failed (${response.status}) ${detail || "unknown error"}`, true);
     return;
   }
 
   const body = await response.json().catch(() => ({}));
+  showToast(`Review submitted${body?.round ? ` — round ${body.round}` : ""}`);
   showPostSubmit(body?.round);
 }
 
@@ -5043,13 +5084,7 @@ submitButton.addEventListener("click", () => {
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) close();
   });
-  const onKey = (e: KeyboardEvent) => {
-    if (e.key === "Escape") {
-      close();
-      window.removeEventListener("keydown", onKey);
-    }
-  };
-  window.addEventListener("keydown", onKey);
+  installModalA11y(dialog, close);
   notesArea.focus();
 });
 exportButton?.addEventListener("click", () => {
