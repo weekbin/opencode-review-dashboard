@@ -329,4 +329,20 @@ describe("AC1.2 — toggle re-renders static-HTML labels via registerUITranslato
     expect(i18n.includes('"Render only visible hunks for faster scrolling"')).toBe(true);
     expect(i18n.includes('"仅渲染可见 hunk，加快滚动速度"')).toBe(true);
   });
+
+  // R26 #53: STRINGS_USAGE_PLAN regression for search.recent.delete (per-entry delete button).
+  it("STRINGS['search.recent.delete'] has both en + zh-CN translations", async () => {
+    const i18n = await readSource(I18N);
+    expect(i18n.includes('"search.recent.delete":')).toBe(true);
+    expect(i18n.includes('"Delete from history"')).toBe(true);
+    expect(i18n.includes('"从历史中删除"')).toBe(true);
+  });
+
+  // R26 #53: STRINGS_USAGE_PLAN regression for search.recent.delete.confirm (toast).
+  it("STRINGS['search.recent.delete.confirm'] has both en + zh-CN translations", async () => {
+    const i18n = await readSource(I18N);
+    expect(i18n.includes('"search.recent.delete.confirm":')).toBe(true);
+    expect(i18n.includes('"Removed from history"')).toBe(true);
+    expect(i18n.includes('"已从历史中移除"')).toBe(true);
+  });
 });

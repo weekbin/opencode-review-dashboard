@@ -333,3 +333,57 @@ describe("R23 #48 AC8.6 — removeRecentSearches does not change localStorage ke
     expect(getRecentSearches()).toEqual(["b", "a"]);
   });
 });
+
+describe("R26 #53 AC13.2 — removeRecentSearches([entry]) removes single entry from localStorage", () => {
+  it("removes one specific entry and leaves others intact", () => {
+    addRecentSearch("alpha");
+    addRecentSearch("beta");
+    addRecentSearch("gamma");
+    const result = removeRecentSearches(["beta"]);
+    expect(result).toEqual(["gamma", "alpha"]);
+    expect(getRecentSearches()).toEqual(["gamma", "alpha"]);
+  });
+
+  it("removing last entry leaves empty array", () => {
+    addRecentSearch("only");
+    const result = removeRecentSearches(["only"]);
+    expect(result).toEqual([]);
+    expect(getRecentSearches()).toEqual([]);
+  });
+
+  it("calling removeRecentSearches([entry]) on a non-selected entry still deletes it", () => {
+    addRecentSearch("keep");
+    addRecentSearch("delete-me");
+    const result = removeRecentSearches(["delete-me"]);
+    expect(result).toEqual(["keep"]);
+    expect(getRecentSearches()).toEqual(["keep"]);
+  });
+
+  it("removeRecentSearches does not need any pre-existing selection to work", () => {
+    addRecentSearch("a");
+    addRecentSearch("b");
+    addRecentSearch("c");
+    const result = removeRecentSearches(["b"]);
+    expect(result).toEqual(["c", "a"]);
+    expect(getRecentSearches()).toEqual(["c", "a"]);
+  });
+});
+
+describe("R26 #53 AC13.6 — per-entry delete uses existing localStorage key", () => {
+  it("removeRecentSearches writes to diff-review:recent-searches (no new key)", () => {
+    addRecentSearch("x");
+    addRecentSearch("y");
+    removeRecentSearches(["x"]);
+    expect(fakeStorage.store.has(RECENT_SEARCHES_KEY)).toBe(true);
+    const allKeys = [...fakeStorage.store.keys()];
+    expect(allKeys).toEqual(["diff-review:recent-searches"]);
+  });
+
+  it("getRecentSearches returns entries newest-first after single delete", () => {
+    addRecentSearch("newest");
+    addRecentSearch("middle");
+    addRecentSearch("oldest");
+    removeRecentSearches(["middle"]);
+    expect(getRecentSearches()).toEqual(["oldest", "newest"]);
+  });
+});

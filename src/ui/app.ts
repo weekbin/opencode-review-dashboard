@@ -960,7 +960,26 @@ function openDiffSearch(initialQuery: string | null = null): void {
       item.className = "diff-search-history-item";
       item.setAttribute("role", "option");
       item.dataset.query = entry;
-      item.textContent = entry;
+      const textSpan = document.createElement("span");
+      textSpan.className = "diff-search-history-text";
+      textSpan.textContent = entry;
+      item.appendChild(textSpan);
+
+      // R26 #53: per-entry delete button (×) at right of each item.
+      const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.className = "diff-search-history-delete";
+      deleteBtn.setAttribute("aria-label", t("search.recent.delete"));
+      deleteBtn.setAttribute("data-i18n-title", "search.recent.delete");
+      deleteBtn.textContent = "×";
+      deleteBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        removeRecentSearches([entry]);
+        showRecentSearches();
+        showToast(t("search.recent.delete.confirm"));
+      });
+      item.appendChild(deleteBtn);
+
       diffSearch.history.appendChild(item);
 
       // R23 #48: per-item checkbox for multi-select bulk delete.
