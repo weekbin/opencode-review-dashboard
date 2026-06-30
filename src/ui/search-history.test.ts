@@ -19,6 +19,10 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
 import {
   addRecentSearch,
+  cancelPendingCommit,
+  commitRecentSearch,
+  commitRecentSearchImmediate,
+  COMMIT_DEBOUNCE_MS,
   getRecentSearches,
   MAX_RECENT,
   RECENT_SEARCHES_KEY,
@@ -162,5 +166,88 @@ describe("AC3.3 — case-sensitive dedup matches user's verbatim query", () => {
     addRecentSearch("TODO");
     addRecentSearch("todo");
     expect(getRecentSearches()).toEqual(["todo", "TODO"]);
+  });
+});
+
+describe("R21 #43 AC3.1 — type 'func' → wait 350ms → recent-searches contains 'func'", () => {
+  it("commits after 350ms quiet window", async () => {
+    commitRecentSearch("func");
+    expect(getRecentSearches()).not.toContain("func");
+    await new Promise((r) => setTimeout(r, COMMIT_DEBOUNCE_MS + 50));
+    expect(getRecentSearches()).toContain("func");
+  });
+});
+
+describe("R21 #43 AC3.2 — type 'func' + 't' within 300ms → recent-searches does NOT contain 'func'", () => {
+  it("debounce resets on each keystroke — only final query commits", async () => {
+    commitRecentSearch("func");
+    commitRecentSearch("funct");
+    await new Promise((r) => setTimeout(r, COMMIT_DEBOUNCE_MS + 50));
+    expect(getRecentSearches()).not.toContain("func");
+    expect(getRecentSearches()).toContain("funct");
+  });
+});
+
+describe("R21 #43 AC3.3 — type 'func' + Enter → recent-searches contains 'func' immediately", () => {
+  it("commitRecentSearchImmediate commits without waiting", () => {
+    commitRecentSearchImmediate("func");
+    expect(getRecentSearches()).toContain("func");
+  });
+
+  it("commitRecentSearchImmediate cancels pending debounce", async () => {
+    commitRecentSearch("func");
+    commitRecentSearchImmediate("funct");
+    await new Promise((r) => setTimeout(r, COMMIT_DEBOUNCE_MS + 50));
+    expect(getRecentSearches()).not.toContain("func");
+    expect(getRecentSearches()).toContain("funct");
+  });
+});
+
+describe("R21 #43 AC3.4 — empty query → no-op", () => {
+  it("commitRecentSearch skips empty/whitespace", async () => {
+    commitRecentSearch("");
+    commitRecentSearch("   ");
+    await new Promise((r) => setTimeout(r, COMMIT_DEBOUNCE_MS + 50));
+    expect(getRecentSearches()).toEqual([]);
+  });
+
+  it("commitRecentSearchImmediate skips empty", () => {
+    commitRecentSearchImmediate("");
+    expect(getRecentSearches()).toEqual([]);
+  });
+});
+
+describe("R21 #43 AC3.5 — localStorage key unchanged", () => {
+  it("still writes to diff-review:recent-searches", () => {
+    commitRecentSearchImmediate("testkey");
+    expect(fakeStorage.store.has(RECENT_SEARCHES_KEY)).toBe(true);
+    expect(RECENT_SEARCHES_KEY).toBe("diff-review:recent-searches");
+  });
+});
+
+describe("R21 #43 AC3.6 — max 5 cap preserved", () => {
+  it("immediate commits still cap to MAX_RECENT", () => {
+    for (let i = 1; i <= MAX_RECENT + 3; i++) {
+      commitRecentSearchImmediate(`iq${i}`);
+    }
+    const result = getRecentSearches();
+    expect(result.length).toBe(MAX_RECENT);
+  });
+
+  it("addRecentSearch still caps to MAX_RECENT (existing behavior)", () => {
+    for (let i = 1; i <= MAX_RECENT + 3; i++) {
+      addRecentSearch(`aq${i}`);
+    }
+    const result = getRecentSearches();
+    expect(result.length).toBe(MAX_RECENT);
+  });
+});
+
+describe("R21 #43 cancelPendingCommit", () => {
+  it("cancels a pending debounced commit", async () => {
+    commitRecentSearch("pending");
+    cancelPendingCommit();
+    await new Promise((r) => setTimeout(r, COMMIT_DEBOUNCE_MS + 50));
+    expect(getRecentSearches()).not.toContain("pending");
   });
 });

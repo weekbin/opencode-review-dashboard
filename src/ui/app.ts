@@ -19,7 +19,7 @@ import {
 // R20 #40: sidebar review progress (X / Y reviewed + visual bar).
 import { formatReviewProgress } from "./review-progress";
 // R20 #42: in-diff search history (recent searches dropdown).
-import { addRecentSearch, getRecentSearches } from "./search-history";
+import { addRecentSearch, commitRecentSearch, commitRecentSearchImmediate, cancelPendingCommit, getRecentSearches, MAX_RECENT } from "./search-history";
 
 type Category = "bug" | "style" | "perf" | "question" | "recommend";
 type Severity = "high" | "medium" | "low";
@@ -174,6 +174,8 @@ const ACTIVE_TAB_KEY = "diff-review:active-tab";
 const SORT_FINDINGS_KEY = "diff-review:sort-findings-by";
 // R20 #41: sidebar "show only unread" filter persisted as boolean-as-string.
 const SIDEBAR_FILTER_UNREAD_KEY = "diff-review:filter-unread";
+// R21 #44: search history max items persisted to localStorage.
+const SEARCH_HISTORY_MAX_KEY = "diff-review:search-history-max";
 
 function readStored<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   try {
@@ -878,10 +880,14 @@ function openDiffSearch(initialQuery: string | null = null): void {
     diffSearch.matchElements = findMatchesInDiff(q);
     diffSearch.currentIndex = diffSearch.matchElements.length > 0 ? 0 : -1;
     updateDiffSearchCounter();
-    // R20 #42: every successful (non-empty) query goes into the
-    // recent-searches MRU list. Empty queries early-return above.
-    addRecentSearch(q);
+    // R21 #43: debounced commit — 300ms quiet window; Enter path uses
+    // commitRecentSearchImmediate() instead (see keydown handler below).
+    commitRecentSearch(q);
   };
+
+  window.addEventListener("beforeunload", () => {
+    cancelPendingCommit();
+  });
 
   if (diffSearch.input) {
     installImeSafeInputListener(diffSearch.input, () => runSearch());
@@ -894,6 +900,9 @@ function openDiffSearch(initialQuery: string | null = null): void {
     } else if (e.key === "Enter") {
       e.preventDefault();
       if (diffSearch.matchElements.length === 0) return;
+      // R21 #43: cancel any pending debounce and commit immediately.
+      cancelPendingCommit();
+      commitRecentSearchImmediate(diffSearch.query ?? "");
       jumpToDiffSearchMatch(diffSearch.currentIndex + (e.shiftKey ? -1 : 1));
     }
   });
@@ -1521,6 +1530,22 @@ registerUITranslator("sidebar.tree", () => t("sidebar.tree"));
 registerUITranslator("sidebar.flat", () => t("sidebar.flat"));
 registerUITranslator("sidebar.filter.unread", () => t("sidebar.filter.unread"));
 registerUITranslator("save.idle", () => t("save.idle"));
+// R21 #44: settings modal i18n (data-i18n elements exist in static HTML).
+registerUITranslator("toolbar.settings", () => t("toolbar.settings"));
+registerUITranslator("settings.title", () => t("settings.title"));
+registerUITranslator("settings.section.appearance", () => t("settings.section.appearance"));
+registerUITranslator("settings.section.layout", () => t("settings.section.layout"));
+registerUITranslator("settings.section.search", () => t("settings.section.search"));
+registerUITranslator("settings.section.language", () => t("settings.section.language"));
+registerUITranslator("settings.theme.label", () => t("settings.theme.label"));
+registerUITranslator("settings.theme.light", () => t("settings.theme.light"));
+registerUITranslator("settings.theme.auto", () => t("settings.theme.auto"));
+registerUITranslator("settings.theme.dark", () => t("settings.theme.dark"));
+registerUITranslator("settings.layout.label", () => t("settings.layout.label"));
+registerUITranslator("settings.layout.unified", () => t("settings.layout.unified"));
+registerUITranslator("settings.layout.split", () => t("settings.layout.split"));
+registerUITranslator("settings.search.max", () => t("settings.search.max"));
+registerUITranslator("settings.reset", () => t("settings.reset"));
 
 // ── Layout toggle ──
 function applyLayout() {
@@ -1562,6 +1587,73 @@ applyIgnoreWhitespace();
 
 ignoreWhitespaceToggle.addEventListener("click", () => {
   setIgnoreWhitespace(!state.ignoreWhitespace);
+});
+
+// R21 #44: Settings modal
+const settingsOverlay = document.querySelector("#settings-overlay") as HTMLElement;
+const settingsModal = document.querySelector("#settings-modal") as HTMLElement;
+const settingsBtn = document.querySelector("#settings-btn") as HTMLButtonElement;
+const settingsThemeSelect = document.querySelector("#settings-theme") as HTMLSelectElement;
+const settingsLayoutSelect = document.querySelector("#settings-layout") as HTMLSelectElement;
+const settingsLanguageSelect = document.querySelector("#settings-language") as HTMLSelectElement;
+const settingsSearchMaxSelect = document.querySelector("#settings-search-max") as HTMLSelectElement;
+const settingsResetBtn = document.querySelector("#settings-reset") as HTMLButtonElement;
+const settingsOkBtn = document.querySelector("#settings-ok") as HTMLButtonElement;
+const settingsCloseBtn = document.querySelector("#settings-close") as HTMLButtonElement;
+
+let settingsDispose: (() => void) | null = null;
+
+function openSettingsModal(): void {
+  settingsThemeSelect.value = state.themeMode;
+  settingsLayoutSelect.value = state.diffLayout;
+  settingsLanguageSelect.value = peekLanguage();
+  const stored = localStorage.getItem(SEARCH_HISTORY_MAX_KEY);
+  const max = stored ? String(stored) : String(MAX_RECENT);
+  if (![...settingsSearchMaxSelect.options].some((o) => o.value === max)) {
+    settingsSearchMaxSelect.value = String(MAX_RECENT);
+  } else {
+    settingsSearchMaxSelect.value = max;
+  }
+  settingsOverlay.hidden = false;
+  settingsDispose = installModalA11y(settingsModal, closeSettingsModal);
+}
+
+function closeSettingsModal(): void {
+  if (settingsDispose) {
+    settingsDispose();
+    settingsDispose = null;
+  }
+  settingsOverlay.hidden = true;
+  settingsBtn.focus();
+}
+
+function resetSettings(): void {
+  setTheme("light");
+  setLayout("split");
+  setIgnoreWhitespace(false);
+  setLanguage("en");
+  setFilterUnread(false);
+  localStorage.removeItem(SEARCH_HISTORY_MAX_KEY);
+  openSettingsModal();
+}
+
+settingsBtn?.addEventListener("click", openSettingsModal);
+settingsOkBtn?.addEventListener("click", closeSettingsModal);
+settingsCloseBtn?.addEventListener("click", closeSettingsModal);
+settingsResetBtn?.addEventListener("click", resetSettings);
+
+settingsThemeSelect?.addEventListener("change", () => {
+  setTheme(settingsThemeSelect.value as ThemeMode);
+});
+settingsLayoutSelect?.addEventListener("change", () => {
+  setLayout(settingsLayoutSelect.value as DiffLayout);
+});
+settingsLanguageSelect?.addEventListener("change", () => {
+  setLanguage(settingsLanguageSelect.value as "en" | "zh-CN");
+});
+settingsSearchMaxSelect?.addEventListener("change", () => {
+  const val = settingsSearchMaxSelect.value;
+  localStorage.setItem(SEARCH_HISTORY_MAX_KEY, val);
 });
 
 // ── Sidebar mode toggle ──

@@ -76,6 +76,49 @@ export function addRecentSearch(query: string): string[] {
   return next;
 }
 
+let _pendingCommit: ReturnType<typeof setTimeout> | null = null;
+
+export const COMMIT_DEBOUNCE_MS = 300;
+
+/**
+ * R21 #43 — Debounced commit.
+ * Commits `query` to recent searches after 300ms of inactivity.
+ * Calling it again before the timeout resets the timer.
+ * Cancel any pending commit via `cancelPendingCommit()`.
+ */
+export function commitRecentSearch(query: string): void {
+  if (_pendingCommit !== null) {
+    clearTimeout(_pendingCommit);
+    _pendingCommit = null;
+  }
+  const trimmed = (query ?? "").trim();
+  if (!trimmed) return;
+  _pendingCommit = setTimeout(() => {
+    _pendingCommit = null;
+    addRecentSearch(trimmed);
+  }, COMMIT_DEBOUNCE_MS);
+}
+
+/**
+ * R21 #43 — Immediate commit (Enter key path).
+ * Cancels any pending debounce and commits immediately.
+ */
+export function commitRecentSearchImmediate(query: string): void {
+  if (_pendingCommit !== null) {
+    clearTimeout(_pendingCommit);
+    _pendingCommit = null;
+  }
+  addRecentSearch(query);
+}
+
+/** R21 #43 — Cancel any pending debounced commit. */
+export function cancelPendingCommit(): void {
+  if (_pendingCommit !== null) {
+    clearTimeout(_pendingCommit);
+    _pendingCommit = null;
+  }
+}
+
 /** Test-only escape hatch — clears the storage key without touching other entries. */
 export function __testonlyClearRecentSearches(): void {
   if (typeof localStorage === "undefined") return;
