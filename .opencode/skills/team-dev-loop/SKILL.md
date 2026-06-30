@@ -1,11 +1,11 @@
 ---
 name: team-dev-loop
-description: "v5.3.5+1 cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+Push (NEW v5.3.3) — 17 phases total (Phase -0 Sync / Phase 0 PM Triage / 0.25 PM Researcher / 0.5 PM Manager / 0.75 Planner / 1 Architect / 2 Dev / 2.5 Pre-Commit Audit / 2.6 Lead Merge+Push / 3a-c Tester / 3.5 Doc Writer / 4 Decision + 4.5-4.9 lead-owned). Lead-direct execution model (v5.3.3): 16 of 17 phases lead-direct, ONLY Phase 2 Dev uses subagent (for code generation). v5.3.4: zh-CN lockstep + READ ONLY ONCE + post-completion verification + user-manual README. v5.3.4+: SG.12 screenshot workflow. v5.3.5: SG.13-SG.16 (regex + immutable helpers + regex pre-validation + screenshots in Phase 2). v5.3.5+1: SG.17 append-only proposals.jsonl + SG.18 combine Triage+Researcher subagent + SG.19 single-commit bilingual docs + SG.20 Phase 3c Playwright minimum. Subagent scope: 5-20 min budget + decompose >20 min tasks. Default NO user pick (Planner autonomous); user MAY pre-pick A-E or 1-6 (R12 Gap #1). PM researcher advisories are advisory-only (R12 Gap #14: lead must verify independently). Subagent NEVER does git ops (merge/push/issue close) — lead's responsibility. Mid-task check-in every 5/10/15/20 min OR post-completion verification. ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
+description: "v5.3.7 cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+Push (NEW v5.3.3) — 17 phases total (Phase -0 Sync / Phase 0 PM Triage / 0.25 PM Researcher / 0.5 PM Manager / 0.75 Planner / 1 Architect / 2 Dev / 2.5 Pre-Commit Audit / 2.6 Lead Merge+Push / 3a-c Tester / 3.5 Doc Writer / 4 Decision + 4.5-4.9 lead-owned). Lead-direct execution model (v5.3.3): 16 of 17 phases lead-direct, ONLY Phase 2 Dev uses subagent (for code generation). v5.3.4: zh-CN lockstep + READ ONLY ONCE + post-completion verification + user-manual README. v5.3.4+: SG.12 screenshot workflow. v5.3.5: SG.13-SG.16 (regex + immutable helpers + regex pre-validation + screenshots in Phase 2). v5.3.5+1: SG.17 append-only proposals.jsonl + SG.18 combine Triage+Researcher subagent + SG.19 single-commit bilingual docs + SG.20 Phase 3c Playwright minimum. v5.3.6: SG.R19.1-SG.R19.8 (R19 retro 8 patches — build location + macOS setsid + STRINGS_USAGE_PLAN + Dev workdir verify + Playwright Gap #14 + consolidations + End-of-round mandatory gap-fix). v5.3.7: SG.R20.1 Phase 2.6 3-step rebuild + SG.R22.1 bilingual lockstep pre-commit verify + SG.R22.2 worktree env check at Phase -0. Subagent scope: 5-20 min budget + decompose >20 min tasks. Default NO user pick (Planner autonomous); user MAY pre-pick A-E or 1-6 (R12 Gap #1). PM researcher advisories are advisory-only (R12 Gap #14: lead must verify independently). Subagent NEVER does git ops (merge/push/issue close) — lead's responsibility. Mid-task check-in every 5/10/15/20 min OR post-completion verification. ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
 ---
 
 # /team-dev-loop Command (v5)
 
-> **Last Updated**: 2026-06-30 (v5.3.6 R19 retro follow-up: 8 NEW gap fixes — SG.R19.1 Phase 2.5 build location + SG.R19.2 macOS setsid + SG.R19.3 STRINGS_USAGE_PLAN + SG.R19.4 Dev workdir verify + SG.R19.5 Playwright as Gap #14 + SG.R19.6/.7 consolidations + SG.R19.8 End-of-round mandatory gap-fix). Built on v5.3.5+1 (commit `74ee9a0` — R16 closure SG.17-SG.20) + v5.3.5 (`98b36b1`) + v5.3.4+ (`350efba`) + v5.3.4 (`43a44ba` + `ca01e97`) + v5.3.3 (`c3a6aea`) + v5.3.2 (`42ba5aa`) + v5.3 (`657a064`). v5.3.6 total: 47 retroactive skill patches cumulative across R12-R19 retros.
+> **Last Updated**: 2026-06-30 (v5.3.7 R22 retro follow-up: 3 NEW gap fixes — SG.R20.1 Phase 2.6 3-step rebuild + SG.R22.1 bilingual lockstep pre-commit verify + SG.R22.2 worktree env check at Phase -0). Built on v5.3.6 (8 R19 patches — SG.R19.1 Phase 2.5 build location + SG.R19.2 macOS setsid + SG.R19.3 STRINGS_USAGE_PLAN + SG.R19.4 Dev workdir verify + SG.R19.5 Playwright as Gap #14 + SG.R19.6/.7 consolidations + SG.R19.8 End-of-round mandatory gap-fix). Built on v5.3.5+1 (commit `74ee9a0` — R16 closure SG.17-SG.20) + v5.3.5 (`98b36b1`) + v5.3.4+ (`350efba`) + v5.3.4 (`43a44ba` + `ca01e97`) + v5.3.3 (`c3a6aea`) + v5.3.2 (`42ba5aa`) + v5.3 (`657a064`). v5.3.7 total: 50 retroactive skill patches cumulative across R12-R22 retros.
 > **Status**: R16+ will run on v5.3.4+. R13-R15 ran on v5.3 + v5.3.2 + v5.3.3. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
 > **Migration from v2**: see `## Migration v2 → v5` section below.
 > **Status**: R16+ will run on v5.3.4. R13-R15 ran on v5.3 + v5.3.2 + v5.3.3. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
@@ -1721,6 +1721,104 @@ After Phase 4.7 Self-check PASS and BEFORE the closure archive commit (Phase 4.8
 **Enforcement**: Future rounds that defer gaps without justification will be flagged by Phase 4.7 Self-check as a fail (`## End-of-round gap-fix log section missing or unjustified deferrals`).
 
 **R+ evidence (R19 trial)**: AC1.2 PARTIAL fix + 7 skill patches applied in-round via R+ retro follow-up. ~30 LOC of code + ~150 LOC of doc updates, ~45 min total. Loop's quality increased; next round (R20) starts focused on fresh backlog, not R19 cleanup.
+
+## Phase 2.6 explicit rebuild checklist (NEW R20 retro SG.R20.1 — APPLIED, deferred embed by R22 retro)
+
+**Why** (R20 retro F.1): SG.R19.1 was correct ("rebuild in MAIN, not worktree"), but the rebuild step wasn't part of Phase 2.6's explicit checklist. R20's lead-direct inline fix caught the stale dist in Phase 3c walkthrough (10965 kB main vs 10974 kB worktree, R20 features missing from main dist). Caught in 2 min — much cheaper than rediscovery, but should be prevented not discovered.
+
+**Rule** (mandatory, SG.R20.1): Phase 2.6 (Lead Merge + Push) MUST execute the following 5-step checklist before proceeding to Phase 3a:
+
+```bash
+# Step 1: Merge dev worktree branch into main (no-ff)
+git merge --no-ff team-dev-loop-round-N-<branch> \
+  -m "Round N: <one-line summary> (close #N1, #N2, ...)"
+
+# Step 2: Rebuild in MAIN worktree (NOT dev worktree) — SG.R19.1 + SG.R20.1
+cd <main worktree>          # CRITICAL: main, not the dev worktree
+bun run build                # refresh dist/ui/* for mock-server
+
+# Step 3: Verify new features are in dist (1-line sanity check)
+grep "<feature-marker>" dist/ui/*.js  # should return matches
+
+# Step 4: Push to origin
+git push origin main
+
+# Step 5: Verify GH auto-close
+gh issue list --state closed --label pm-manager-approved
+```
+
+If Step 3 returns no matches, the rebuild in Step 2 didn't include the new commits (e.g., wrong worktree). Re-run Step 2 from main.
+
+**F.1 evidence (R20)**: Initial Phase 2.5 audit built dist/ in worktree. Phase 2.6 merged but didn't rebuild. Phase 3c Playwright walkthrough showed 0 matches for R20 feature markers in dist. Lead-direct inline rebuild fixed in 2 min. With SG.R20.1, this gap is prevented — Phase 2.6 explicitly triggers rebuild + verification BEFORE Phase 3c.
+
+**R22 + R23 evidence**: SG.R20.1 applied correctly in R22 + R23. No stale dist in Phase 3c walkthroughs. 0 occurrences of the R20 F.1 gap class.
+
+## Bilingual lockstep pre-commit verify (NEW R22 retro SG.R22.1 — APPLIED, deferred embed by R22 retro)
+
+**Why** (R21 + R22 retro F.1): Both R21 docs commit (`93bc1c7`) and R22 docs commit (`36f69fa`) succeeded for English README but the parallel zh-CN visual section edits **failed silently** (Edit tool returned "Could not find oldString" without error). Caught post-commit via manual review; repair commit `614806e` (R22) closed the gap. This is exactly the failure pattern SG.R19.8 was added to prevent.
+
+**Rule** (mandatory, SG.R22.1): After EVERY doc commit (Phase 3.5 Doc Writer + Phase 4 Decision), BEFORE pushing, run `grep -c` pre-commit verification:
+
+```bash
+# For each new section/feature added in the doc commit
+NEW_SECTION="Bulk delete recent searches"
+echo "README.md count: $(grep -c "$NEW_SECTION" README.md)"
+echo "README.zh-CN.md count: $(grep -c "$(zh-equivalent)" README.zh-CN.md)"
+
+# Counts MUST match (1=1). If not, file a repair commit immediately.
+```
+
+Or as a one-liner:
+```bash
+git diff --staged -- README.md README.zh-CN.md | grep "^+### " | \
+  while read -r new_section_en; do
+    # Extract section title from English
+    title=$(echo "$new_section_en" | sed 's/^+### //')
+    # Count in both files
+    en=$(grep -cF "$title" README.md)
+    zh=$(grep -cF "$(echo "$title" | sed 's/Settings panel/设置面板/; s/Bulk delete/批量删除/')" README.zh-CN.md)
+    [ "$en" = "$zh" ] || echo "BILINGUAL MISMATCH: $title (en=$en zh=$zh)"
+  done
+```
+
+**Block Phase 4 Decision until bilingual lockstep verified**.
+
+**F.1 evidence (R22)**: R22 ship `36f69fa` added "Clear recent searches in one click" to README.md but zh-CN visual section "一键清空最近搜索" silently failed (Edit tool returned "Could not find oldString"). User noticed post-merge via manual review; repair commit `614806e` (`docs(r22-zh-fix): add missing zh-CN visual sections for R21+R22 (bilingual lockstep repair)`) closed the gap.
+
+**R23 evidence**: SG.R22.1 applied successfully. Pre-commit `grep -c` verification showed all 3 counts match (1=1, 1=1, 1=1) on first try. Zero silent failures.
+
+## Worktree env check at Phase -0 (NEW R22 retro SG.R22.2 — APPLIED, deferred embed by R22 retro)
+
+**Why** (R22 retro F.1): R22 subagent #46 reported "458 pass / 3 fail" instead of expected 504/0. Root cause: `git worktree add` does NOT auto-inherit `node_modules` from main. Worktree tests fail with `Cannot find module '@opencode-ai/plugin'` (or similar) until node_modules is set up. Caught in 2 min via re-running with symlink fix; could have been prevented with explicit pre-flight.
+
+**Rule** (mandatory, SG.R22.2): Phase -0 (Lead Sync) MUST execute the following worktree environment checks BEFORE any test run:
+
+```bash
+# Step 1: Create R-round worktree (if not already)
+git worktree add -b team-dev-loop-round-N-<branch> \
+  "$HOME/.worktrees/team-dev-loop-round-N" \
+  origin/main
+
+# Step 2: Symlink node_modules from main (FASTER than bun install)
+ln -s /Users/yangweibin/Projects/opencode-review-dashboard/node_modules \
+  "$HOME/.worktrees/team-dev-loop-round-N/node_modules"
+
+# Step 3: Housekeeping — remove stale worktrees from prior rounds (>=3 rounds old)
+for old in ~/.worktrees/team-dev-loop-round-{N-3,N-2,N-1}; do
+  [ -d "$old" ] && git worktree remove "$old" --force
+done
+
+# Step 4: Verify
+cd "$HOME/.worktrees/team-dev-loop-round-N"
+ls -la node_modules | head -1  # MUST show symlink to main
+pwd  # MUST show worktree path, not main
+```
+
+**Block Phase 2 Dev subagent launch until worktree env verified**.
+
+**F.1 evidence (R22)**: Subagent #46 reported test failure count (458/3) inconsistent with expected (504/0). Root cause traced to missing node_modules. Symlink from main → 504/0 immediately. Caught in-flight.
+
+**R23 evidence**: SG.R22.2 applied at Phase -0. 4 stale worktrees removed (R19/R20/R21). node_modules symlinked. Pre-commit audit Fast Gate 2 immediately showed 538/538 (not 458/461 like R22 subagent #46).
 
 ## Examples
 
