@@ -113,7 +113,9 @@ describe("AC5 — Submit modal close behaviors", () => {
 
   it("T15.5c click-outside closes", async () => {
     const src = await readSource(APP_TS);
-    expect(src).toMatch(/overlay\.addEventListener\("click", \(e\) =>.*e\.target === overlay.*close/s);
+    expect(src).toMatch(
+      /overlay\.addEventListener\("click", \(e\) =>.*e\.target === overlay.*close/s,
+    );
   });
 });
 
