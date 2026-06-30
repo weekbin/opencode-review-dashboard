@@ -47,6 +47,22 @@ type FindingPin = {
   at: number;
 };
 
+// R13 #21 — Mark-as-wontfix resolution kind. Additive parallel to
+// `ReactionEmoji` style: literal union + server-side whitelist (400 on
+// unknown value, mirrors EMOJI_WHITELIST pattern at :40-42). Both #20
+// and #21 import this type from the same source of truth (no
+// `src/constants.ts` per R12 style).
+type FindingResolutionKind = "wontfix" | "out_of_scope" | "false_positive" | "duplicate";
+const RESOLUTION_KIND_WHITELIST: ReadonlySet<FindingResolutionKind> = new Set([
+  "wontfix",
+  "out_of_scope",
+  "false_positive",
+  "duplicate",
+]);
+function isFindingResolutionKind(input: unknown): input is FindingResolutionKind {
+  return typeof input === "string" && RESOLUTION_KIND_WHITELIST.has(input as FindingResolutionKind);
+}
+
 type Finding = {
   id: string;
   round: number;
@@ -71,6 +87,11 @@ type Finding = {
   pinned?: FindingPin;
   manually_pinned?: boolean;
   reactions?: Reaction[];
+  resolve_reason?: string;
+  resolve_manually_resolved?: boolean;
+  resolved_at?: number;
+  resolution_kind?: FindingResolutionKind;
+  resolution_reason?: string;
 };
 
 type DraftFinding = {
@@ -1509,6 +1530,18 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
             '   - Apply a fix if actionable AND the user\'s most recent comment thread does not already say "verified — pin can be removed". If you fix the finding, still keep the pin intact until the user explicitly unpins it via the UI; the pin is a revisit-intent, not a skip-fix-intent.',
             "   - When you address the finding, call `add_review_comment` with a short note that explicitly references the pin: e.g., `Re-visiting pinned finding: <what you changed>`. This lets the user trace which round re-addressed the pin.",
             "   - Example: `F-014` has `pinned: { by: \"user\", at: 1717000000 }` and `manually_pinned: true`. It was closed in round N with `close_reason: 'anchor_missing'`. In round N+1 the pin survives. You MUST re-treat F-014 as a revisit-target in N+1's auto-apply pass: re-read the original comment, verify whether your prior fix actually addresses the root cause, and either apply a follow-up fix or call `add_review_comment` explaining why the pin can be cleared.",
+            "1c. **Manually-resolved findings (R13 honor directive)**:",
+            "   If `state.json`'s `findings[]` contains any entry with `resolve_manually_resolved: true` (and `status: 'resolved'`), the user has explicitly resolved that finding via the Resolve button with a free-form reason (R13 #20). The reason is stored in `resolve_reason` (≤ 200 chars, trimmed).",
+            "   Honor directive:",
+            "   - Do NOT re-open the finding based on auto-close heuristics in this round. The user already moved it to `resolved` with explicit intent — that decision is final unless they reopen it themselves.",
+            "   - If the user's `resolve_reason` says something like `not going to fix — out of scope`, do NOT try to action the finding even if the underlying code still has the issue. Respect the explicit user signal.",
+            "   - If the user's `resolve_reason` references a follow-up intent (e.g. `will fix in next PR`), call `add_review_comment` only if you actually apply a related fix this round; otherwise leave the finding alone.",
+            "1d. **Resolution-kind findings (R13 honor directive)**:",
+            "   If `state.json`'s `findings[]` contains any entry with `resolution_kind` set (one of `wontfix | out_of_scope | false_positive | duplicate`), the user has explicitly classified that finding's resolution (R13 #21). The optional `resolution_reason` (≤ 200 chars) may add context (e.g. duplicate-of finding id, rationale for false positive).",
+            "   Honor directive:",
+            '   - Treat `resolution_kind: "wontfix"` / `"out_of_scope"` as a hard skip: do NOT apply a fix, do NOT re-open, and do NOT `add_review_comment` proposing an action. The user has explicitly de-scoped the finding.',
+            '   - Treat `resolution_kind: "false_positive"` as: do NOT re-open, but if a similar-looking issue appears in a new location, prefer to call `add_review_comment` linking back to the original false-positive (e.g. `related to F-007 (false positive on 2026-06-30): <brief rationale>`) rather than filing a fresh finding.',
+            '   - Treat `resolution_kind: "duplicate"` as: do NOT re-open. If you encounter the same root cause in a new location, reference the original finding id (in `resolution_reason` if provided) when you comment on the new occurrence.',
             "2. **Round Summary (must print AFTER reading history, before any tool calls or edits)**:",
             "   Once you have read state.json, ALWAYS print a short human-readable summary in this exact shape:",
             "   ```",
@@ -1796,13 +1829,37 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
               }
 
               if (request.method === "POST" && pathname === `/api/review/${id}/resolve`) {
-                const input = (await request.json().catch(() => ({}))) as { finding_id?: string };
+                const input = (await request.json().catch(() => ({}))) as {
+                  finding_id?: string;
+                  reason?: string;
+                  resolution_kind?: string;
+                  resolution_reason?: string;
+                };
                 const finding_id = input.finding_id;
                 if (!finding_id) {
                   return new Response(JSON.stringify({ error: "finding_id required" }), {
                     status: 400,
                     headers: { "content-type": "application/json" },
                   });
+                }
+                // R13 #21 — validate resolution_kind against the 4-value
+                // whitelist (400 on miss, mirrors EMOJI_WHITELIST pattern at
+                // :2161-2168). resolution_kind is optional (old `POST
+                // {finding_id}` with no resolution_kind still works → keeps
+                // backwards-compat with R9/R10/R11/R12 callers). Note: the
+                // existing `reason` field is R13 #20's "resolve reason"
+                // (mirrors the R9 reopen-reason shape). resolution_reason
+                // is the optional companion to resolution_kind.
+                if (
+                  input.resolution_kind !== undefined &&
+                  !isFindingResolutionKind(input.resolution_kind)
+                ) {
+                  return new Response(
+                    JSON.stringify({
+                      error: `invalid resolution_kind: ${input.resolution_kind ?? ""} (allowed: ${[...RESOLUTION_KIND_WHITELIST].join(", ")})`,
+                    }),
+                    { status: 400, headers: { "content-type": "application/json" } },
+                  );
                 }
                 const target = base.findings.find(
                   (item) => item.id === finding_id && item.status === "open",
@@ -1819,6 +1876,24 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                 target.status = "resolved";
                 target.updated_at = Date.now();
                 target.closed_at = Date.now();
+                target.resolved_at = Date.now();
+                // R13 #20+#21 — stamp resolve metadata. Both fields are
+                // optional and only written when present, so the old
+                // `POST {finding_id}` payload still works without
+                // accidentally clobbering previously-stamped values.
+                if (typeof input.reason === "string" && input.reason.trim().length > 0) {
+                  target.resolve_reason = input.reason.trim().slice(0, 200);
+                  target.resolve_manually_resolved = true;
+                }
+                if (input.resolution_kind) {
+                  target.resolution_kind = input.resolution_kind;
+                  if (
+                    typeof input.resolution_reason === "string" &&
+                    input.resolution_reason.trim().length > 0
+                  ) {
+                    target.resolution_reason = input.resolution_reason.trim().slice(0, 200);
+                  }
+                }
                 base.updated_at = Date.now();
                 await saveState(state_file, base);
                 const idx = data.existing_findings.findIndex((item) => item.id === finding_id);

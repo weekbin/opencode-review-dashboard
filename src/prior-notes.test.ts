@@ -219,6 +219,11 @@ describe("AC9 — State + Finding type shapes are unchanged", () => {
       "  pinned?: FindingPin;",
       "  manually_pinned?: boolean;",
       "  reactions?: Reaction[];",
+      "  resolve_reason?: string;",
+      "  resolve_manually_resolved?: boolean;",
+      "  resolved_at?: number;",
+      "  resolution_kind?: FindingResolutionKind;",
+      "  resolution_reason?: string;",
       "};",
     ].join("\n");
 
