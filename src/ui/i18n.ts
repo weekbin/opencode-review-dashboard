@@ -48,6 +48,12 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "sidebar.previously": { en: "Previously discussed", "zh-CN": "历史讨论" },
   "sidebar.tree": { en: "Tree", "zh-CN": "树状" },
   "sidebar.flat": { en: "Flat", "zh-CN": "平铺" },
+  "sidebar.reviewProgress": {
+    en: "{count} / {total} reviewed ({percent}%)",
+    "zh-CN": "已审查 {count} / {total} 个文件 ({percent}%)",
+  },
+  "sidebar.filter.unread": { en: "Show only unread", "zh-CN": "仅显示未审查" },
+  "search.recent.title": { en: "Recent searches", "zh-CN": "最近搜索" },
   "save.idle": { en: "All changes saved", "zh-CN": "所有更改已保存" },
   "save.fresh": { en: "Saved {seconds}s ago", "zh-CN": "{seconds} 秒前已保存" },
   "status.copiedMarkdown": { en: "Copied as Markdown", "zh-CN": "已复制为 Markdown" },

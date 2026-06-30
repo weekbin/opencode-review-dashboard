@@ -16,6 +16,10 @@ import {
   setLanguage,
   t,
 } from "./i18n";
+// R20 #40: sidebar review progress (X / Y reviewed + visual bar).
+import { formatReviewProgress } from "./review-progress";
+// R20 #42: in-diff search history (recent searches dropdown).
+import { addRecentSearch, getRecentSearches } from "./search-history";
 
 type Category = "bug" | "style" | "perf" | "question" | "recommend";
 type Severity = "high" | "medium" | "low";
@@ -168,6 +172,8 @@ const ACTIVE_TAB_KEY = "diff-review:active-tab";
 // localStorage (not sessionStorage) so the choice survives a page reload,
 // matching the conversationFilter pattern.
 const SORT_FINDINGS_KEY = "diff-review:sort-findings-by";
+// R20 #41: sidebar "show only unread" filter persisted as boolean-as-string.
+const SIDEBAR_FILTER_UNREAD_KEY = "diff-review:filter-unread";
 
 function readStored<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   try {
@@ -177,6 +183,18 @@ function readStored<T extends string>(key: string, allowed: readonly T[], fallba
     // ignore — localStorage may be unavailable (private mode, etc.)
   }
   return fallback;
+}
+
+// R20 #41: boolean-as-string localStorage reader. Persists the
+// "show only unread" sidebar filter so the choice survives a reload.
+// Defaults to false (show all files) when the key is missing or
+// contains any non-"on" value.
+function readStoredFilterUnread(): boolean {
+  try {
+    return localStorage.getItem(SIDEBAR_FILTER_UNREAD_KEY) === "on";
+  } catch {
+    return false;
+  }
 }
 
 function writeStored(key: string, value: string) {
@@ -630,6 +648,11 @@ type DiffSearchState = {
   overlay: HTMLElement | null;
   input: HTMLInputElement | null;
   counter: HTMLElement | null;
+  // R20 #42: recent-searches dropdown element appended to `.diff-search-bar`.
+  history: HTMLElement | null;
+  // Set when the user clicks a recent-search item, so the blur handler
+  // doesn't immediately hide the dropdown out from under the click.
+  historyClickGuard: number;
 };
 
 const diffSearch: DiffSearchState = {
@@ -639,6 +662,8 @@ const diffSearch: DiffSearchState = {
   overlay: null,
   input: null,
   counter: null,
+  history: null,
+  historyClickGuard: 0,
 };
 
 function readSessionStored(key: string): string | null {
@@ -791,6 +816,10 @@ function closeDiffSearch(): void {
   diffSearch.overlay = null;
   diffSearch.input = null;
   diffSearch.counter = null;
+  // R20 #42: clear the recent-searches dropdown ref so a fresh open
+  // doesn't reuse a stale DOM node from the previous open.
+  diffSearch.history = null;
+  diffSearch.historyClickGuard = 0;
   clearDiffSearchHighlights();
   diffSearch.query = "";
   clearSessionStored(DIFF_SEARCH_KEY);
@@ -820,6 +849,14 @@ function openDiffSearch(initialQuery: string | null = null): void {
   const nextBtn = overlay.querySelector<HTMLButtonElement>("#diff-search-next");
   const closeBtn = overlay.querySelector<HTMLButtonElement>("#diff-search-close");
 
+  // R20 #42: recent-searches dropdown mounted inside .diff-search-bar.
+  const historyRoot = document.createElement("div");
+  historyRoot.className = "diff-search-history";
+  historyRoot.setAttribute("role", "listbox");
+  historyRoot.hidden = true;
+  overlay.appendChild(historyRoot);
+  diffSearch.history = historyRoot;
+
   const startQuery =
     initialQuery !== null ? initialQuery : (readSessionStored(DIFF_SEARCH_KEY) ?? "");
   if (diffSearch.input) {
@@ -841,13 +878,9 @@ function openDiffSearch(initialQuery: string | null = null): void {
     diffSearch.matchElements = findMatchesInDiff(q);
     diffSearch.currentIndex = diffSearch.matchElements.length > 0 ? 0 : -1;
     updateDiffSearchCounter();
-    if (diffSearch.currentIndex >= 0) {
-      const target = diffSearch.matchElements[0];
-      if (target) {
-        target.scrollIntoView({ behavior: "smooth", block: "center" });
-        flashDiffSearchMatch(target);
-      }
-    }
+    // R20 #42: every successful (non-empty) query goes into the
+    // recent-searches MRU list. Empty queries early-return above.
+    addRecentSearch(q);
   };
 
   if (diffSearch.input) {
@@ -875,6 +908,61 @@ function openDiffSearch(initialQuery: string | null = null): void {
   closeBtn?.addEventListener("click", closeDiffSearch);
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) closeDiffSearch();
+  });
+
+  // R20 #42: focus → show recent searches; blur → hide (with click guard).
+  const showRecentSearches = () => {
+    if (!diffSearch.history) return;
+    const recent = getRecentSearches().filter((entry) => entry !== (diffSearch.input?.value ?? ""));
+    if (recent.length === 0) {
+      diffSearch.history.hidden = true;
+      return;
+    }
+    diffSearch.history.innerHTML = "";
+    // Title row (localized via t() — dropdown is dynamic so no data-i18n).
+    const title = document.createElement("div");
+    title.className = "diff-search-history-title";
+    title.textContent = t("search.recent.title");
+    diffSearch.history.appendChild(title);
+
+    for (const entry of recent) {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "diff-search-history-item";
+      item.setAttribute("role", "option");
+      item.dataset.query = entry;
+      item.textContent = entry;
+      diffSearch.history.appendChild(item);
+    }
+    diffSearch.history.hidden = false;
+  };
+
+  const hideRecentSearchesSoon = () => {
+    // 120ms gives the user time to click an item before the dropdown
+    // tears down; the click handler clears the timeout via
+    // diffSearch.historyClickGuard.
+    const id = window.setTimeout(() => {
+      if (diffSearch.historyClickGuard !== id) return;
+      if (diffSearch.history) diffSearch.history.hidden = true;
+    }, 120);
+    diffSearch.historyClickGuard = id;
+  };
+
+  diffSearch.input?.addEventListener("focus", showRecentSearches);
+  diffSearch.input?.addEventListener("blur", hideRecentSearchesSoon);
+
+  // Delegate clicks on recent-search items. Use mousedown so the
+  // input's blur doesn't fire before our handler runs.
+  historyRoot.addEventListener("mousedown", (event) => {
+    const target = event.target as HTMLElement;
+    const btn = target.closest<HTMLElement>(".diff-search-history-item");
+    if (!btn) return;
+    event.preventDefault();
+    const query = btn.dataset.query ?? "";
+    if (!query || !diffSearch.input) return;
+    diffSearch.input.value = query;
+    runSearch();
+    diffSearch.input.focus();
   });
 
   if (startQuery) runSearch();
@@ -1302,6 +1390,9 @@ const state = {
   diffLayout: readStored<DiffLayout>(LAYOUT_KEY, ["unified", "split"], "split"),
   ignoreWhitespace: readStored<"on" | "off">(IGNORE_WHITESPACE_KEY, ["on", "off"], "off") === "on",
   sidebarMode: readStored<SidebarMode>(SIDEBAR_KEY, ["tree", "flat"], "tree"),
+  // R20 #41: "show only unread" toggle — persisted under
+  // diff-review:filter-unread. Default false (show all files).
+  filterUnread: readStoredFilterUnread(),
   activeTab: readStored<"files" | "commits" | "conversation" | "previously">(
     ACTIVE_TAB_KEY,
     ["files", "commits", "conversation", "previously"],
@@ -1407,6 +1498,11 @@ onLanguageChange(() => applyLanguageToggle());
 
 // R19 #33 AC1.2 follow-up: register static-HTML elements for i18n re-render.
 registerUITranslator("app.title", () => t("app.title"));
+// R20 #40: re-render the sidebar progress counter on language change —
+// its text comes from t("sidebar.reviewProgress", {count,total,percent})
+// with runtime params, so it can't go through the static data-i18n
+// pipeline. Cheaper than re-walking the DOM.
+onLanguageChange(() => renderReviewProgress());
 registerUITranslator("skipLink", () => t("skipLink"));
 registerUITranslator("toolbar.layout.unified", () => t("toolbar.layout.unified"));
 registerUITranslator("toolbar.layout.split", () => t("toolbar.layout.split"));
@@ -1423,6 +1519,7 @@ registerUITranslator("sidebar.conversation", () => t("sidebar.conversation"));
 registerUITranslator("sidebar.previously", () => t("sidebar.previously"));
 registerUITranslator("sidebar.tree", () => t("sidebar.tree"));
 registerUITranslator("sidebar.flat", () => t("sidebar.flat"));
+registerUITranslator("sidebar.filter.unread", () => t("sidebar.filter.unread"));
 registerUITranslator("save.idle", () => t("save.idle"));
 
 // ── Layout toggle ──
@@ -1493,6 +1590,45 @@ sidebarMode.addEventListener("click", (event) => {
   if (!btn) return;
   setSidebarMode(btn.dataset.mode as SidebarMode);
 });
+
+// R20 #41: sidebar "show only unread" filter checkbox. Persists the
+// state to localStorage; re-renders the Files pane whenever the
+// checkbox toggles. The progress counter (AC2.5) keeps tracking the
+// TOTAL count regardless of filter state — only the visible file list
+// is filtered.
+const filterUnreadEl = document.querySelector<HTMLInputElement>("#filter-unread");
+function applyFilterUnread() {
+  if (!filterUnreadEl) return;
+  filterUnreadEl.checked = state.filterUnread;
+  // Visual: highlight the chip when the filter is active.
+  const label = filterUnreadEl.closest<HTMLElement>(".sidebar-filter");
+  if (label) {
+    if (state.filterUnread) label.setAttribute("data-active", "true");
+    else label.removeAttribute("data-active");
+  }
+}
+
+function setFilterUnread(next: boolean) {
+  if (state.filterUnread === next) return;
+  state.filterUnread = next;
+  applyFilterUnread();
+  try {
+    localStorage.setItem(SIDEBAR_FILTER_UNREAD_KEY, next ? "on" : "off");
+  } catch {
+    // ignore — localStorage may be unavailable (private mode, etc.)
+  }
+  // Re-render the Files pane so the filtered list takes effect. Also
+  // re-render the review progress because turning the filter ON may
+  // remove a "read" file from view — the user should still see the
+  // same TOTAL counter (X / Y where Y is total), per AC2.5.
+  if (state.activeTab === "files") renderActivePane();
+  renderReviewProgress();
+}
+
+filterUnreadEl?.addEventListener("change", () => {
+  setFilterUnread(Boolean(filterUnreadEl.checked));
+});
+applyFilterUnread();
 
 function applyActiveTab() {
   const tabButtons = [...navbarTabs.querySelectorAll<HTMLButtonElement>("button")];
@@ -2293,6 +2429,55 @@ function applyFileState(file: string) {
     const badge = item.querySelector(".sidebar-reviewed") as HTMLElement | null;
     if (badge) badge.style.display = marked ? "" : "none";
   }
+
+  // R20 #40: progress counter derives from state.read.size + total file
+  // count, so any toggleRead path must re-render the counter too.
+  // Live update is required by AC1.2.
+  renderReviewProgress();
+}
+
+/**
+ * R20 #40: re-render the sidebar review progress indicator (AC1.1,
+ * AC1.2, AC1.3, AC1.4). Reads `state.read.size` + total file count,
+ * hands them to `formatReviewProgress()` (pure helper), and writes
+ * the localized text + visual-bar width into `#sidebar-progress-text`
+ * / `#sidebar-progress-fill` declared in `review.html`. Safe on the
+ * first paint when no data has loaded yet (renders empty). i18n lives
+ * here, not in the helper, per SG.R19.3.
+ */
+function renderReviewProgress(): void {
+  const total = state.data?.files.length ?? 0;
+  const progress = formatReviewProgress(state.read.size, total);
+
+  const textEl = document.querySelector<HTMLElement>("#sidebar-progress-text");
+  const fillEl = document.querySelector<HTMLElement>("#sidebar-progress-fill");
+  const container = document.querySelector<HTMLElement>("#sidebar-progress");
+
+  if (textEl) {
+    if (progress.total === 0) {
+      textEl.textContent = "";
+      textEl.removeAttribute("data-complete");
+    } else {
+      textEl.textContent = t("sidebar.reviewProgress", {
+        count: progress.count,
+        total: progress.total,
+        percent: progress.percent,
+      });
+      if (progress.complete) textEl.setAttribute("data-complete", "true");
+      else textEl.removeAttribute("data-complete");
+    }
+  }
+
+  if (fillEl) {
+    fillEl.style.width = progress.widthPct;
+    if (progress.complete) fillEl.setAttribute("data-complete", "true");
+    else fillEl.removeAttribute("data-complete");
+  }
+
+  if (container) {
+    if (progress.total === 0) container.setAttribute("data-empty", "true");
+    else container.removeAttribute("data-empty");
+  }
 }
 
 function toggleCollapse(file: string) {
@@ -2858,8 +3043,19 @@ function renderFilesPane() {
   // R8 #1: search bar at top of the Files pane.
   fileListRoot.appendChild(renderSearchInput("files"));
 
+  // R20 #41: keep the chip's visual state in sync with state.filterUnread
+  // after render (the chip lives inside .sidebar-header but renderFilesPane
+  // mutates only #file-list; the chip's aria/visual state is initialized
+  // once at startup via applyFilterUnread).
+  applyFilterUnread();
+
   const allFiles = getOrderedFiles();
-  const files = filterByQuery(allFiles, currentSearchQuery, (f) => f.path);
+  const searched = filterByQuery(allFiles, currentSearchQuery, (f) => f.path);
+  // R20 #41: apply the "show only unread" filter AFTER the search filter,
+  // so the two compose (search first, then unread). Tree mode naturally
+  // collapses folders whose files are all read — buildTree() filters at
+  // construction time.
+  const files = state.filterUnread ? searched.filter((f) => !state.read.has(f.path)) : searched;
   if (state.sidebarMode === "tree") {
     renderTreeSidebar(buildTree(files));
   } else {
@@ -5222,6 +5418,11 @@ async function init() {
   renderFindings();
   renderSelection();
   syncAll();
+  // R20 #40: sidebar progress depends on state.read.size + total file
+  // count — must render after state.data is loaded and after every
+  // language change (the text uses t() with params, so it can't ride
+  // the static data-i18n / registerUITranslator pipeline).
+  renderReviewProgress();
   resolveHashOnLoad();
   // R14 #24: kick off the 5s "Saved Xs ago" indicator ticker. The
   // indicator starts in the "idle" / "All changes saved" state; the

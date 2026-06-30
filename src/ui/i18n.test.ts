@@ -220,4 +220,50 @@ describe("AC1.2 — toggle re-renders static-HTML labels via registerUITranslato
       expect(i18n.includes(`"${key}":`)).toBe(true);
     }
   });
+
+  // R20 #40: SG.R19.3 STRINGS_USAGE_PLAN regression — guard that the
+  // sidebar.reviewProgress key has BOTH en + zh-CN translations (the
+  // R19 AC1.2 PARTIAL regression root-caused missing-translation bugs
+  // that one-locale STRINGS entries caused in production).
+  it("STRINGS['sidebar.reviewProgress'] has both en + zh-CN translations", async () => {
+    const i18n = await readSource(I18N);
+    expect(i18n.includes('"sidebar.reviewProgress":')).toBe(true);
+    expect(i18n.includes("reviewed ({percent}%)")).toBe(true);
+    // Capture the zh-CN value. Use non-greedy [\s\S]*? so we don't
+    // swallow past the closing brace of this STRINGS entry.
+    const zhMatch = i18n.match(/"sidebar\.reviewProgress":\s*\{[\s\S]*?"zh-CN":\s*"([^"]+)"/);
+    expect(zhMatch).not.toBeNull();
+    const zh = zhMatch![1]!;
+    expect(zh.length).toBeGreaterThan(0);
+    expect(/\p{Script=Han}/u.test(zh)).toBe(true);
+  });
+
+  // R20 #41: same STRINGS_USAGE_PLAN regression for sidebar.filter.unread.
+  it("STRINGS['sidebar.filter.unread'] has both en + zh-CN translations and is wired", async () => {
+    const i18n = await readSource(I18N);
+    const src = await readSource(APP_TS);
+    const html = await readSource(HTML);
+    expect(i18n.includes('"sidebar.filter.unread":')).toBe(true);
+    // en translation present and non-empty
+    expect(i18n.includes('"Show only unread"')).toBe(true);
+    // zh-CN translation present and has Chinese (Han) characters
+    expect(i18n.includes('"仅显示未审查"')).toBe(true);
+    // HTML annotates the static element with data-i18n
+    expect(html.includes('data-i18n="sidebar.filter.unread"')).toBe(true);
+    // app.ts binds a registerUITranslator for the key
+    expect(src.includes('registerUITranslator("sidebar.filter.unread"')).toBe(true);
+  });
+
+  // R20 #42: STRINGS_USAGE_PLAN regression for search.recent.title.
+  // The dropdown is dynamic (mounted on focus), so there is no static
+  // data-i18n element — the test only covers STRINGS table presence and
+  // a t() call wired in app.ts at the dropdown render site.
+  it("STRINGS['search.recent.title'] has both en + zh-CN translations and app.ts uses t() to render it", async () => {
+    const i18n = await readSource(I18N);
+    const src = await readSource(APP_TS);
+    expect(i18n.includes('"search.recent.title":')).toBe(true);
+    expect(i18n.includes('"Recent searches"')).toBe(true);
+    expect(i18n.includes('"最近搜索"')).toBe(true);
+    expect(src.includes('t("search.recent.title")')).toBe(true);
+  });
 });

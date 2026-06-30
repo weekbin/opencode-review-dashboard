@@ -438,6 +438,67 @@
         text-transform: none;
         letter-spacing: 0;
       }
+      /* R20 #41: sidebar "show only unread" filter chip. */
+      .sidebar-filter {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: none;
+        letter-spacing: 0;
+        color: light-dark(#444, #bbb);
+        cursor: pointer;
+        user-select: none;
+      }
+      .sidebar-filter input[type="checkbox"] {
+        cursor: pointer;
+      }
+      .sidebar-filter[data-active="true"] {
+        color: light-dark(#1d5a96, #95c1e8);
+        font-weight: 700;
+      }
+      .sidebar-header {
+        flex-wrap: wrap;
+      }
+
+      /* R20 #40: sidebar review progress (X / Y reviewed + visual bar). */
+      .sidebar-progress {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-width: 0;
+        gap: 2px;
+        text-transform: none;
+        letter-spacing: 0;
+        font-size: 12px;
+        font-weight: 500;
+      }
+      .sidebar-progress-text {
+        color: light-dark(#444, #bbb);
+      }
+      .sidebar-progress-text[data-complete="true"] {
+        color: light-dark(#1d5a96, #95c1e8);
+        font-weight: 700;
+      }
+      .sidebar-progress-bar {
+        display: block;
+        width: 100%;
+        height: 4px;
+        background: light-dark(#e6e6e6, #2a2a2a);
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      .sidebar-progress-fill {
+        display: block;
+        height: 100%;
+        width: 0%;
+        background: light-dark(#1d5a96, #95c1e8);
+        transition: width 120ms ease-out;
+      }
+      .sidebar-progress-fill[data-complete="true"] {
+        background: light-dark(#1e8a4a, #6fcf97);
+      }
       .sidebar-toolbar {
         margin-left: auto;
         display: flex;
@@ -2262,6 +2323,55 @@
       .diff-search-close:hover {
         background: light-dark(#e5e7eb, #1c2330);
       }
+
+      /* R20 #42: recent-searches dropdown. Positioned absolutely below
+         the .diff-search-bar so the input row keeps its horizontal
+         layout. The overlay itself is position: fixed (top-right); the
+         dropdown drops below + slightly wider to give room for the
+         query text. */
+      .diff-search-history[hidden] {
+        display: none;
+      }
+      .diff-search-history {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        margin-top: 4px;
+        background: light-dark(#ffffff, #161b22);
+        border: 1px solid light-dark(#d1d5db, #1f2937);
+        border-radius: 8px;
+        box-shadow: 0 6px 20px light-dark(rgba(0, 0, 0, 0.14), rgba(0, 0, 0, 0.55));
+        max-height: 220px;
+        overflow-y: auto;
+        padding: 4px 0;
+        z-index: 101;
+      }
+      .diff-search-history-title {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: light-dark(#6b7280, #9ca3af);
+        padding: 6px 12px;
+      }
+      .diff-search-history-item {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 6px 12px;
+        font-size: 13px;
+        background: transparent;
+        border: 0;
+        color: inherit;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .diff-search-history-item:hover,
+      .diff-search-history-item:focus {
+        background: light-dark(#e5e7eb, #1c2330);
+        outline: none;
+      }
       .diff-search-close {
         font-size: 16px;
         line-height: 1;
@@ -2734,6 +2844,10 @@
       <div class="pane pane-files" data-pane="files">
         <nav class="sidebar" id="sidebar">
           <div class="sidebar-header">
+            <label class="sidebar-filter">
+              <input type="checkbox" id="filter-unread" />
+              <span data-i18n="sidebar.filter.unread">Show only unread</span>
+            </label>
             <div class="sidebar-mode" id="sidebar-mode">
               <button
                 data-mode="tree"
@@ -2751,6 +2865,12 @@
               >
                 Flat
               </button>
+            </div>
+            <div class="sidebar-progress" id="sidebar-progress" role="status" aria-live="polite">
+              <span class="sidebar-progress-text" id="sidebar-progress-text"></span>
+              <span class="sidebar-progress-bar" aria-hidden="true">
+                <span class="sidebar-progress-fill" id="sidebar-progress-fill"></span>
+              </span>
             </div>
           </div>
           <div class="sidebar-list" id="file-list"></div>
