@@ -33,7 +33,7 @@
   ],
   "scripts": {
     "build": "tsdown && cp src/ui/review.html dist/ui/review.html",
-    "prepare": "bun run build",
+    "prepare": "bun run build && husky",
     "lint": "oxlint src/",
     "format": "oxfmt --write src/",
     "format:check": "oxfmt src/",
@@ -51,6 +51,8 @@
     "@tsconfig/bun": "^1.0.10",
     "@types/bun": "^1.2.18",
     "@types/node": "^22.15.21",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.0.0",
     "oxfmt": "^0.32.0",
     "oxlint": "^1.47.0",
     "tsdown": "^0.20.3",
