@@ -120,6 +120,14 @@ If you review pull requests or diffs on a regular basis, this saves you the back
 
 *Each file card in the sidebar has a checkbox. Check the files you've reviewed, then click "Mark selected as reviewed" to mark them all in one action. The review progress counter (X/Y reviewed) updates immediately. Mirrors GitHub PR file tree multi-select.*
 
+### Per-finding delete from history
+
+*Each entry in the Recent Searches dropdown has a × button to remove that single entry without clearing all your history. Mirrors GitHub per-PR hide / VS Code per-file delete / Chrome per-entry delete from history.*
+
+### Bulk delete in Conversation tab
+
+*Each finding card in the Conversation tab now has a checkbox. Check the findings you want to remove, then click "Delete selected" to remove them all in one action. The active tab and filter are preserved. Mirrors GitHub PR comments multi-select / VS Code problems panel multi-select.*
+
 ### IME-safe search
 
 ![Search box with Chinese IME composition active](docs/screenshots/r17-ime-composition.png)
@@ -187,6 +195,8 @@ If you review pull requests or diffs on a regular basis, this saves you the back
 - **Settings panel** *(added R21)* — click the ⚙ button in the header for a centralized preferences panel (theme / layout / search / language / reset-to-defaults). Toolbar controls stay as quick shortcuts; both paths share the same handlers
 - **Diff virtualization toggle** *(added R25)* — settings panel toggle (Appearance section) to enable/disable IntersectionObserver-based hunk virtualization for users who want eager rendering on small diffs
 - **Bulk mark sidebar files as reviewed** *(added R25)* — per-file checkboxes in the sidebar + "Mark selected as reviewed" bulk button. Multi-select pattern matching GitHub PR file tree
+- **Per-finding delete from history** *(added R26)* — × button on each Recent Searches dropdown entry to remove a single entry without clearing all history. Mirrors GitHub per-PR hide / VS Code per-file delete
+- **Bulk delete in Conversation tab** *(added R26)* — per-finding checkboxes in the Conversation tab + "Delete selected" bulk button. Mirrors GitHub PR comments multi-select / VS Code problems panel
 
 ### Resolving findings
 

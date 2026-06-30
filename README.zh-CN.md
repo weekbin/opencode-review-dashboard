@@ -124,6 +124,14 @@
 
 *侧边栏的每个文件卡片都有 checkbox。勾选已审查的文件，然后点「标记选中为已审查」即可一次性全部标记。审查进度计数器（X/Y 已审查）立即更新。对齐 GitHub PR 文件树多选。*
 
+### 从历史中删除单条
+
+*最近搜索下拉的每个条目都有一个 × 按钮，可单独删除某条而不清空整个历史。对齐 GitHub per-PR hide / VS Code per-file delete / Chrome per-entry delete。*
+
+### 批量删除 Conversation tab
+
+*Conversation tab 的每个 finding 卡片现在都有 checkbox。勾选你想要删除的 findings，然后点「Delete selected」即可一次性全部删除。当前 tab 和 filter 会被保留。对齐 GitHub PR comments multi-select / VS Code problems panel multi-select。*
+
 ### IME 安全的搜索
 
 ![搜索框激活了中文 IME 组合输入](docs/screenshots/r17-ime-composition.png)
@@ -191,6 +199,8 @@
 - **设置面板** *(R21 新增)* —— 点击头部 ⚙ 按钮打开集中偏好面板（主题 / 布局 / 搜索 / 语言 / 恢复默认）。工具栏控制作为快速开关保留；两条路径共享同一套 handler
 - **Diff 虚拟化 toggle** *(R25 新增)* —— 设置面板（外观分区）中的 toggle，启用/禁用基于 IntersectionObserver 的 hunk 虚拟化，方便需要立即渲染小 diff 的用户
 - **批量标记侧边栏文件已审查** *(R25 新增)* —— 侧边栏每个文件 checkbox + 「标记选中为已审查」批量按钮。对齐 GitHub PR 文件树多选
+- **从历史中删除单条** *(R26 新增)* —— 最近搜索下拉每个条目的 × 按钮，可单独删除某条而不清空整个历史。对齐 GitHub per-PR hide / VS Code per-file delete
+- **批量删除 Conversation tab** *(R26 新增)* —— Conversation tab 每个 finding checkbox + 「Delete selected」批量按钮。对齐 GitHub PR comments multi-select / VS Code problems panel
 
 ### 解决 finding
 
