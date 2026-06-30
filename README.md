@@ -72,15 +72,24 @@ If you review pull requests or diffs on a regular basis, this saves you the back
 
 ### Toast notifications for your actions
 
-![Toast notification confirming a finding was added](docs/screenshots/r24-s1-toast-added-review.png)
+| Screenshot | Description |
+|---|---|
+| ![Toast confirming finding added](docs/screenshots/r24-s1-toast-added-review.png) | Finding added |
+| ![Toast confirming permalink copied](docs/screenshots/r24-s2-toast-copied-permalink.png) | Permalink copied |
+| ![Toast confirming Markdown copied](docs/screenshots/r24-s3-toast-copied-markdown.png) | Markdown copied |
+| ![Toast confirming review submitted](docs/screenshots/r24-s4-toast-submitted-review.png) | Review submitted |
 
-*Brief 3-second confirmation toasts appear in the top-right when you copy a permalink, copy a finding as Markdown, add a finding, or submit a review. Screen readers announce them via `aria-live="polite"`. Replaces the R14-era intrusive toast with a non-blocking alternative.*
+*Brief 3-second confirmation toasts appear in the top-right. Screen readers announce them via `aria-live="polite"`. Replaces the R14-era intrusive toast with a non-blocking alternative.*
 
-### Better keyboard and screen-reader accessibility
+### Auto-save indicator
 
 ![Header showing auto-save indicator "All changes saved"](docs/screenshots/r24-s5-autosave-indicator.png)
 
-*Skip-to-content link at the top of every page. Sidebar tabs have proper `role="tablist"` / `role="tab"` ARIA semantics. Auto-save indicator has `role="status"` so screen readers announce save state. All modals trap focus and close on Escape.*
+*"Saved 3s ago" appears in the header, updates in place. No more intrusive "Draft saved at 12:34:56" toasts. Has `role="status"` so screen readers announce save state.*
+
+### Better keyboard and screen-reader accessibility
+
+*Skip-to-content link at the top of every page. Sidebar tabs have proper `role="tablist"` / `role="tab"` ARIA semantics. All modals trap focus and close on Escape.*
 
 ### Sidebar review progress indicator
 
