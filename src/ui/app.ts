@@ -357,6 +357,122 @@ window.addEventListener("hashchange", () => {
   if (target) flashFindingPermaHighlight(target);
 });
 
+// ── R12 #19 — Keyboard nav n/p ──
+//
+// Pure client-side. `n` jumps to the next finding card (round DESC,
+// created_at ASC) in the current conversationFilter view; `p` jumps
+// to the previous. Focus guard: skip when a <textarea>/<input> is
+// focused so typing 'n' or 'p' inside the comment box doesn't fire
+// nav. Wraps on overflow. Reuses flashFindingPermaHighlight (R11
+// helper) for the scroll-into-view + 1.5s flash effect.
+
+type SortedFinding = {
+  id: string;
+  round: number;
+  created_at: number;
+  status: string;
+  origin: "existing" | "new";
+};
+
+let currentFindingIndex = -1;
+
+function getSortedFindings(): SortedFinding[] {
+  const entries: SortedFinding[] = [
+    ...state.existing.map((item) => ({
+      id: item.id,
+      round: item.round ?? 0,
+      created_at: item.created_at ?? 0,
+      status: item.status ?? "open",
+      origin: "existing" as const,
+    })),
+    ...state.fresh.map((item, index) => ({
+      id: item.id,
+      round: 0,
+      created_at: Date.now() + index,
+      status: "open",
+      origin: "new" as const,
+    })),
+  ];
+  let filtered = entries;
+  if (state.conversationFilter === "open") {
+    filtered = filtered.filter((e) => e.status === "open" || e.status === "closed_auto");
+  } else if (state.conversationFilter === "resolved") {
+    filtered = filtered.filter((e) => e.status === "resolved");
+  } else if (state.conversationFilter === "pinned") {
+    filtered = filtered.filter((e) =>
+      state.existing.some((item) => item.id === e.id && Boolean(item.pinned)),
+    );
+  } else if (state.conversationFilter === "reacted") {
+    filtered = filtered.filter((e) =>
+      state.existing.some(
+        (item) => item.id === e.id && Boolean(item.reactions && item.reactions.length > 0),
+      ),
+    );
+  }
+  return [...filtered].sort((a, b) => {
+    if (a.round !== b.round) return b.round - a.round;
+    return a.created_at - b.created_at;
+  });
+}
+
+function jumpToFindingByIndex(index: number): void {
+  const sorted = getSortedFindings();
+  if (sorted.length === 0) return;
+  const wrapped = ((index % sorted.length) + sorted.length) % sorted.length;
+  currentFindingIndex = wrapped;
+  const target = sorted[wrapped];
+  if (!target) return;
+  flashFindingPermaHighlight(target.id);
+  updateNavHint();
+}
+
+function isTextInputFocused(): boolean {
+  if (typeof document === "undefined") return false;
+  const active = document.activeElement;
+  if (!(active instanceof HTMLElement)) return false;
+  if (active.tagName === "TEXTAREA") return true;
+  if (active.tagName === "INPUT") return true;
+  if (active.isContentEditable) return true;
+  return false;
+}
+
+window.addEventListener("keydown", (event) => {
+  if (event.isComposing || event.metaKey || event.ctrlKey || event.altKey) return;
+  if (event.key !== "n" && event.key !== "p") return;
+  if (isTextInputFocused()) return;
+  if (state.activeTab !== "conversation") return;
+  event.preventDefault();
+  if (event.key === "n") {
+    jumpToFindingByIndex(currentFindingIndex + 1);
+  } else {
+    jumpToFindingByIndex(currentFindingIndex - 1);
+  }
+});
+
+let navHintEl: HTMLElement | null = null;
+function ensureNavHint(): HTMLElement | null {
+  if (typeof document === "undefined") return null;
+  if (navHintEl) return navHintEl;
+  const el = document.createElement("div");
+  el.className = "nav-hint";
+  el.id = "nav-hint";
+  el.innerHTML = "Press <kbd>n</kbd> / <kbd>p</kbd> to navigate findings";
+  el.hidden = true;
+  document.body.appendChild(el);
+  navHintEl = el;
+  return el;
+}
+
+function updateNavHint(): void {
+  const el = ensureNavHint();
+  if (!el) return;
+  const showHint = !isTextInputFocused() && state.activeTab === "conversation";
+  el.hidden = !showHint;
+}
+
+window.addEventListener("focusin", () => updateNavHint());
+window.addEventListener("focusout", () => updateNavHint());
+
 // ── File-type icon table ──
 //
 // The icon table is a curated subset of vscode-material-icon-theme (Apache-2.0),
@@ -712,6 +828,7 @@ function applyActiveTab() {
 function setActiveTab(tab: TabKey) {
   if (state.activeTab === tab) {
     renderActivePane();
+    updateNavHint();
     return;
   }
   state.activeTab = tab;
@@ -721,6 +838,7 @@ function setActiveTab(tab: TabKey) {
   writeStored(ACTIVE_TAB_KEY, tab);
   updateTabCounts();
   renderActivePane();
+  updateNavHint();
   // R8 #2: keep keyboard focus in sync with the new active tab.
   const newTab = navbarTabs.querySelector<HTMLButtonElement>(`button[data-tab="${tab}"]`);
   newTab?.focus();
