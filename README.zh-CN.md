@@ -72,15 +72,24 @@
 
 ### 操作触发的轻量 Toast 通知
 
-![Toast 通知确认 finding 已添加](docs/screenshots/r24-s1-toast-added-review.png)
+| 截图 | 说明 |
+|---|---|
+| ![Toast 确认 finding 已添加](docs/screenshots/r24-s1-toast-added-review.png) | Finding 已添加 |
+| ![Toast 确认 permalink 已复制](docs/screenshots/r24-s2-toast-copied-permalink.png) | Permalink 已复制 |
+| ![Toast 确认 Markdown 已复制](docs/screenshots/r24-s3-toast-copied-markdown.png) | Markdown 已复制 |
+| ![Toast 确认 review 已提交](docs/screenshots/r24-s4-toast-submitted-review.png) | Review 已提交 |
 
-*当你复制 permalink、复制 Markdown finding、新增 finding 或提交 review 时，右上角会出现 3 秒自动消失的确认 toast。屏幕阅读器通过 `aria-live="polite"` 朗读这些通知。替代了 R14 时期过于侵入式的旧 toast，提供更轻量的反馈。*
+*右上角会出现 3 秒自动消失的确认 toast。屏幕阅读器通过 `aria-live="polite"` 朗读这些通知。替代了 R14 时期过于侵入式的旧 toast，提供更轻量的反馈。*
 
-### 更好的键盘与屏幕阅读器可访问性
+### 自动保存指示器
 
 ![头部显示自动保存指示器「All changes saved」](docs/screenshots/r24-s5-autosave-indicator.png)
 
-*每页顶部都有「跳到主要内容」链接。侧边栏标签带有正确的 `role="tablist"` / `role="tab"` ARIA 语义。自动保存指示器带有 `role="status"`，让屏幕阅读器朗读保存状态。所有弹窗都启用焦点陷阱，并支持 Escape 键关闭。*
+*头部显示「Saved 3s ago」，原地更新。不再使用过于侵入式的「Draft saved at 12:34:56」toast。带有 `role="status"`，让屏幕阅读器朗读保存状态。*
+
+### 更好的键盘与屏幕阅读器可访问性
+
+*每页顶部都有「跳到主要内容」链接。侧边栏标签带有正确的 `role="tablist"` / `role="tab"` ARIA 语义。所有弹窗都启用焦点陷阱，并支持 Escape 键关闭。*
 
 ### 侧边栏审查进度指示器
 
