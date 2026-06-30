@@ -21,6 +21,17 @@ type Reaction = {
   created_at: number;
 };
 
+// R13 #20+#21 — additive optional resolve metadata. Mirrors the
+// R9/R10/R11/R12 additive field pattern. Old state.json payloads
+// (no `resolve_reason` / `resolution_kind`) load without errors.
+type FindingResolutionKind = "wontfix" | "out_of_scope" | "false_positive" | "duplicate";
+const RESOLUTION_KIND_WHITELIST: ReadonlySet<FindingResolutionKind> = new Set([
+  "wontfix",
+  "out_of_scope",
+  "false_positive",
+  "duplicate",
+]);
+
 type Finding = {
   id: string;
   file: string;
@@ -42,6 +53,11 @@ type Finding = {
   pinned?: { by: "user"; at: number };
   manually_pinned?: boolean;
   reactions?: Reaction[];
+  resolve_reason?: string;
+  resolve_manually_resolved?: boolean;
+  resolved_at?: number;
+  resolution_kind?: FindingResolutionKind;
+  resolution_reason?: string;
 };
 
 type Draft = {
@@ -1158,6 +1174,167 @@ function showReopenReasonModal(_findingId: string): Promise<string | null> {
   });
 }
 
+// R13 #20 — Resolve-with-reason modal. Mirrors `showReopenReasonModal`
+// at :1120-1159 (same modal-overlay + dialog markup, same
+// Cancel/Confirm button shape, same textarea focus). Diff vs the
+// reopen modal:
+//  - 4 quick-reason chips pre-fill the textarea on click (one per
+//    common R13 #20 reason shape, mirrors GitHub's "Resolve
+//    conversation" dropdown + Jira's resolution list).
+//  - Cancel returns `null` (the existing reopen modal also returns
+//    null on Cancel — preserved contract).
+//  - Confirm returns the trimmed reason text OR `""` if the user
+//    confirms with an empty textarea. The server treats `""` as
+//    "resolve without reason" (back-compat with R9/R10/R11/R12 callers
+//    that POST {finding_id} with no reason).
+// The modal's "Resolve" button forwards the reason to the existing
+// POST /api/review/{id}/resolve endpoint, which now accepts
+// `reason?` (≤200 chars).
+type ResolveReasonModalResult = { reason: string } | null;
+function showResolveReasonModal(_findingId: string): Promise<ResolveReasonModalResult> {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    const dialog = document.createElement("div");
+    dialog.className = "modal-dialog conversation-drawer";
+    dialog.setAttribute("role", "dialog");
+    dialog.setAttribute("aria-modal", "true");
+    dialog.innerHTML = `
+      <h3>Resolve Finding</h3>
+      <p>Why are you resolving this finding? (Optional — helps the agent learn your intent.)</p>
+      <div class="resolve-reason-chips" id="resolve-reason-chips">
+        <button type="button" class="resolve-reason-chip" data-reason="fixed in this round">fixed in this round</button>
+        <button type="button" class="resolve-reason-chip" data-reason="no longer applies">no longer applies</button>
+        <button type="button" class="resolve-reason-chip" data-reason="will fix in follow-up">will fix in follow-up</button>
+        <button type="button" class="resolve-reason-chip" data-reason="false alarm — keep the code">false alarm — keep the code</button>
+      </div>
+      <textarea id="resolve-reason" rows="3" placeholder="e.g., 'verified, the function is no longer called from the public path'"></textarea>
+      <div class="modal-actions">
+        <button id="resolve-cancel" type="button">Cancel</button>
+        <button id="resolve-submit" class="primary" type="button">Resolve</button>
+      </div>
+    `;
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+    const textarea = dialog.querySelector("#resolve-reason") as HTMLTextAreaElement | null;
+    const cancelBtn = dialog.querySelector("#resolve-cancel") as HTMLButtonElement | null;
+    const submitBtn = dialog.querySelector("#resolve-submit") as HTMLButtonElement | null;
+    const chipContainer = dialog.querySelector("#resolve-reason-chips") as HTMLDivElement | null;
+
+    const closeWith = (value: ResolveReasonModalResult) => {
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      resolve(value);
+    };
+
+    textarea?.focus();
+    cancelBtn?.addEventListener("click", () => closeWith(null));
+    submitBtn?.addEventListener("click", () => {
+      const trimmed = (textarea?.value ?? "").trim();
+      closeWith({ reason: trimmed.slice(0, 200) });
+    });
+    chipContainer?.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      const reason = target.dataset.reason;
+      if (!reason || !textarea) return;
+      textarea.value = reason;
+      textarea.focus();
+    });
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) closeWith(null);
+    });
+  });
+}
+
+// R13 #21 — Mark-as-wontfix modal. Radio-button picker (4 enum
+// values mirroring the server's RESOLUTION_KIND_WHITELIST) + optional
+// reason textarea. Cancel returns `null` (preserves the existing
+// reopen / resolve modal Cancel contract). Confirm returns
+// `{ kind, reason }` (or `null` if the user Canceled). The server
+// validates `kind` against RESOLUTION_KIND_WHITELIST (400 on miss,
+// mirrors EMOJI_WHITELIST validation at :2161-2168).
+type MarkAsWontfixResult = { kind: FindingResolutionKind; reason: string } | null;
+const MARKS_AS_WONTFIX_KINDS: { value: FindingResolutionKind; label: string; hint: string }[] = [
+  {
+    value: "wontfix",
+    label: "Wontfix",
+    hint: "Acknowledged but will not address (e.g. design choice, intentional)",
+  },
+  {
+    value: "out_of_scope",
+    label: "Out of scope",
+    hint: "Should be tracked elsewhere / not in this review's scope",
+  },
+  {
+    value: "false_positive",
+    label: "False positive",
+    hint: "Not actually an issue — the code is correct as-is",
+  },
+  {
+    value: "duplicate",
+    label: "Duplicate",
+    hint: "Already covered by another finding or fixed elsewhere",
+  },
+];
+function showMarkAsWontfixModal(_findingId: string): Promise<MarkAsWontfixResult> {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    const dialog = document.createElement("div");
+    dialog.className = "modal-dialog conversation-drawer";
+    dialog.setAttribute("role", "dialog");
+    dialog.setAttribute("aria-modal", "true");
+    const radios = MARKS_AS_WONTFIX_KINDS.map(
+      (item, idx) => `
+        <label class="wontfix-radio" data-kind="${item.value}">
+          <input type="radio" name="wontfix-kind" value="${item.value}" ${idx === 0 ? "checked" : ""}>
+          <span class="wontfix-radio-label">${item.label}</span>
+          <span class="wontfix-radio-hint">${item.hint}</span>
+        </label>
+      `,
+    ).join("");
+    dialog.innerHTML = `
+      <h3>Mark as wontfix</h3>
+      <p>Why is this finding not actionable? Pick a category and add an optional reason.</p>
+      <div class="wontfix-radios" id="wontfix-radios">${radios}</div>
+      <textarea id="wontfix-reason" rows="3" placeholder="Optional context (e.g. duplicate of F-002, see #123)"></textarea>
+      <div class="modal-actions">
+        <button id="wontfix-cancel" type="button">Cancel</button>
+        <button id="wontfix-submit" class="primary" type="button">Mark as wontfix</button>
+      </div>
+    `;
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+    const reasonEl = dialog.querySelector("#wontfix-reason") as HTMLTextAreaElement | null;
+    const cancelBtn = dialog.querySelector("#wontfix-cancel") as HTMLButtonElement | null;
+    const submitBtn = dialog.querySelector("#wontfix-submit") as HTMLButtonElement | null;
+
+    const closeWith = (value: MarkAsWontfixResult) => {
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      resolve(value);
+    };
+
+    const firstRadio = dialog.querySelector<HTMLInputElement>('input[name="wontfix-kind"]');
+    firstRadio?.focus();
+    cancelBtn?.addEventListener("click", () => closeWith(null));
+    submitBtn?.addEventListener("click", () => {
+      const checked = dialog.querySelector<HTMLInputElement>('input[name="wontfix-kind"]:checked');
+      const kind = (checked?.value ?? "") as FindingResolutionKind;
+      if (!RESOLUTION_KIND_WHITELIST.has(kind)) {
+        closeWith(null);
+        return;
+      }
+      const trimmed = (reasonEl?.value ?? "").trim();
+      closeWith({ kind, reason: trimmed.slice(0, 200) });
+    });
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) closeWith(null);
+    });
+  });
+}
+
 function side(input: unknown): Side {
   if (input === "deletions") return "deletions";
   return "additions";
@@ -2130,6 +2307,11 @@ type ConversationEntry = {
   pinned?: { by: "user"; at: number };
   manually_pinned?: boolean;
   reactions?: Reaction[];
+  resolve_reason?: string;
+  resolve_manually_resolved?: boolean;
+  resolved_at?: number;
+  resolution_kind?: FindingResolutionKind;
+  resolution_reason?: string;
 };
 
 function formatRelativeTime(ts: number): string {
@@ -2528,11 +2710,38 @@ function renderConversationPanel(root: HTMLElement) {
       const resolveBtn = document.createElement("button");
       resolveBtn.className = "primary";
       resolveBtn.textContent = "Resolve";
-      resolveBtn.addEventListener("click", (event) => {
+      resolveBtn.addEventListener("click", async (event) => {
+        event.preventDefault();
         event.stopPropagation();
-        resolveFinding(entry.id);
+        // R13 #20 — open the resolve-with-reason modal first; if the
+        // user Cancels, do not POST. Otherwise forward the trimmed
+        // reason to the existing /resolve endpoint (which now accepts
+        // `reason?` and stamps resolve_reason + resolve_manually_resolved).
+        const result = await showResolveReasonModal(entry.id);
+        if (result === null) return;
+        await resolveFinding(entry.id, { reason: result.reason });
       });
       actions.appendChild(resolveBtn);
+      // R13 #21 — sibling button to "Resolve" for the explicit
+      // wontfix flow. Secondary visual style (no .primary class) so
+      // the primary "Resolve" remains the default happy path.
+      const wontfixBtn = document.createElement("button");
+      wontfixBtn.type = "button";
+      wontfixBtn.className = "finding-wontfix";
+      wontfixBtn.textContent = "Mark as wontfix";
+      wontfixBtn.title =
+        "Mark this finding as wontfix / out_of_scope / false_positive / duplicate (R13 #21)";
+      wontfixBtn.addEventListener("click", async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const result = await showMarkAsWontfixModal(entry.id);
+        if (result === null) return;
+        await resolveFinding(entry.id, {
+          resolution_kind: result.kind,
+          resolution_reason: result.reason,
+        });
+      });
+      actions.appendChild(wontfixBtn);
     } else if (isResolved || isStale) {
       const reopenBtn = document.createElement("button");
       reopenBtn.className = "primary";
@@ -2652,11 +2861,21 @@ function renderConversationPanel(root: HTMLElement) {
       entry.manually_edited && entry.edited_at
         ? `<span class="badge badge-edited" title="Edited by user at ${new Date(entry.edited_at).toISOString()}">edited ${escapeHtml(formatRelativeTime(entry.edited_at))}</span>`
         : "";
+    // R13 #21 — render a `badge-resolution-<kind>` next to the existing
+    // severity / category / kind badges when the finding has a
+    // resolution_kind. Distinct badge per kind so the user can scan the
+    // Conversation tab and see "wontfix" vs "false_positive" at a glance.
+    // Distinct from `editedBadge` (R10) and `pinned` (R12) — both render
+    // a separate badge too, additive composition.
+    const resolutionKindBadge = entry.resolution_kind
+      ? `<span class="badge badge-resolution-${escapeHtml(entry.resolution_kind)}" title="Resolution: ${escapeHtml(entry.resolution_kind)}${entry.resolution_reason ? ` — ${escapeHtml(entry.resolution_reason)}` : ""}">${escapeHtml(entry.resolution_kind)}</span>`
+      : "";
     badgesRow.innerHTML = [
       `<span class="badge ${entry.severity}">${escapeHtml(entry.severity)}</span>`,
       `<span class="badge">${escapeHtml(entry.category)}</span>`,
       `<span class="badge">${escapeHtml(entry.kind ?? "line")}</span>`,
       editedBadge,
+      resolutionKindBadge,
     ].join("");
     subhead.appendChild(badgesRow);
     item.appendChild(subhead);
@@ -3249,24 +3468,53 @@ function renderDiffPanel() {
   }
 }
 
-async function resolveFinding(id: string) {
+async function resolveFinding(
+  id: string,
+  opts: {
+    reason?: string;
+    resolution_kind?: FindingResolutionKind;
+    resolution_reason?: string;
+  } = {},
+) {
+  const body: {
+    finding_id: string;
+    reason?: string;
+    resolution_kind?: FindingResolutionKind;
+    resolution_reason?: string;
+  } = { finding_id: id };
+  if (opts.reason) body.reason = opts.reason.slice(0, 200);
+  if (opts.resolution_kind) body.resolution_kind = opts.resolution_kind;
+  if (opts.resolution_reason) body.resolution_reason = opts.resolution_reason.slice(0, 200);
   const response = await fetch(endpoint("/resolve"), {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ finding_id: id }),
+    body: JSON.stringify(body),
   }).catch(() => undefined);
 
   if (!response?.ok) {
-    setStatus("Failed to resolve finding", true);
+    const data = await response?.json().catch(() => undefined);
+    setStatus(data?.error ?? "Failed to resolve finding", true);
     return;
   }
 
   const item = state.existing.find((f) => f.id === id);
-  if (item) item.status = "resolved";
+  if (item) {
+    item.status = "resolved";
+    if (opts.reason) {
+      item.resolve_reason = opts.reason.slice(0, 200);
+      item.resolve_manually_resolved = true;
+    }
+    if (opts.resolution_kind) {
+      item.resolution_kind = opts.resolution_kind;
+      if (opts.resolution_reason) {
+        item.resolution_reason = opts.resolution_reason.slice(0, 200);
+      }
+    }
+  }
   renderFindings();
   renderConversationPane();
   syncAll();
-  setStatus("Finding resolved");
+  setStatus(opts.resolution_kind ? "Finding marked as wontfix" : "Finding resolved");
 }
 
 async function reopenFinding(id: string, reason = "", opts: { manually_reopened?: boolean } = {}) {
