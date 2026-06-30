@@ -119,3 +119,32 @@ bun run build                # rebuild dist in main so mock-server serves fresh 
 ```
 
 If audit built in worktree AND Phase 3c Playwright is enabled: rebuild in main between merge and walkthrough. Lead-direct inline step, no subagent.
+
+## 7. Phase 2.6 explicit rebuild checklist (NEW R20 retro SG.R20.1 — applies SG.R19.1 in Phase 2.6 flow)
+
+**Why** (R20 retro F.1): SG.R19.1 was correct, but the rebuild step wasn't part of Phase 2.6's explicit checklist. R20's lead-direct inline fix caught the stale dist in Phase 3c walkthrough (10965 kB main vs 10974 kB worktree, R20 features missing from main dist). Caught in 2 min — much cheaper than rediscovery, but should be prevented not discovered.
+
+**Rule** (mandatory, SG.R20.1): Phase 2.6 (Lead Merge + Push) MUST execute the following 3-step checklist before proceeding to Phase 3a:
+
+```bash
+# Step 1: Merge dev worktree branch into main (no-ff)
+git merge --no-ff team-dev-loop-round-N-<branch> \
+  -m "Round N: <one-line summary> (close #N1, #N2, ...)"
+
+# Step 2: Rebuild in MAIN worktree (NOT dev worktree) — SG.R19.1 + SG.R20.1
+cd <main worktree>          # CRITICAL: main, not the dev worktree
+bun run build                # refresh dist/ui/* for mock-server
+
+# Step 3: Verify new features are in dist (1-line sanity check)
+grep "<feature-marker>" dist/ui/*.js  # should return matches
+
+# Step 4: Push to origin
+git push origin main
+
+# Step 5: Verify GH auto-close
+gh issue list --state closed --label pm-manager-approved
+```
+
+If Step 3 returns no matches, the rebuild in Step 2 didn't include the new commits (e.g., wrong worktree). Re-run Step 2 from main.
+
+**F.1 evidence (R20)**: Initial Phase 2.5 audit built dist/ in worktree. Phase 2.6 merged but didn't rebuild. Phase 3c Playwright walkthrough showed 0 matches for R20 feature markers in dist. Lead-direct inline rebuild fixed in 2 min. With SG.R20.1, this gap is prevented — Phase 2.6 explicitly triggers rebuild + verification BEFORE Phase 3c.

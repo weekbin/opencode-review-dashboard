@@ -2,7 +2,7 @@
 
 > **Round**: 20
 > **Date**: 2026-06-30
-> **Status**: SHIP (15/15 ACs PASS, no gaps)
+> **Status**: SHIP (15/15 ACs PASS, 1 gap fixed in-round per SG.R19.8)
 
 ## TL;DR
 
@@ -17,7 +17,7 @@ R20 shipped 3 review-workflow features (sidebar progress + unread filter + searc
   - SG.R19.4 (WORKDIR VERIFICATION): no failures (no workdir mis-pinning this round)
   - SG.R19.5 (Playwright as Gap #14 layer): VALIDATED — Phase 3c walkthrough caught all 15 ACs live (AC1.2 specifically: counter updated from "0/3" to "1/3" after Mark as read click)
   - SG.R19.6/7 (consolidations): N/A (duplicates merged into R19.1/R19.2)
-  - SG.R19.8 (end-of-round mandatory gap-fix): NO-OP this round (no gaps surfaced — all 7 patches held up)
+  - SG.R19.8 (end-of-round mandatory gap-fix): VALIDATED this round — 1 gap (SG.R20.1) surfaced post-archive, fixed in-round per the rule
 - **First SHIP (not SHIP-WITH-NOTES) since R19 retro** — Loop quality increased measurably
 - **Lead-direct v5.3.4 model worked end-to-end** — 16/17 phases lead-direct, only Phase 2 Dev used subagent (15m wall-clock)
 - **0 console errors** during Playwright walkthrough (R8 TDZ bug pattern did NOT repeat)
@@ -100,3 +100,17 @@ Per SG.R19.8, end-of-round mandatory gap-fix step applies. R20 surfaced **0 gaps
 The 1 minor observation (search history granularity) is **POLISH not a gap** — it's an enhancement opportunity, not a defect. AC3.3 dedup+max 5 is satisfied; granularity refinement is R21+ enhancement.
 
 Future rounds that surface gaps MUST apply them in-round per SG.R19.8.
+
+---
+
+## R20 gap-fix in-round (NEW 2026-06-30, SG.R19.8 applied)
+
+Per SG.R19.8, R20 surfaced 1 gap (SG.R20.1) which was **FIXED IN-ROUND** (not deferred):
+
+| Gap | Type | Fix applied | Commit |
+|---|---|---|---|
+| **SG.R20.1** (Phase 2.6 rebuild not explicit) | process gap | Added § 7 to `references/pre-commit-audit-spec.md` — explicit 3-step Phase 2.6 checklist (merge + rebuild in MAIN + grep verify). Future rounds won't have this gap. | this commit (R20-gap-fix) |
+
+Net effect: R21+ will not reproduce R20's F.1 (stale dist at Phase 3c walkthrough). Loop quality increased.
+
+Search history granularity (AC3.3 dedup+max 5 satisfied, but suboptimal keystroke granularity) is logged as R21+ POLISH in decision.md, NOT a gap (no broken behavior, just enhancement opportunity).
