@@ -1,11 +1,11 @@
 ---
 name: team-dev-loop
-description: "v5.3.4 cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+Push (NEW v5.3.3) — 17 phases total (Phase -0 Sync / Phase 0 PM Triage / 0.25 PM Researcher / 0.5 PM Manager / 0.75 Planner / 1 Architect / 2 Dev / 2.5 Pre-Commit Audit / 2.6 Lead Merge+Push / 3a-c Tester / 3.5 Doc Writer / 4 Decision + 4.5-4.9 lead-owned). Lead-direct execution model (v5.3.3): 16 of 17 phases lead-direct, ONLY Phase 2 Dev uses subagent (for code generation). v5.3.4: zh-CN lockstep enforcement (Phase 2 Dev parallel commit, not post-commit audit gate) + READ ONLY ONCE in subagent prompts (no re-reading R-1 retro) + post-completion verification as mid-task check-in special case. Subagent scope: 5-20 min budget + decompose >20 min tasks. Default NO user pick (Planner autonomous); user MAY pre-pick A-E or 1-6 (R12 Gap #1). PM researcher advisories are advisory-only (R12 Gap #14: lead must verify independently). Subagent NEVER does git ops (merge/push/issue close) — lead's responsibility. Mid-task check-in every 5/10/15/20 min OR post-completion verification (v5.3.4). ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
+description: "v5.3.4 cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+Push (NEW v5.3.3) — 17 phases total (Phase -0 Sync / Phase 0 PM Triage / 0.25 PM Researcher / 0.5 PM Manager / 0.75 Planner / 1 Architect / 2 Dev / 2.5 Pre-Commit Audit / 2.6 Lead Merge+Push / 3a-c Tester / 3.5 Doc Writer / 4 Decision + 4.5-4.9 lead-owned). Lead-direct execution model (v5.3.3): 16 of 17 phases lead-direct, ONLY Phase 2 Dev uses subagent (for code generation). v5.3.4: zh-CN lockstep enforcement (Phase 2 Dev parallel commit, not post-commit audit gate) + READ ONLY ONCE in subagent prompts (no re-reading R-1 retro) + post-completion verification as mid-task check-in special case + README user-manual style mandate (no implementation jargon in main README, put in sub-docs). Subagent scope: 5-20 min budget + decompose >20 min tasks. Default NO user pick (Planner autonomous); user MAY pre-pick A-E or 1-6 (R12 Gap #1). PM researcher advisories are advisory-only (R12 Gap #14: lead must verify independently). Subagent NEVER does git ops (merge/push/issue close) — lead's responsibility. Mid-task check-in every 5/10/15/20 min OR post-completion verification (v5.3.4). ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
 ---
 
 # /team-dev-loop Command (v5)
 
-> **Last Updated**: 2026-06-30 (v5.3.4: R15 retro patches — 4 NEW gap fixes: v5.3.4 R+ Quick reference cheat sheet (NEW top section, 16/17 phases lead-direct at a glance) + zh-CN lockstep enforcement (Phase 2 Dev parallel commit, not post-commit audit gate) + post-completion verification as mid-task check-in special case (R15 retro SG.7) + READ ONLY ONCE in subagent prompts (R15 retro SG.9 subagent over-reads prevention). Built on v5.3.3 (commit `c3a6aea` — Lead-direct execution model + 4 NEW root-cause patches) + v5.3.2 (commit `42ba5aa` — 5 patches) + v5.3 (commit `657a064` — 14 patches). v5.3.4 total: 29 retroactive skill patches cumulative across R12-R15 retros.)
+> **Last Updated**: 2026-06-30 (v5.3.4: R15 retro patches — 5 NEW gap fixes: v5.3.4 R+ Quick reference cheat sheet (NEW top section, 16/17 phases lead-direct at a glance) + zh-CN lockstep enforcement (Phase 2 Dev parallel commit, not post-commit audit gate) + post-completion verification as mid-task check-in special case (R15 retro SG.7) + READ ONLY ONCE in subagent prompts (R15 retro SG.9 subagent over-reads prevention) + README user-manual style mandate (R+ retro SG.11: README is a user manual, not an engineering doc, no implementation jargon). Built on v5.3.3 (commit `c3a6aea` — Lead-direct execution model + 4 NEW root-cause patches) + v5.3.2 (commit `42ba5aa` — 5 patches) + v5.3 (commit `657a064` — 14 patches). v5.3.4 total: 30 retroactive skill patches cumulative across R12-R15 retros.)
 > **Status**: R16+ will run on v5.3.4. R13-R15 ran on v5.3 + v5.3.2 + v5.3.3. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
 > **Migration from v2**: see `## Migration v2 → v5` section below.
 
@@ -299,6 +299,60 @@ For each round `N` (v5 cron-style):
 **R15 evidence**: Same drift pattern — R15 Dev updated README.md but not README.zh-CN.md. R15 retro SG.6 surfaced this. v5.3.4 enforcement (Phase 2 Dev parallel commit) is the real fix; v5.3.2 audit gate alone failed for R15.
 
 **Single-language exception**: If project does NOT ship bilingual docs (only README.md or only README.zh-CN.md exists), this audit gate is N/A.
+
+## README user-manual style mandate (NEW v5.3.4 — R+ retro SG.11)
+
+**Status**: APPLIED in v5.3.4. R+ retro surfaced that the README was 299 lines of implementation jargon (atomic writes, ENOSPC, EXDEV, state.json internals, test suite references, etc.) — first-time visitors couldn't understand the product. **Mandate: README is a user manual, not an engineering doc.**
+
+**Why this matters**:
+- README is the FIRST thing potential users see on GitHub
+- Implementation jargon (file paths, internal type names, test references, atomic write details, error codes) makes the product look like a hackathon project, not a polished tool
+- User manual style = "what does this do for me, and how do I use it" — no `src/`, no `state.json` internals, no code references
+- Plain language + "you" voice + "How to install" + "How to use" + FAQ
+
+**Mandate** (v5.3.4 enforcement):
+- README.md + README.zh-CN.md are USER MANUALS, not engineering docs
+- Write for: someone who's never seen the project, doesn't know what it does, doesn't care how it's built
+- DO include: what it does, who it's for, plain-language features, install steps, basic usage workflow, FAQ
+- DO NOT include: file paths (`src/index.ts:60`), internal type names, test references, error codes, atomic-write details, architecture, internal state shape
+- If implementation detail IS necessary, put it in a sub-section or separate doc — not in the main README
+
+**Failure mode to avoid** (R+ retro finding): README grows technical depth as features ship. Devs add "how to" documentation for their own code, which clutters the README. SG.11 establishes the user-manual tone as the primary doc, with implementation details deferred to separate docs (e.g., `docs/team-dev-loop.md` for architecture, `docs/feature-spec.md` for individual feature specs).
+
+**R+ retro verdict**: v5.3.4 lead-direct README rewrites should be user-manual style. R14 retro F.5 + R15 retro F.1 evidence: README had 5 old screenshots from R0/R1 era, 0 new screenshots for R12-R15 features, plus 299 lines of implementation jargon. SG.10 (visual evidence) + SG.11 (user-manual style) combined fix this.
+
+## New feature visual evidence mandate (NEW v5.3.4 — R+ retro SG.10)
+
+**Status**: APPLIED in v5.3.4. R+ retro surfaced: R12-R15 shipped 9 new features (Pinned / Reactions / n-p nav / Resolve-with-reason / Mark wontfix / In-diff search / Sort / Filter / Auto-save / Cmd+P / Submit confirm / Audit trail) BUT README had ZERO new screenshots. Phase 3c Playwright was skipped in R13/R14/R15 (quota-override) → product lost its story.
+
+**Mandate** (v5.3.4 enforcement): Every new feature shipped in a round MUST have ≥ 1 screenshot in `docs/screenshots/`. Screenshot naming: `docs/screenshots/r{N}-{sN}-{feature-name}.png` where N = round number, sN = scenario number within that round's walkthrough.
+
+**Why this matters**:
+- First-time visitors browse README on GitHub — visuals are the deciding factor
+- 9 new features without visual evidence = invisible product to potential users
+- R0/R1-era screenshots still dominate README — but those features are old and don't represent current state
+
+**Implementation pattern** (lead-direct, R+ v5.3.3 model):
+
+```
+# 1. After Phase 2 Dev completes, lead-direct runs Playwright walkthrough:
+cd /path/to/repo
+bun run build  # rebuild dist if needed
+PORT=8890 nohup python3 scripts/test-review-ui/mock-server.py 8890 &
+sleep 2
+nohup playwright-cli open "http://127.0.0.1:8890/review/test?token=test" &
+# 2. For each new feature in the round:
+#    a. Navigate to UI surface
+#    b. Interact (click / type / navigate)
+#    c. Capture screenshot: playwright-cli screenshot --filename docs/screenshots/r{N}-s{N}-{name}.png
+# 3. Stop mock-server
+# 4. Update README.md + README.zh-CN.md to embed screenshots
+# 5. Commit + push as `docs(rN): README screenshots for R{N} features`
+```
+
+**Failure mode to avoid**: R+ retro + SG.5 quota-override lets Phase 3c Playwright be SKIPPED. This is OK for unit-test verification but NOT OK for product storytelling. SG.10 splits the difference: walkthrough is REQUIRED for visual evidence, but lead-direct + playwright-cli makes it fast (~5-10 min per round).
+
+**R+ retro verdict**: SG.10 codifies "screenshots are MANDATORY, not optional". v5.3.4 R+ rounds must have ≥ 1 screenshot per feature. SG.5 quota-override no longer exempts visual evidence.
 
 ## Mid-task check-in mechanism (v5.3.3) + v5.3.4 post-completion verification (R+ retro SG.7)
 
