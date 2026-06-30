@@ -2620,10 +2620,10 @@
   </head>
   <body>
     <!-- R19 #38: skip-to-content, first focusable, styled via .skip-link -->
-    <a href="#diffs" class="skip-link">Skip to main content</a>
+    <a href="#diffs" class="skip-link" data-i18n="skipLink">Skip to main content</a>
     <header>
       <div class="header-left">
-        <h1>Review Dashboard</h1>
+        <h1 data-i18n="app.title">Review Dashboard</h1>
         <span class="scope" id="scope"></span>
         <span class="diff-base" id="diff-base"></span>
         <span
@@ -2633,6 +2633,7 @@
           role="status"
           title="Auto-save status"
           aria-live="polite"
+          data-i18n="save.idle"
           >All changes saved</span
         >
       </div>
@@ -2643,14 +2644,14 @@
               <rect x="2" y="2" width="12" height="5" rx="1" />
               <rect x="2" y="9" width="12" height="5" rx="1" />
             </svg>
-            Unified
+            <span data-i18n="toolbar.layout.unified">Unified</span>
           </button>
           <button data-layout="split" aria-pressed="true" title="Split diff (side-by-side)">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <rect x="1" y="2" width="6" height="12" rx="1" />
               <rect x="9" y="2" width="6" height="12" rx="1" />
             </svg>
-            Split
+            <span data-i18n="toolbar.layout.split">Split</span>
           </button>
         </div>
         <button
@@ -2659,19 +2660,31 @@
           class="ignore-whitespace-btn"
           aria-pressed="false"
           title="Hide whitespace changes (collapse consecutive whitespace + trim trailing)"
+          data-i18n="toolbar.ignoreWs"
         >
           Ignore ws
         </button>
         <div class="theme-toggle" id="theme-toggle">
-          <button data-theme="light" aria-pressed="false">Light</button>
-          <button data-theme="auto" aria-pressed="false">Auto</button>
-          <button data-theme="dark" aria-pressed="true">Dark</button>
+          <button data-theme="light" aria-pressed="false" data-i18n="toolbar.theme.light">
+            Light
+          </button>
+          <button data-theme="auto" aria-pressed="false" data-i18n="toolbar.theme.auto">
+            Auto
+          </button>
+          <button data-theme="dark" aria-pressed="true" data-i18n="toolbar.theme.dark">Dark</button>
         </div>
         <div class="language-toggle" id="language-toggle"></div>
         <button class="drawer-toggle" id="drawer-toggle" type="button">
-          Review <span class="count" id="finding-count">0</span>
+          <span data-i18n="toolbar.review">Review</span>
+          <span class="count" id="finding-count">0</span>
         </button>
-        <button class="btn" id="export" type="button" title="Export review as Markdown or patch">
+        <button
+          class="btn"
+          id="export"
+          type="button"
+          title="Export review as Markdown or patch"
+          data-i18n="toolbar.export"
+        >
           Export
         </button>
         <button
@@ -2679,6 +2692,7 @@
           id="submit"
           type="button"
           title="Submit this review round (your round notes are above)"
+          data-i18n="toolbar.submit"
         >
           Submit Review
         </button>
@@ -2687,11 +2701,11 @@
 
     <nav class="navbar-tabs" id="navbar-tabs" role="tablist" aria-label="Sidebar sections">
       <button data-tab="files" role="tab" aria-pressed="true" title="Files changed">
-        Files changed
+        <span data-i18n="sidebar.files">Files changed</span>
         <span class="navbar-count" id="files-count" hidden>0</span>
       </button>
       <button data-tab="commits" role="tab" aria-pressed="false" title="Commits in this review">
-        Commits
+        <span data-i18n="sidebar.commits">Commits</span>
         <span class="navbar-count" id="commits-count" hidden>0</span>
       </button>
       <button
@@ -2700,7 +2714,7 @@
         aria-pressed="false"
         title="Conversation (all findings)"
       >
-        Conversation
+        <span data-i18n="sidebar.conversation">Conversation</span>
         <span class="navbar-count" id="conversation-count" hidden>0</span>
       </button>
       <button
@@ -2709,7 +2723,7 @@
         aria-pressed="false"
         title="Previously discussed (prior round notes + comment threads)"
       >
-        Previously discussed
+        <span data-i18n="sidebar.previously">Previously discussed</span>
         <span class="navbar-count" id="previously-count" hidden>0</span>
       </button>
     </nav>
@@ -2721,8 +2735,22 @@
         <nav class="sidebar" id="sidebar">
           <div class="sidebar-header">
             <div class="sidebar-mode" id="sidebar-mode">
-              <button data-mode="tree" aria-pressed="true" title="Tree view">Tree</button>
-              <button data-mode="flat" aria-pressed="false" title="Flat list">Flat</button>
+              <button
+                data-mode="tree"
+                aria-pressed="true"
+                title="Tree view"
+                data-i18n="sidebar.tree"
+              >
+                Tree
+              </button>
+              <button
+                data-mode="flat"
+                aria-pressed="false"
+                title="Flat list"
+                data-i18n="sidebar.flat"
+              >
+                Flat
+              </button>
             </div>
           </div>
           <div class="sidebar-list" id="file-list"></div>
