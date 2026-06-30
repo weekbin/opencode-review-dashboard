@@ -54,6 +54,9 @@ bun run test:unit
 - **"Previously discussed" 面板（第 4 个 sidebar tab）** — 独立 tab，专门展示历史轮次上下文：每轮的 `notes`（从已存在的 `round-NNN.md` 导出读取）、每轮的 finding（open / resolved / stale）以及每条 finding 的完整评论线程。让你在决定这一轮怎么动之前能快速 re-orient 到对话历史，不必开终端或在 Conversation tab 翻 30+ 条记录。与 Conversation tab 互补（Conversation 关注当前轮）。
 - **自动应用工作流** — Agent 先统一规划，再一次性应用可操作 finding，然后重跑 review 确认。
 - **Worktree 自动检测** — 未传 `--worktree` 时自动选取 ahead-of-`origin/main` 最多的 worktree。
+- **★ Pinned findings（星标回看列表）** — 点 finding 卡片上的 ★ 即把这条 finding 标记为下轮回看目标；新增 `★ Pinned (N)` 过滤 chip 以及 Conversation tab 头部 `★N` 徽章，一眼看到所有 starred 的 finding。`manually_pinned` 字段会被 agent 的 auto-apply 循环识别，因此被星标的 finding 不会因为 stale auto-close 被静默吞掉。这是 reviewer 侧的 revisit list，与 GitHub admin-only 且 repo 级别（最多 3 个）的 "Pinned Issue" 完全不同。
+- **Emoji reactions on findings（emoji 反应）** — 每条 finding 卡片下方新增 6 个 emoji 按钮（👍 👎 😄 ❤️ 🎉 👀）。点击 → 加上自己的反应（1 击 vs ~30 秒打字 "lgtm"）；再点同一个 emoji → 移除反应（幂等 toggle）。已反应的 emoji 渲染为高亮 + 计数 pill。
+- **`n` / `p` 键盘在 finding 间跳转** — 焦点不在评论 textarea 时按 `n` 跳到下一条 finding，按 `p` 跳上一条（到两端自动 wrap）；复用 R11 的 1.5s flash highlight。Conversation tab 激活时右下角出现提示 `Press n / p to navigate findings`；textarea/input/contentEditable 获得焦点时自动隐藏，避免输入 'n' 或 'p' 误触发跳转。
 
 ---
 
@@ -223,7 +226,7 @@ Agent 的 `add_review_comment` 回复和 Post-Apply Trace 评论会跟随你 fin
 - **左侧边栏**（可拖动调整宽度，宽度会保存到 localStorage）：
   - **Files Changed** — 列出所有变更文件，支持 tree/flat 切换。文件级 finding 会显示 📄 徽章。未跟踪文件以 `status: "added"` 显示，并带"uncommitted" 徽章。
   - **Commits** — 每个文件涉及的提交列表，含短 SHA 和提交信息。
-  - **Conversation** — 所有 finding（行级/文件级），含状态徽章和按 finding 回复的评论；支持 Resolve、Remove、Reopen、Jump 操作。
+  - **Conversation** — 所有 finding（行级/文件级），含状态徽章和按 finding 回复的评论；支持 Resolve、Remove、Reopen、Jump 操作；点 ★ 星标可把 finding 加入回看列表；下方 6 个 emoji 按钮可一键反馈；过滤 chip：`Unresolved | Resolved | All | ★ Pinned (N) | 😀 Reacted (N)`；按 `n` / `p` 在 finding 卡片间跳转。
   - **Previously discussed** — 历史轮次上下文：每轮的 `notes`、每轮的 finding（open / resolved / stale）以及每条 finding 的完整评论线程。不含当前轮。第 1 轮显示空状态。
 - **中间 diff 卡片** — 语法高亮 diff。点击行号选择范围，点击文件卡片上的 + 按钮添加文件级 finding。大段未改动代码默认折叠，点击展开按钮每次显示 20 行。
 - **Notes 表面**（diff 卡片上方的可折叠区域）— 本轮整体 notes 永远在这里可见，审阅时随手写即可，不必打开抽屉。notes 会被下一轮的 "Previously discussed" 面板读取。点击 "Round notes" 标题可折叠，需要更多垂直空间时收起即可。
@@ -250,7 +253,7 @@ Agent 的 `add_review_comment` 回复和 Post-Apply Trace 评论会跟随你 fin
 | `bun run typecheck` | 使用 `tsc --noEmit` 类型检查。 |
 | `bun run check` | `format:check && lint && typecheck`。 |
 | `bun run prepublishOnly` | `npm publish` 前自动运行 `check + build`。 |
-| `bun run test:ui` | 端到端浏览器测试（Playwright MCP），覆盖 15 个 git 场景。 |
+| `bun run test:ui` | 端到端浏览器测试（Playwright MCP），覆盖 31 个 git 场景。 |
 
 ### 本地设置
 
