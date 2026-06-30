@@ -39,9 +39,7 @@ describe("AC6 — Cmd+F / Ctrl+F / `/` global keydown opens fixed-top search ove
 
   it("T13.22.R6b listener intercepts Cmd+F / Ctrl+F (metaKey or ctrlKey) + key === 'f'", async () => {
     const src = await readSource(APP_TS);
-    const block = src.match(
-      /window\.addEventListener\(\s*"keydown",[\s\S]*?true,?\s*\)/,
-    );
+    const block = src.match(/window\.addEventListener\(\s*"keydown",[\s\S]*?true,?\s*\)/);
     expect(block).toBeTruthy();
     expect(block![0]).toMatch(
       /\(event\.key\s*===\s*"f"\s*\|\|\s*event\.key\s*===\s*"F"\)\s*&&\s*\(event\.metaKey\s*\|\|\s*event\.ctrlKey\)/,
@@ -52,9 +50,7 @@ describe("AC6 — Cmd+F / Ctrl+F / `/` global keydown opens fixed-top search ove
 
   it("T13.22.R6c `/` key also opens search overlay (only when no text input is focused)", async () => {
     const src = await readSource(APP_TS);
-    const block = src.match(
-      /window\.addEventListener\(\s*"keydown",[\s\S]*?true,?\s*\)/,
-    );
+    const block = src.match(/window\.addEventListener\(\s*"keydown",[\s\S]*?true,?\s*\)/);
     expect(block![0]).toMatch(/event\.key\s*===\s*"\/"/);
     expect(block![0]).toMatch(/isTextInputFocused\(\)/);
     expect(block![0]).toMatch(/openDiffSearch\(\)/);
@@ -92,9 +88,7 @@ describe("AC7 — Counter + Enter / Shift+Enter / F3 / Shift+F3 jump + 1.5s flas
 
   it("T13.22.R7c F3 / Shift+F3 jump next / prev (mirrors Enter / Shift+Enter)", async () => {
     const src = await readSource(APP_TS);
-    const block = src.match(
-      /window\.addEventListener\(\s*"keydown",[\s\S]*?true,?\s*\)/,
-    );
+    const block = src.match(/window\.addEventListener\(\s*"keydown",[\s\S]*?true,?\s*\)/);
     expect(block![0]).toMatch(/event\.key\s*===\s*"F3"/);
     expect(block![0]).toMatch(/event\.shiftKey\s*\?\s*-1\s*:\s*1/);
     expect(block![0]).toMatch(/jumpToDiffSearchMatch/);
@@ -122,9 +116,7 @@ describe("AC7 — Counter + Enter / Shift+Enter / F3 / Shift+F3 jump + 1.5s flas
 describe("AC8 — `/` focus-guard reuses isTextInputFocused (R12 n/p nav pattern)", () => {
   it("T13.22.R8a `/` key is skipped when isTextInputFocused() returns true", async () => {
     const src = await readSource(APP_TS);
-    const block = src.match(
-      /window\.addEventListener\(\s*"keydown",[\s\S]*?true,?\s*\)/,
-    );
+    const block = src.match(/window\.addEventListener\(\s*"keydown",[\s\S]*?true,?\s*\)/);
     expect(block![0]).toMatch(
       /if\s*\(event\.key\s*===\s*"\/"\s*&&\s*!event\.metaKey\s*&&\s*!event\.ctrlKey\s*&&\s*!event\.altKey\)/,
     );

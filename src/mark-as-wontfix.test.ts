@@ -57,7 +57,9 @@ describe("AC3 — Mark as wontfix button + radio modal", () => {
     const src = await readSource(APP_TS);
     const block = src.match(/function\s+showMarkAsWontfixModal\s*\([\s\S]*?\n\}\s*\n/);
     expect(block![0]).toMatch(/closeWith\(null\)/);
-    expect(block![0]).toMatch(/closeWith\(\{\s*kind,\s*reason:\s*trimmed\.slice\(0,\s*200\)\s*\}\)/);
+    expect(block![0]).toMatch(
+      /closeWith\(\{\s*kind,\s*reason:\s*trimmed\.slice\(0,\s*200\)\s*\}\)/,
+    );
   });
 
   it("T13.21.R3d Mark as wontfix button uses .finding-wontfix class (secondary visual style)", async () => {
@@ -114,9 +116,7 @@ describe("AC5 — Conversation panel renders badge-resolution-{kind}", () => {
 
   it("T13.21.R5b badge is appended to the existing severity / category / kind badges", async () => {
     const src = await readSource(APP_TS);
-    const block = src.match(
-      /badgesRow\.innerHTML\s*=\s*\[[\s\S]*?\]\.join\(""\)/,
-    );
+    const block = src.match(/badgesRow\.innerHTML\s*=\s*\[[\s\S]*?\]\.join\(""\)/);
     expect(block).toBeTruthy();
     expect(block![0]).toMatch(/entry\.severity/);
     expect(block![0]).toMatch(/entry\.category/);
@@ -128,9 +128,7 @@ describe("AC5 — Conversation panel renders badge-resolution-{kind}", () => {
     const src = await readSource(APP_TS);
     // The ternary spans multiple lines. Search for both the truthy
     // and falsy branches.
-    expect(src).toMatch(
-      /const\s+resolutionKindBadge\s*=\s*entry\.resolution_kind[\s\S]*?:\s*""/,
-    );
+    expect(src).toMatch(/const\s+resolutionKindBadge\s*=\s*entry\.resolution_kind[\s\S]*?:\s*""/);
   });
 
   it("T13.21.R5d CSS for all 4 badge-resolution-{kind} variants exists in review.html", async () => {
