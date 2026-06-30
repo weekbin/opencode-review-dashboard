@@ -282,4 +282,20 @@ describe("AC1.2 — toggle re-renders static-HTML labels via registerUITranslato
     expect(i18n.includes('"Recent searches cleared"')).toBe(true);
     expect(i18n.includes('"最近搜索已清空"')).toBe(true);
   });
+
+  // R23 #48: STRINGS_USAGE_PLAN regression for search.recent.select (checkbox label).
+  it("STRINGS['search.recent.select'] has both en + zh-CN translations", async () => {
+    const i18n = await readSource(I18N);
+    expect(i18n.includes('"search.recent.select":')).toBe(true);
+    expect(i18n.includes('"Select"')).toBe(true);
+    expect(i18n.includes('"选择"')).toBe(true);
+  });
+
+  // R23 #48: STRINGS_USAGE_PLAN regression for search.recent.bulkDelete (button).
+  it("STRINGS['search.recent.bulkDelete'] has both en + zh-CN translations", async () => {
+    const i18n = await readSource(I18N);
+    expect(i18n.includes('"search.recent.bulkDelete":')).toBe(true);
+    expect(i18n.includes('"Delete selected"')).toBe(true);
+    expect(i18n.includes('"删除选中"')).toBe(true);
+  });
 });
