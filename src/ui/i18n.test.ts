@@ -237,4 +237,20 @@ describe("AC1.2 — toggle re-renders static-HTML labels via registerUITranslato
     expect(zh.length).toBeGreaterThan(0);
     expect(/\p{Script=Han}/u.test(zh)).toBe(true);
   });
+
+  // R20 #41: same STRINGS_USAGE_PLAN regression for sidebar.filter.unread.
+  it("STRINGS['sidebar.filter.unread'] has both en + zh-CN translations and is wired", async () => {
+    const i18n = await readSource(I18N);
+    const src = await readSource(APP_TS);
+    const html = await readSource(HTML);
+    expect(i18n.includes('"sidebar.filter.unread":')).toBe(true);
+    // en translation present and non-empty
+    expect(i18n.includes('"Show only unread"')).toBe(true);
+    // zh-CN translation present and has Chinese (Han) characters
+    expect(i18n.includes('"仅显示未审查"')).toBe(true);
+    // HTML annotates the static element with data-i18n
+    expect(html.includes('data-i18n="sidebar.filter.unread"')).toBe(true);
+    // app.ts binds a registerUITranslator for the key
+    expect(src.includes('registerUITranslator("sidebar.filter.unread"')).toBe(true);
+  });
 });

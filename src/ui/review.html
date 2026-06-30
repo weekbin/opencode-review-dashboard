@@ -438,6 +438,30 @@
         text-transform: none;
         letter-spacing: 0;
       }
+      /* R20 #41: sidebar "show only unread" filter chip. */
+      .sidebar-filter {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: none;
+        letter-spacing: 0;
+        color: light-dark(#444, #bbb);
+        cursor: pointer;
+        user-select: none;
+      }
+      .sidebar-filter input[type="checkbox"] {
+        cursor: pointer;
+      }
+      .sidebar-filter[data-active="true"] {
+        color: light-dark(#1d5a96, #95c1e8);
+        font-weight: 700;
+      }
+      .sidebar-header {
+        flex-wrap: wrap;
+      }
+
       /* R20 #40: sidebar review progress (X / Y reviewed + visual bar). */
       .sidebar-progress {
         display: flex;
@@ -2771,6 +2795,10 @@
       <div class="pane pane-files" data-pane="files">
         <nav class="sidebar" id="sidebar">
           <div class="sidebar-header">
+            <label class="sidebar-filter">
+              <input type="checkbox" id="filter-unread" />
+              <span data-i18n="sidebar.filter.unread">Show only unread</span>
+            </label>
             <div class="sidebar-mode" id="sidebar-mode">
               <button
                 data-mode="tree"

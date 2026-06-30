@@ -170,6 +170,8 @@ const ACTIVE_TAB_KEY = "diff-review:active-tab";
 // localStorage (not sessionStorage) so the choice survives a page reload,
 // matching the conversationFilter pattern.
 const SORT_FINDINGS_KEY = "diff-review:sort-findings-by";
+// R20 #41: sidebar "show only unread" filter persisted as boolean-as-string.
+const SIDEBAR_FILTER_UNREAD_KEY = "diff-review:filter-unread";
 
 function readStored<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   try {
@@ -179,6 +181,18 @@ function readStored<T extends string>(key: string, allowed: readonly T[], fallba
     // ignore — localStorage may be unavailable (private mode, etc.)
   }
   return fallback;
+}
+
+// R20 #41: boolean-as-string localStorage reader. Persists the
+// "show only unread" sidebar filter so the choice survives a reload.
+// Defaults to false (show all files) when the key is missing or
+// contains any non-"on" value.
+function readStoredFilterUnread(): boolean {
+  try {
+    return localStorage.getItem(SIDEBAR_FILTER_UNREAD_KEY) === "on";
+  } catch {
+    return false;
+  }
 }
 
 function writeStored(key: string, value: string) {
@@ -1304,6 +1318,9 @@ const state = {
   diffLayout: readStored<DiffLayout>(LAYOUT_KEY, ["unified", "split"], "split"),
   ignoreWhitespace: readStored<"on" | "off">(IGNORE_WHITESPACE_KEY, ["on", "off"], "off") === "on",
   sidebarMode: readStored<SidebarMode>(SIDEBAR_KEY, ["tree", "flat"], "tree"),
+  // R20 #41: "show only unread" toggle — persisted under
+  // diff-review:filter-unread. Default false (show all files).
+  filterUnread: readStoredFilterUnread(),
   activeTab: readStored<"files" | "commits" | "conversation" | "previously">(
     ACTIVE_TAB_KEY,
     ["files", "commits", "conversation", "previously"],
@@ -1430,6 +1447,7 @@ registerUITranslator("sidebar.conversation", () => t("sidebar.conversation"));
 registerUITranslator("sidebar.previously", () => t("sidebar.previously"));
 registerUITranslator("sidebar.tree", () => t("sidebar.tree"));
 registerUITranslator("sidebar.flat", () => t("sidebar.flat"));
+registerUITranslator("sidebar.filter.unread", () => t("sidebar.filter.unread"));
 registerUITranslator("save.idle", () => t("save.idle"));
 
 // ── Layout toggle ──
@@ -1500,6 +1518,45 @@ sidebarMode.addEventListener("click", (event) => {
   if (!btn) return;
   setSidebarMode(btn.dataset.mode as SidebarMode);
 });
+
+// R20 #41: sidebar "show only unread" filter checkbox. Persists the
+// state to localStorage; re-renders the Files pane whenever the
+// checkbox toggles. The progress counter (AC2.5) keeps tracking the
+// TOTAL count regardless of filter state — only the visible file list
+// is filtered.
+const filterUnreadEl = document.querySelector<HTMLInputElement>("#filter-unread");
+function applyFilterUnread() {
+  if (!filterUnreadEl) return;
+  filterUnreadEl.checked = state.filterUnread;
+  // Visual: highlight the chip when the filter is active.
+  const label = filterUnreadEl.closest<HTMLElement>(".sidebar-filter");
+  if (label) {
+    if (state.filterUnread) label.setAttribute("data-active", "true");
+    else label.removeAttribute("data-active");
+  }
+}
+
+function setFilterUnread(next: boolean) {
+  if (state.filterUnread === next) return;
+  state.filterUnread = next;
+  applyFilterUnread();
+  try {
+    localStorage.setItem(SIDEBAR_FILTER_UNREAD_KEY, next ? "on" : "off");
+  } catch {
+    // ignore — localStorage may be unavailable (private mode, etc.)
+  }
+  // Re-render the Files pane so the filtered list takes effect. Also
+  // re-render the review progress because turning the filter ON may
+  // remove a "read" file from view — the user should still see the
+  // same TOTAL counter (X / Y where Y is total), per AC2.5.
+  if (state.activeTab === "files") renderActivePane();
+  renderReviewProgress();
+}
+
+filterUnreadEl?.addEventListener("change", () => {
+  setFilterUnread(Boolean(filterUnreadEl.checked));
+});
+applyFilterUnread();
 
 function applyActiveTab() {
   const tabButtons = [...navbarTabs.querySelectorAll<HTMLButtonElement>("button")];
@@ -2914,8 +2971,19 @@ function renderFilesPane() {
   // R8 #1: search bar at top of the Files pane.
   fileListRoot.appendChild(renderSearchInput("files"));
 
+  // R20 #41: keep the chip's visual state in sync with state.filterUnread
+  // after render (the chip lives inside .sidebar-header but renderFilesPane
+  // mutates only #file-list; the chip's aria/visual state is initialized
+  // once at startup via applyFilterUnread).
+  applyFilterUnread();
+
   const allFiles = getOrderedFiles();
-  const files = filterByQuery(allFiles, currentSearchQuery, (f) => f.path);
+  const searched = filterByQuery(allFiles, currentSearchQuery, (f) => f.path);
+  // R20 #41: apply the "show only unread" filter AFTER the search filter,
+  // so the two compose (search first, then unread). Tree mode naturally
+  // collapses folders whose files are all read — buildTree() filters at
+  // construction time.
+  const files = state.filterUnread ? searched.filter((f) => !state.read.has(f.path)) : searched;
   if (state.sidebarMode === "tree") {
     renderTreeSidebar(buildTree(files));
   } else {
