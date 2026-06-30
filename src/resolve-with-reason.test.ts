@@ -21,7 +21,7 @@ import { describe, expect, it } from "bun:test";
 
 const INDEX_TS = join(import.meta.dir, "index.ts");
 const APP_TS = join(import.meta.dir, "ui", "app.ts");
-const HTML = join(import.meta.dir, "ui", "review.html");
+const _HTML = join(import.meta.dir, "ui", "review.html");
 
 async function readSource(path: string): Promise<string> {
   return fsPromises.readFile(path, "utf8");
@@ -56,7 +56,9 @@ describe("AC1 — showResolveReasonModal markup + chip set", () => {
     // The ResolveReasonModalResult type is declared at module level
     // (above the function). Verify both the type alias AND the
     // closeWith(null) inside the function.
-    expect(src).toMatch(/type\s+ResolveReasonModalResult\s*=\s*\{\s*reason:\s*string\s*\}\s*\|\s*null/);
+    expect(src).toMatch(
+      /type\s+ResolveReasonModalResult\s*=\s*\{\s*reason:\s*string\s*\}\s*\|\s*null/,
+    );
     const block = src.match(/function\s+showResolveReasonModal\s*\([\s\S]*?\n\}\s*\n/);
     expect(block![0]).toMatch(/closeWith\(null\)/);
   });

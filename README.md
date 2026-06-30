@@ -62,6 +62,9 @@ You do not need to do anything to get this — every existing `/diff-review-dash
 - **★ Pinned findings** — click the ★ star on any finding card to mark it for revisit after the next round. A `★ Pinned (N)` filter chip and a `★N` badge on the Conversation sidebar tab give you a glanceable list of starred findings. The `manually_pinned` flag is honored by the agent's auto-apply loop, so pinned findings aren't silently auto-closed as stale. Reviewer-side revisit list — distinct from GitHub's admin-only repo-level "Pinned Issue" feature (which is capped at 3 repo-wide and requires admin perms).
 - **Emoji reactions on findings** — a row of 6 emoji buttons (👍 👎 😄 ❤️ 🎉 👀) sits beneath each finding's comment thread. Click an emoji to react (1 click vs ~30 sec typing "lgtm"); click the same emoji again to remove your reaction (idempotent toggle). Already-reacted emojis render with active styling + a grouped count pill. Closes the GitHub reactions + GitLab emoji awards gap. Emoji whitelist enforced server-side; unknown emojis return 400.
 - **`n` / `p` keyboard nav between findings** — focus outside any comment textarea and press `n` to jump to the next finding card, `p` to jump to the previous (wraps at both ends). Uses the same 1.5s flash highlight as the per-finding permalink. A subtle bottom-right hint shows "Press n / p to navigate findings" when the Conversation tab is active. Skips when `<textarea>` / `<input>` / `contentEditable` is focused so typing 'n' or 'p' in a comment doesn't fire nav. Closes the GitHub `Cmd+]` / `Cmd+[` jump-to-review-thread gap with an intuitive `n`/`p` mnemonic (vs vimdiff's `]c`/`[c`) to match Slack / email muscle memory.
+- **Resolve with reason** — clicking "Resolve" on an open finding opens a modal with 4 quick-reason chips (fixed in this round / no longer applies / will fix in follow-up / false alarm) plus a free-form textarea. Cancel returns null (no POST); Confirm POSTs `{finding_id, reason}` and stamps `resolve_reason` + `resolve_manually_resolved` on the finding, which the agent's auto-apply loop honors as a hard-skip signal (R13 Manually-resolved honor directive). Mirrors the R9 Force-Reopen reason modal so the user has a single, consistent "tell the agent why" surface for both re-opening and resolving. Closes the GitHub "Resolve conversation" dropdown + Jira resolution reason field gap.
+- **Mark as wontfix** — sibling button to "Resolve" on open findings opens a 4-radio modal (`wontfix` / `out_of_scope` / `false_positive` / `duplicate`) plus an optional reason textarea. The selected `kind` is validated server-side against a 4-value whitelist (400 on miss, mirrors the R12 emoji whitelist). Stamps `resolution_kind` + `resolution_reason` and renders a `badge-resolution-{kind}` next to the existing severity/category/kind badges in the Conversation panel. The agent's R13 Resolution-kind honor directive treats `wontfix` / `out_of_scope` as a hard skip and `false_positive` / `duplicate` as references for similar-looking future issues. Closes the GitHub "Close as not planned" + Jira "Won't Do" / "Duplicate" workflow gap.
+- **In-diff search (`Ctrl+F` / `Cmd+F` / `/`)** — capture-phase global keydown listener intercepts `Ctrl+F` (or `Cmd+F` on macOS) plus `/` (when no text input is focused, mirroring the R12 n/p focus-guard) and opens a fixed-top search overlay. Type to filter the diff cards: every match is wrapped in `<mark class="diff-search-match">` (preserves the @pierre/diffs syntax-highlight spans), the counter shows `N of M matches` (or `100+ matches, refine your query` past the cap). `Enter` / `F3` jumps to the next match, `Shift+Enter` / `Shift+F3` to the previous, each with the same 1.5s flash highlight as the per-finding permalink. `Escape` closes the overlay and removes all `<mark>` wrappers. The last query is persisted in `sessionStorage` (try/catch wrapped for private-mode safety) so re-opening restores it within the same round — distinct from `localStorage` because the search query is round-scoped and should NOT leak across sessions. Closes the GitHub jump-to-symbol `t` + diff.nvim `/` search gap with a fixed-top overlay that doesn't scroll with the page.
 
 ---
 
@@ -221,6 +224,10 @@ Auto-detection (when `--worktree` is not passed): if you're in the main checkout
 - The browser tab URL is one-shot per `/diff-review-dashboard` invocation — bookmarking it only works for the current round.
 - Findings are anchored to file + line + a code snippet. If the surrounding code changes between rounds, the finding auto-closes (shown as `stale`).
 - After submitting, the browser tab closes automatically.
+- **Keyboard shortcuts** (work in the review UI):
+  - `Ctrl+F` (or `Cmd+F` on macOS) — open the in-diff search overlay (R13 #22). Type to filter the diffs, `Enter` / `F3` jump to the next match, `Shift+Enter` / `Shift+F3` to the previous, `Escape` closes.
+  - `/` — same as `Ctrl+F` when no text input is focused (mirrors the `n`/`p` nav focus-guard).
+  - `n` / `p` — jump to the next / previous finding card in the Conversation tab (R12 #19). Wraps at both ends.
 
 ---
 
@@ -267,7 +274,7 @@ Originally forked from [`oorestisime/opencode-diffs`](https://github.com/ooresti
 | `bun run check` | `format:check && lint && typecheck`. |
 | `bun run prepublishOnly` | Runs `check` then `build` before `npm publish`. |
 | `bun run test:unit` | Unit tests (`bun test src/`) — atomic-write invariant, corrupt-file recovery, concurrent saves. |
-| `bun run test:ui` | End-to-end browser tests (Playwright MCP) — 30 git scenarios with mock review server. |
+| `bun run test:ui` | End-to-end browser tests (Playwright MCP) — 33 git scenarios with mock review server. |
 
 ### Setup
 
