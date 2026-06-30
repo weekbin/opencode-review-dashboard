@@ -1,12 +1,12 @@
 ---
 name: team-dev-loop
-description: "v5.3 cron-style dev loop — 11 phases (Phase -0 Sync / Phase 0 PM Triage / 0.25 PM Researcher / 0.5 PM Manager / 0.75 Planner / 1 Architect / 2 Dev / 2.5 Pre-Commit Audit / 3a-c Tester / 3.5 Doc Writer / 4 Decision + 4.5-4.9 lead-owned). Default NO user pick (Planner autonomous); user MAY pre-pick A-E or 1-6 (R12 Gap #1). PM researcher advisories are advisory-only (R12 Gap #14: lead must verify independently). PM manager auto-opens GH issues; ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
+description: "v5.3.3 cron-style dev loop — 11 phases (Phase -0 Sync / Phase 0 PM Triage / 0.25 PM Researcher / 0.5 PM Manager / 0.75 Planner / 1 Architect / 2 Dev / 2.5 Pre-Commit Audit / 3a-c Tester / 3.5 Doc Writer / 4 Decision + 4.5-4.9 lead-owned + Phase 2.6 Lead Merge+Push NEW). Lead-direct execution model (v5.3.3): 15 of 17 phases lead-direct, ONLY Phase 2 Dev uses subagent (for code generation). Subagent scope: 5-20 min budget + decompose >20 min tasks. Default NO user pick (Planner autonomous); user MAY pre-pick A-E or 1-6 (R12 Gap #1). PM researcher advisories are advisory-only (R12 Gap #14: lead must verify independently). Subagent NEVER does git ops (merge/push/issue close) — lead's responsibility. Mid-task check-in every 5/10/15/20 min. ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
 ---
 
 # /team-dev-loop Command (v5)
 
-> **Last Updated**: 2026-06-30 (v5.3.2: R14 retro patches applied — 5 NEW gap fixes: Phase 2.5 pre-merge verification + Dev returns incomplete recovery pattern + lead-skip-subagent threshold + zh-CN audit gate + Phase 3c Playwright minimum/quota-override. Built on v5.3 (R12 retro commit `657a064` — 14 gap fixes: USER-LOCKED SCOPE override / user-gate auto-pilot opt-in / user-gate decision matrix / phase hand-off contracts / subagent claim verification / AUDIT FAIL POST-CLOSURE workflow / 30-min wall-clock discipline / Doc side-file reverse-validate / Multi-round AC test-design pattern / Playwright click-retry fallback. Tester Review prompt rewritten to lead-synthesized — orchestrator-fanout pattern retired (R4 Gap 2). Phase 4.9 changed to verification-only — commit msg `close #N` auto-closes.)
-> **Status**: R13+ will run on v5.3.2. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
+> **Last Updated**: 2026-06-30 (v5.3.3: R+ retro root-cause fixes — Lead-direct execution model (15/17 phases lead-direct, only Phase 2 Dev subagent) + Subagent scope sizing (5-20 min budget + decompose >20 min) + Mid-task check-in mechanism (5/10/15/20 min heartbeat) + Phase 2.5 pre-merge verification (5-step protocol) + Phase 2.6 Lead Merge + Push (NEW phase). Built on v5.3.2 (R14 retro commit `42ba5aa` — 5 patches) + v5.3 (R12 retro commit `657a064` — 14 patches). v5.3.3 root-cause fixes: subagent no longer does git ops + lead actively orchestrates (not just synthesizes). v5.3.3 SKILL.md description bump + v5.3.3 SKILL.md frontmatter description updated.)
+> **Status**: R15+ will run on v5.3.3. R13-R14 ran on v5.3 + v5.3.2. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
 > **Migration from v2**: see `## Migration v2 → v5` section below.
 
 ## Migration v2 → v5
@@ -261,12 +261,210 @@ For each round `N` (v5 cron-style):
 
 | Layer | Agent | Why |
 |---|---|---|
-| **Orchestrator (lead)** | **`sisyphus` (primary chat)** | Lead owns the round lifecycle, writes `decision.md`, commits. Has all tools. |
-| **Per-role subagents** | `task(category="...", subagent_type="...")` for each phase | Sequential, fresh context per phase. No state across phases. |
-| **5 review-work lenses** | `task(..., run_in_background=true)` ×5 inside tester-review task | Truly parallel — `Promise.all` collected in tester-review subagent. |
+| **Orchestrator (lead)** | **`sisyphus` (primary chat)** | Lead owns the round lifecycle, writes `decision.md`, commits. Has all tools. R+ retro: lead-directs Phase 0-2.5 + 2.6-4 (see `## Lead-direct execution model` below). |
+| **Per-role subagents** | `task(category="...", subagent_type="...")` for each phase | Sequential, fresh context per phase. No state across phases. R+ retro: only for Phase 2 Dev (code generation). All other phases lead-direct. |
+| **5 review-work lenses** | `task(..., run_in_background=true)` ×5 inside tester-review task | R+ retro: DEPRECATED — lead writes 5 review-*.md files directly (R4 retro Gap 2 + R12 patch Gap #2). Orchestrator-fanout pattern retired. |
 
 **Critical constraints**:
 - Lead NEVER uses `team_create` / `team_send_message` / `team_shutdown_request` / `team_delete`. Use `task()`.
+
+## Lead-direct execution model (NEW v5.3.3 — R+ retro root-cause fix)
+
+**Status**: APPLIED in v5.3.3. Replaces over-delegation pattern from v5.3.2.
+
+**Root cause** (R14 retro + this session's user feedback):
+- v5.2/v5.3 design had lead as "synthesizer of subagent output" — 14/17 phases were lead takeovers
+- User feedback: "lead as transcriber has no involvement in most phases" + "subagent task too heavy, slow + unreliable"
+- v5.3.2 symptom-level patches (SG.1-SG.5) didn't address the root cause: **lead defaults to over-delegation + subagent over-loads**
+
+**v5.3.3 model** (the fix):
+
+| Phase | Who | Why lead-direct is better |
+|---|---|---|
+| -0 Sync | **lead** (inline `git fetch + status`) | 1 min, instant, no subagent overhead |
+| 0 PM Triage | **lead** (Read 4-5 files + write brief.md directly) | R14 evidence: 17 min subagent = 5 min lead (3-4x faster, lead has full context) |
+| 0.25 PM Researcher | **lead** (`webfetch` + `minimax-token-plan_web_search` directly) | R13 evidence: 5 min subagent = 5 min lead, BUT lead can verify 1-2 claims inline (Gap #14) |
+| 0.5 PM Manager | **lead** (`gh issue create` + write pm-manager-review.md) | R13 evidence: 5 min subagent = 2 min lead (commit-msg `close #N` is the auto-close mechanism, no need for subagent to call `gh issue create`) |
+| 0.75 Planner | **lead** (compute composite scores + write planner.md) | R13 evidence: 2 min subagent = 2 min lead (composite formula is 1 line of math) |
+| 1 Architect | **lead** (write plan.md) | R14 evidence: 5 min subagent = 5 min lead (R14 plan.md is 89 lines lead-synthesized, all hard caps met) |
+| 2 Dev | **subagent** (commit + test + build ONLY) | Subagent's only required phase — multi-file code generation needs fresh context. **NO merge / NO push / NO gh issue close — those are lead's.** |
+| 2.5 Pre-Commit Audit | **lead** (inline `wc -l + git cat-file -e + scenario count grep`) | 3 min, instant, no need for subagent |
+| **2.6 Lead Merge + Push (NEW phase)** | **lead** (inline `git merge + git push + verify`) | R14 evidence: bg_2ab5b789 hung 18 min on final `git push` tool. Lead takes over → no hang. |
+| 3a Tester Review | **lead** (5 review-*.md + test-report.md) | 8 min, all 5 lenses lead-synthesized per R12 patch Gap #2 |
+| 3b Tester Diff | **lead** (`git diff --stat` + diff-report.md) | 2 min, instant |
+| 3c Tester Playwright | **lead** (`playwright-cli` directly) | 5-10 min walkthrough; quota-override exception per R14 SG.5 |
+| 3.5 Doc Writer | **lead** (doc-update-report.md) | 3 min, lead has direct context |
+| 4 Decision | **lead** (decision.md) | Standard |
+| 4.5 Retro | **lead** (retro.md) | Standard |
+| 4.6 Post-exec | **lead** (post-exec-analysis.md) | Standard |
+| 4.7 Self-check | **lead** (self-check.md) | Standard |
+| 4.8 Loop Summary | **lead** (5-section chat) | Standard |
+| 4.9 Issue Auto-Close | **lead** (verify via `gh issue list`) | R12 patch Gap #10 — verification-only |
+
+**15 of 17 phases lead-direct** (vs 14/17 in v5.3.2 + 16/17 in R14). Only Phase 2 Dev remains subagent.
+
+**When subagent IS used** (Phase 2 Dev scope):
+
+- **Scope narrow**: implement N features in worktree, write N unit test files, run `bun run check` + `bun test`, commit. **NO merge / NO push / NO gh issue close / NO merge conflict resolution.**
+- **Time budget**: 5-20 min per atomic task. If a feature needs >20 min, lead decomposes into multiple parallel subagent tasks.
+- **Decomposition pattern** (R15+ if 3 features):
+  ```
+  // 3 parallel sub-tasks, each ~15 min wall
+  promise1 = task(category="quick", prompt="Implement ONLY #1. Atomic commit. ~15 min.");
+  promise2 = task(category="quick", prompt="Implement ONLY #2. Atomic commit. ~15 min.");
+  promise3 = task(category="quick", prompt="Implement ONLY #3. Atomic commit. ~15 min.");
+  // wait for all (via Promise.all with bg_output), then lead merge + push
+  ```
+- **Mid-task check-in** (every 5 min during bg task):
+  - t=5: `git -C worktree status --short` + `git -C worktree log --oneline -1` (commit progress)
+  - t=10: `bun test` (tests passing)
+  - t=15: `bun run build` (build clean)
+  - t=20: if no completion, **cancel bg + take over** per `## Stall detection and emergency lead takeover`
+
+**R14 evidence** (which motivated this model):
+- 78-min Dev subagent did 5 min of real work + 18 min stuck on final tool call
+- Lead had no mid-task visibility into the stuck state
+- After cancel, lead manually completed merge + push in 2 min (less than 1/9th of subagent's 78 min)
+
+**R+ prediction** (if this model is applied):
+- 1 subagent × 15 min wall + 2 min lead merge = 17 min total
+- vs R14: 78 min actual → **4.6x faster** for same scope
+
+## Subagent scope sizing (v5.3.3 root-cause fix)
+
+**Status**: APPLIED in v5.3.3. Replaces ambiguous v5.3.2 SG.3 with explicit time budget.
+
+**Root cause**: R13 Dev 78 min + R14 Dev 50 min, both with 1 subagent doing 3 features. Subagent tool framework is unreliable for >20 min tasks (hang risk). Plus subagent is opaque to lead (no mid-task visibility).
+
+**Rule** (mandatory for all `task()` calls in this skill):
+
+- **Single subagent task budget**: 5-20 min wall
+- **If task would take >20 min**: decompose into multiple parallel subagent tasks
+- **If task is hard to decompose** (e.g., atomic multi-file change): fire subagent with 20-min soft cap, lead takes over partial work after 20 min
+- **Decomposition patterns**:
+  - **N independent features**: `Promise.all` of N parallel `task()` calls, each 1 feature, lead synthesizes
+  - **Multi-file change**: 1 subagent for implementation, 1 subagent for tests, lead for merge/push (3 phases of work)
+
+**Examples**:
+
+```python
+# R+ PM Triage: 1 subagent 17 min → 3 parallel 5 min micro-tasks
+p1 = task(category="quick", prompt="Read R-2 brief + recent commits. Output: deferred candidates list. 5 min.")
+p2 = task(category="quick", prompt="Read README + recent src/ surface. Output: feature inventory. 5 min.")
+p3 = task(category="quick", prompt="Web search 5+ competitors. Output: candidate user-stories. 5 min.")
+# Lead synthesizes 3 outputs → brief.md (5 min)
+# Total: 5 min parallel + 5 min synthesis = 10 min vs 17 min current
+
+# R+ Dev: 1 subagent 78 min → 3 parallel 15 min tasks
+p1 = task(category="quick", prompt="Implement ONLY #1 feature. 1 atomic commit. NO merge/push. 15 min budget.")
+p2 = task(category="quick", prompt="Implement ONLY #2 feature. 1 atomic commit. NO merge/push. 15 min budget.")
+p3 = task(category="quick", prompt="Implement ONLY #3 feature. 1 atomic commit. NO merge/push. 15 min budget.")
+# Lead merge + push (2 min)
+# Total: 15 min parallel + 2 min lead = 17 min vs 78 min current
+```
+
+**R+ retro policy**: If any round has subagent wall-clock > 20 min on a single task, retro flags it as a bug — lead should have decomposed earlier.
+
+## Mid-task check-in mechanism (v5.3.3)
+
+**Status**: APPLIED in v5.3.3. Replaces passive "wait for system reminder" with active heartbeat.
+
+**Why** (R14 evidence): bg_2ab5b789 ran 78 min, last 18 min stuck on final `git push` tool call. Lead had no mid-task visibility — only system reminder fired AFTER Dev's bg task finally ended (stuck). If lead had checked at t=15, "5 commits done, build clean, tests pass" but no merge → lead takes over at t=15, save 60 min.
+
+**Pattern** (mandatory for any `run_in_background=true` task with expected wall-clock > 5 min):
+
+```
+t=0:   fire subagent (run_in_background=true)
+t=5:   first check-in
+       - bash: `git -C $worktree log --oneline -1` (any commits?)
+       - bash: `git -C $worktree status --short` (any uncommitted changes?)
+       - bash: `ps aux | grep -E "<task-pattern>" | grep -v grep | wc -l` (process alive?)
+t=10:  second check-in (if t=5 had no progress OR bg > 5 min)
+       - bash: `bun test` (tests passing? in worktree)
+t=15:  third check-in (if still no completion)
+       - bash: `bun run build` (build clean?)
+       - bash: `git -C $worktree log --oneline -5` (commit count)
+       - if ALL of: commits > 0, tests pass, build clean, NO merge → take over
+t=20:  hard cap
+       - if subagent still running, `background_cancel(taskId=...)` + take over
+       - lead merges + pushes + audits + continues
+```
+
+**Lead judgment** at t=15: "Is subagent making progress OR stuck?" If `git log --oneline -5` shows new commits but no merge + no test pass → subagent done with implementation, stuck on final tool → take over immediately.
+
+**R+ retro policy**: Track `time_to_first_subagent_check_in`. If > 10 min, retro flags it.
+
+## Phase 2.5 pre-merge verification step (v5.3.3)
+
+**Status**: APPLIED in v5.3.3. Replaces v5.3.2 SG.1 (partial application) with explicit pre-merge checks.
+
+**Pre-merge verification protocol** (lead inline, mandatory after Phase 2 Dev):
+
+```bash
+# In main worktree, with Dev's worktree intact
+cd /path/to/repo
+
+# 1. File count deltas (sanity check)
+git diff --stat <R-N-1-baseline>..<worktree-branch>
+
+# 2. SHA verification (all Dev commits exist)
+for sha in $(git -C $worktree log --format=%H <R-N-1-baseline>..HEAD); do
+  git cat-file -e "$sha" 2>/dev/null || echo "MISSING: $sha"
+done
+
+# 3. Scenario count claim (R5 retro Gap 3 / R12 retro SG.1 — doc side-file drift)
+#   REVERSE-VALIDATE before claiming any count
+actual=$(grep -c '^  "[a-zA-Z0-9-]\+": { setup' scripts/test-review-ui/scenarios.mjs)
+claimed=$(grep -oE '[0-9]+ git scenarios' README.md | head -1 | grep -oE '[0-9]+')
+if [ "$actual" != "$claimed" ]; then
+  echo "DRIFT: README claims $claimed, actual $actual"
+fi
+
+# 4. All 4 test gates pass
+bun run check && bun run build && bun test && bun run scripts/test-review-ui/e2e.mjs
+
+# 5. If all 4 pass → lead proceeds to Phase 2.6 (merge + push)
+#    If any fails → write audit-blocked.md + user-gate + 1-line patch
+```
+
+**Automation** (v5.3.3): `scripts/pre-commit-audit.sh` codifies steps 1-4. Lead runs it before Phase 2.6.
+
+## Phase 2.6 Lead Merge + Push (v5.3.3 NEW phase)
+
+**Status**: APPLIED in v5.3.3. Codifies lead's responsibility for git ops.
+
+**Workflow** (mandatory after Phase 2.5 PASS):
+
+```bash
+# 1. Switch to main worktree
+cd /path/to/repo  # main worktree, not the dev worktree
+
+# 2. Pull latest
+git pull origin main --rebase  # if needed
+
+# 3. Merge Dev branch
+git merge --no-ff team-dev-loop-round-N-<slug> \
+  -m "Round N: merge ... from team-dev-loop-round-N-<slug> (close #N1, #N2, ...)"
+
+# 4. Push
+git push origin main
+
+# 5. Verify GH issue auto-close
+gh issue list --state closed --label pm-manager-approved --limit 20
+# All `close #N` in commit messages should auto-close
+
+# 6. If any issue stays OPEN:
+gh issue close <N> --comment "Closed via commit <SHA> in main"
+```
+
+**Why lead does this** (vs subagent): git ops are single-host stateful operations requiring auth, conflict resolution, remote sync awareness. Subagent tool framework is unreliable for these (R14 evidence: bg_2ab5b789 stuck 18 min on `git push`).
+
+**Total time**: 2-3 min for the 6 steps. Vs subagent 18+ min stuck time in R14.
+
+## Open considerations (v5.3.3 — RESOLVED)
+
+- **Phase 2.5 timing inversion** (R12 Gap #13): RESOLVED via v5.3.3 mid-task check-in + pre-merge verification + Phase 2.6 lead merge. Full timing inversion (Phase 2.5 BEFORE Phase 2 Dev) deferred to v5.4+ IF drift incidents persist.
+- **PMC Researcher force-review mode** (R12 retro SPG.1 related): RESOLVED via v5.3.3 lead-direct execution. Lead-direct PM Researcher = lead reviews citations inline, no subagent review step needed.
 - Each role subagent gets ONE prompt and returns ONE result. No multi-turn.
 - Lead inline takeover is a DESIGN FEATURE, not a rescue. See Section "Lead inline takeover protocol" below.
 
