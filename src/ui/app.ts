@@ -2,6 +2,7 @@ import { FileDiff, type DiffLineAnnotation } from "@pierre/diffs";
 
 import { cycleTab, TAB_ORDER, tabIndexFor, type TabKey } from "../sidebar-keyboard";
 import { filterByQuery } from "../search-utils";
+import { sortConversationEntries, type SortFindingsBy } from "../sort-utils";
 
 type Category = "bug" | "style" | "perf" | "question" | "recommend";
 type Severity = "high" | "medium" | "low";
@@ -63,6 +64,10 @@ type Finding = {
 type Draft = {
   notes: string;
   new_findings: Finding[];
+  // R14 #24: server-stamped last save time. Optional — legacy state.json
+  // files (R12 or earlier) won't have it; the indicator treats missing
+  // as 0 = "All changes saved" (idle).
+  lastSavedAt?: number;
 };
 
 type FileEntry = {
@@ -145,6 +150,10 @@ const THEME_KEY = "diff-review:theme-mode";
 const LAYOUT_KEY = "diff-review:diff-layout";
 const CONV_FILTER_KEY = "diff-review:conversation-filter";
 const ACTIVE_TAB_KEY = "diff-review:active-tab";
+// R14 #23: localStorage key for the Conversation-panel sort dropdown.
+// localStorage (not sessionStorage) so the choice survives a page reload,
+// matching the conversationFilter pattern.
+const SORT_FINDINGS_KEY = "diff-review:sort-findings-by";
 
 function readStored<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   try {
@@ -1051,6 +1060,22 @@ const state = {
     ["open", "resolved", "all", "pinned", "reacted"],
     "open",
   ),
+  // R14 #23: sort the Conversation panel — 4 modes; default = "newest"
+  // (round DESC, created_at ASC) preserves the pre-R14 chronological order.
+  sortFindingsBy: readStored<SortFindingsBy>(
+    SORT_FINDINGS_KEY,
+    ["newest", "oldest", "severity", "file"],
+    "newest",
+  ),
+  // R14 #25: previously-discussed round filter. In-memory only (NOT
+  // localStorage — round filter is session-scoped; reload reverts to "all").
+  previouslyFilterByRound: "all" as "all" | number,
+  // R14 #24: timestamp of the last successful draft save (server-stamped
+  // max of client + server clock; see saveDraft). 0 = no save yet this
+  // session → indicator hidden. The server's state.draft.lastSavedAt
+  // mirrors this on the next GET; the in-memory value is the source of
+  // truth for the indicator during the current session.
+  draftLastSavedAt: 0 as number,
   priorNotes: [] as Array<{ round: number; notes: string }>,
   priorNotesLoaded: false,
   drawerOpen: false,
@@ -1255,6 +1280,64 @@ if (conversationFilter) {
   });
 }
 
+// ── R14 #23: sort findings in the Conversation panel ──
+// Sticky per-session via localStorage. The sort is a pure client-side
+// reducer over state.existing + state.fresh — no network call, mirrors
+// filterByQuery semantics (compose, don't reset search).
+function setSortFindingsBy(sort: SortFindingsBy) {
+  if (state.sortFindingsBy === sort) return;
+  state.sortFindingsBy = sort;
+  writeStored(SORT_FINDINGS_KEY, sort);
+  applySortFindingsBy();
+  if (state.activeTab === "conversation") {
+    // Re-render only the active pane; cheaper than renderActivePane().
+    renderConversationPane();
+  }
+}
+
+function applySortFindingsBy() {
+  const sel = document.querySelector<HTMLSelectElement>("#sort-findings");
+  if (sel && sel.value !== state.sortFindingsBy) sel.value = state.sortFindingsBy;
+}
+
+const sortFindingsSel = document.querySelector<HTMLSelectElement>("#sort-findings");
+if (sortFindingsSel) {
+  // Apply the persisted default BEFORE the user can interact.
+  sortFindingsSel.value = state.sortFindingsBy;
+  sortFindingsSel.addEventListener("change", () => {
+    const v = sortFindingsSel.value as SortFindingsBy;
+    setSortFindingsBy(v);
+  });
+}
+
+// ── R14 #25: filter previously-discussed by round ──
+// In-memory state, NOT localStorage. Round filter is session-scoped
+// because which rounds exist depends on the current review session;
+// persisting across sessions would leave a stale "Round 3" filter with
+// zero matches on a new session that has 0 rounds.
+function setPreviouslyFilterByRound(round: "all" | number) {
+  if (state.previouslyFilterByRound === round) return;
+  state.previouslyFilterByRound = round;
+  if (state.activeTab === "previously") {
+    // Re-render the active pane; previously-list is rebuilt from
+    // state.existing on every render so the dropdown repopulates too.
+    renderPreviouslyPane();
+  }
+}
+
+const previouslyRoundSel = document.querySelector<HTMLSelectElement>("#filter-previously-by-round");
+if (previouslyRoundSel) {
+  previouslyRoundSel.addEventListener("change", () => {
+    const v = previouslyRoundSel.value;
+    if (v === "all") {
+      setPreviouslyFilterByRound("all");
+    } else {
+      const n = parseInt(v, 10);
+      if (Number.isFinite(n) && n > 0) setPreviouslyFilterByRound(n);
+    }
+  });
+}
+
 // ── Sidebar resize ──
 const SIDEBAR_MIN = 160;
 const SIDEBAR_MAX_RATIO = 0.8;
@@ -1450,6 +1533,54 @@ function endpoint(suffix: string) {
 function setStatus(text: string, error = false) {
   statusRoot.textContent = text;
   statusRoot.classList.toggle("error", error);
+}
+
+// ── R14 #24: persistent "Saved Xs ago" auto-save indicator ──
+// Replaces the intrusive "Draft saved at HH:MM:SS" toast. Ticks every 5s
+// via setInterval; after 60s of no new saves the indicator falls back
+// to "All changes saved" (signals the work is durably persisted).
+// Pure helpers (formatRelativeSeconds + tick constants) live in
+// src/format-utils.ts so unit tests can import them without dragging
+// in the browser-only window.* initializers at the top of this file.
+import {
+  formatRelativeSeconds,
+  SAVE_INDICATOR_HIDE_AFTER_MS,
+  SAVE_INDICATOR_TICK_MS,
+} from "../format-utils";
+
+function updateSaveIndicator() {
+  const el = document.querySelector<HTMLSpanElement>("#save-indicator");
+  if (!el) return;
+  const stamp = state.draftLastSavedAt;
+  if (!stamp) {
+    el.textContent = "All changes saved";
+    el.dataset.state = "idle";
+    return;
+  }
+  const elapsed = Date.now() - stamp;
+  if (elapsed >= SAVE_INDICATOR_HIDE_AFTER_MS) {
+    el.textContent = "All changes saved";
+    el.dataset.state = "idle";
+    return;
+  }
+  el.textContent = `Saved ${formatRelativeSeconds(elapsed)}`;
+  el.dataset.state = "fresh";
+  // Subtle 1-frame pulse on fresh save to draw the eye.
+  el.classList.remove("pulse-on-save");
+  // Force reflow so the animation restarts on rapid consecutive saves.
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  void el.offsetWidth;
+  el.classList.add("pulse-on-save");
+}
+
+let saveIndicatorInterval: number | null = null;
+function startAutoSaveIndicator() {
+  if (saveIndicatorInterval !== null) return;
+  saveIndicatorInterval = window.setInterval(() => {
+    updateSaveIndicator();
+  }, SAVE_INDICATOR_TICK_MS);
+  // Render once immediately so the initial state is correct.
+  updateSaveIndicator();
 }
 
 function showReopenReasonModal(_findingId: string): Promise<string | null> {
@@ -2958,10 +3089,10 @@ function renderConversationPanel(root: HTMLElement) {
     return;
   }
 
-  const sorted = [...searched].sort((a, b) => {
-    if (a.round !== b.round) return b.round - a.round;
-    return a.created_at - b.created_at;
-  });
+  // R14 #23: pure client-side sort reducer. No network call, composes with
+  // the existing filterByQuery. Default "newest" = round DESC, created_at ASC
+  // (preserves pre-R14 chronological behavior).
+  const sorted = sortConversationEntries(searched, state.sortFindingsBy);
 
   for (const entry of sorted) {
     const item = document.createElement("div");
@@ -3494,21 +3625,69 @@ function renderPreviouslyDiscussedPanel(root: HTMLElement) {
 
   const priorNotes = state.priorNotes.filter((item) => item.round < currentRound);
   const groupedRaw = buildPriorRoundEntries(priorNotes, priorEntries);
+
+  // R14 #25: populate the round filter dropdown from the unique round
+  // numbers currently in scope. Done before the search filter so the
+  // dropdown always lists every prior round (even if a round has no
+  // search matches — surfacing it lets the user re-check by clearing
+  // the search). Dropdown is rebuilt on every render (cheap; < 10 items).
+  const sel = document.querySelector<HTMLSelectElement>("#filter-previously-by-round");
+  if (sel) {
+    const roundNumbers = [...new Set(groupedRaw.map((r) => r.round))].sort((a, b) => a - b);
+    const currentFilter = state.previouslyFilterByRound;
+    // If the persisted filter is "round N" but N no longer exists, fall back
+    // to "all" for this render (without mutating state — user choice is
+    // preserved in case round N reappears).
+    const effectiveFilter =
+      currentFilter === "all" || roundNumbers.includes(currentFilter) ? currentFilter : "all";
+    // Repopulate options: "all" + one <option> per round (descending: newest first).
+    sel.innerHTML = "";
+    const allOpt = document.createElement("option");
+    allOpt.value = "all";
+    allOpt.textContent = "All rounds";
+    sel.appendChild(allOpt);
+    for (const n of roundNumbers) {
+      const opt = document.createElement("option");
+      opt.value = String(n);
+      opt.textContent = `Round ${n}`;
+      sel.appendChild(opt);
+    }
+    sel.value = effectiveFilter === "all" ? "all" : String(effectiveFilter);
+  }
+
   // R8 #1: search filter — keep a round only if its notes OR any finding
   // (comment text + comment thread replies) match the query. AC8-1.2.
-  const grouped = filterByQuery(
+  const searched = filterByQuery(
     groupedRaw,
     currentSearchQuery,
     (r) =>
       `${r.notes} ${r.findings.map((f) => `${f.comment} ${(f.comments ?? []).map((c) => c.text).join(" ")}`).join(" ")}`,
   );
 
+  // R14 #25: round filter is additive to the search filter. The dropdown
+  // may have just fallen back to "all" above; use the same effective value
+  // so the visible filter state matches the rendered list.
+  const effectiveFilter = sel
+    ? sel.value === "all"
+      ? "all"
+      : (() => {
+          const n = parseInt(sel.value, 10);
+          return Number.isFinite(n) && n > 0 ? n : "all";
+        })()
+    : state.previouslyFilterByRound;
+  const grouped =
+    effectiveFilter === "all" ? searched : searched.filter((r) => r.round === effectiveFilter);
+
   if (grouped.length === 0) {
     const empty = document.createElement("div");
     empty.className = "previously-empty";
-    empty.textContent = currentSearchQuery.trim()
-      ? `No prior rounds match "${currentSearchQuery.trim()}".`
-      : "No prior discussion yet. Submit a round to start the history.";
+    if (currentSearchQuery.trim()) {
+      empty.textContent = `No prior rounds match "${currentSearchQuery.trim()}".`;
+    } else if (effectiveFilter !== "all") {
+      empty.textContent = `No findings in round ${effectiveFilter}.`;
+    } else {
+      empty.textContent = "No prior discussion yet. Submit a round to start the history.";
+    }
     root.appendChild(empty);
     return;
   }
@@ -4276,6 +4455,9 @@ function draftPayload() {
       comment: item.comment,
       kind: item.kind ?? "line",
     })),
+    // R14 #24: client stamp of the last save. Server uses max(client, server)
+    // to keep state.draft.lastSavedAt monotonic across clock skew.
+    lastSavedAt: Date.now(),
   };
 }
 
@@ -4294,7 +4476,21 @@ async function saveDraft() {
     return;
   }
 
-  setStatus(`Draft saved at ${new Date().toLocaleTimeString()}`);
+  // R14 #24: replace the intrusive "Draft saved at HH:MM:SS" toast with a
+  // persistent "Saved Xs ago" indicator in the header. The indicator
+  // ticks every 5s (startAutoSaveIndicator) and resets to "All changes
+  // saved" after 60s of no saves. The server response includes the
+  // canonical lastSavedAt (max of client + server clocks) so we adopt
+  // that as the new baseline.
+  const body = (await response.json().catch(() => ({}))) as { lastSavedAt?: number };
+  const serverStamp =
+    typeof body.lastSavedAt === "number" && Number.isFinite(body.lastSavedAt)
+      ? body.lastSavedAt
+      : Date.now();
+  state.draftLastSavedAt = serverStamp;
+  // Clear any leftover failure-flash on the indicator.
+  setStatus("");
+  updateSaveIndicator();
 }
 
 function scheduleSave() {
@@ -4529,6 +4725,12 @@ async function init() {
   state.existing = Array.isArray(state.data.existing_findings) ? state.data.existing_findings : [];
   state.fresh = Array.isArray(state.data.draft?.new_findings) ? state.data.draft.new_findings : [];
   state.notes = typeof state.data.draft?.notes === "string" ? state.data.draft.notes : "";
+  // R14 #24: read the server-stamped lastSavedAt on initial load so the
+  // "Saved Xs ago" indicator is correct on page reload. Backwards-compat:
+  // missing on legacy state.json files → 0 → indicator shows "All changes
+  // saved" (the "idle" state).
+  state.draftLastSavedAt =
+    typeof state.data.draft?.lastSavedAt === "number" ? state.data.draft.lastSavedAt : 0;
   notesRoot.value = state.notes;
 
   const scope =
@@ -4563,6 +4765,16 @@ async function init() {
   renderSelection();
   syncAll();
   resolveHashOnLoad();
+  // R14 #24: kick off the 5s "Saved Xs ago" indicator ticker. The
+  // indicator starts in the "idle" / "All changes saved" state; the
+  // first saveDraft() call flips it to "fresh" and updates the
+  // timestamp.
+  startAutoSaveIndicator();
 }
 
 init();
+
+// R14 #23: re-export the pure sort helper so existing __test consumers
+// (if any) still resolve. The canonical export is now from
+// src/sort-utils.ts.
+export { sortConversationEntries } from "../sort-utils";
