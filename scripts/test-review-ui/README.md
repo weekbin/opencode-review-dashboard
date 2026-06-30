@@ -17,7 +17,7 @@ For interactive UI testing (drag, screenshot, etc.) see the skill
 
 ## What it tests
 
-30 git scenarios:
+33 git scenarios:
 
 | # | Scenario | What it checks |
 |---|---|---|
@@ -52,6 +52,9 @@ For interactive UI testing (drag, screenshot, etc.) see the skill
 | 29 | `n-jump-next` | R12 #19 `n` keyboard nav (GH#19) — global keydown handler + focus guard + activeTab guard; full flow verified via Playwright walkthrough |
 | 30 | `p-jump-prev` | R12 #19 `p` keyboard nav wrap-around (GH#19) — wraps from index 0 to last; full flow verified via Playwright walkthrough |
 | 31 | `jump-skips-stale` | R12 #19 nav skips stale (GH#19) — n/p skip `closed_auto` findings when `conversationFilter === "open"`; full flow verified via Playwright walkthrough |
+| 32 | `resolve-with-reason` | R13 #20 resolve-with-reason modal (GH#20) — 4 quick-reason chips + textarea; Cancel returns null; Confirm POSTs `{finding_id, reason}`; full flow verified via Playwright walkthrough |
+| 33 | `mark-as-wontfix` | R13 #21 mark-as-wontfix resolution kind (GH#21) — radio modal (wontfix / out_of_scope / false_positive / duplicate) + reason; POST `{finding_id, resolution_kind, resolution_reason}` → `badge-resolution-{kind}` renders; full flow verified via Playwright walkthrough |
+| 34 | `in-diff-search` | R13 #22 in-diff search (GH#22) — Cmd+F / Ctrl+F / `/` capture-phase keydown → fixed-top `.diff-search-bar` overlay → `<mark class="diff-search-match">` highlights + counter; Enter / F3 jump; Escape closes; sessionStorage persistence; full flow verified via Playwright walkthrough |
 
 ## Files
 
