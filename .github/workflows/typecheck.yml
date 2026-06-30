@@ -1,0 +1,23 @@
+# .github/workflows/typecheck.yml
+# Typecheck workflow for opencode-review-dashboard
+# Triggered on push to main and on pull requests
+# Extends R27 #55 typecheck wrapper (scripts/typecheck.sh → bun run typecheck)
+
+name: Typecheck
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      - run: bun install
+      - run: bash scripts/typecheck.sh
