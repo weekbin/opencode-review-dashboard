@@ -1,11 +1,11 @@
 ---
 name: team-dev-loop
-description: "v5.3.4+ cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+Push (NEW v5.3.3) — 17 phases total (Phase -0 Sync / Phase 0 PM Triage / 0.25 PM Researcher / 0.5 PM Manager / 0.75 Planner / 1 Architect / 2 Dev / 2.5 Pre-Commit Audit / 2.6 Lead Merge+Push / 3a-c Tester / 3.5 Doc Writer / 4 Decision + 4.5-4.9 lead-owned). Lead-direct execution model (v5.3.3): 16 of 17 phases lead-direct, ONLY Phase 2 Dev uses subagent (for code generation). v5.3.4: zh-CN lockstep enforcement + READ ONLY ONCE in subagent prompts + post-completion verification + README user-manual style mandate. v5.3.4+: SG.12 R+ screenshot capture workflow (every UI feature ships with ≥1 screenshot in docs/screenshots/, embedded in README + README.zh-CN). Subagent scope: 5-20 min budget + decompose >20 min tasks. Default NO user pick (Planner autonomous); user MAY pre-pick A-E or 1-6 (R12 Gap #1). PM researcher advisories are advisory-only (R12 Gap #14: lead must verify independently). Subagent NEVER does git ops (merge/push/issue close) — lead's responsibility. Mid-task check-in every 5/10/15/20 min OR post-completion verification. ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
+description: "v5.3.5 cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+Push (NEW v5.3.3) — 17 phases total (Phase -0 Sync / Phase 0 PM Triage / 0.25 PM Researcher / 0.5 PM Manager / 0.75 Planner / 1 Architect / 2 Dev / 2.5 Pre-Commit Audit / 2.6 Lead Merge+Push / 3a-c Tester / 3.5 Doc Writer / 4 Decision + 4.5-4.9 lead-owned). Lead-direct execution model (v5.3.3): 16 of 17 phases lead-direct, ONLY Phase 2 Dev uses subagent (for code generation). v5.3.4: zh-CN lockstep + READ ONLY ONCE in subagent prompts + post-completion verification + README user-manual style. v5.3.4+: SG.12 R+ screenshot capture workflow. v5.3.5: SG.13 tighten subagent regex + SG.14 add-only policy + SG.15 lead-direct pre-validation + SG.16 screenshot-in-Phase-2. Subagent scope: 5-20 min budget + decompose >20 min tasks. Default NO user pick (Planner autonomous); user MAY pre-pick A-E or 1-6 (R12 Gap #1). PM researcher advisories are advisory-only (R12 Gap #14: lead must verify independently). Subagent NEVER does git ops (merge/push/issue close) — lead's responsibility. Mid-task check-in every 5/10/15/20 min OR post-completion verification. ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
 ---
 
 # /team-dev-loop Command (v5)
 
-> **Last Updated**: 2026-06-30 (v5.3.4+: R+ retro follow-up patches — 1 NEW gap fix: SG.12 R+ screenshot capture workflow (operationalizes SG.10 with concrete commands + critical patterns + failure modes to avoid + 6-step cheat sheet). Built on v5.3.4 (commit `43a44ba` — README user-manual SG.11) + v5.3.4 first commit (`ca01e97` — 4 R15 retro patches: SG.6 SG.7 SG.8 SG.9) + v5.3.3 (`c3a6aea`) + v5.3.2 (`42ba5aa`) + v5.3 (`657a064`). v5.3.4+ total: 31 retroactive skill patches cumulative across R12-R15 retros + R+ retro follow-up.)
+> **Last Updated**: 2026-06-30 (v5.3.5: R16 retro patches — 4 NEW gap fixes: SG.13 tighten subagent regex test patterns + SG.14 add-only policy for existing utility helpers + SG.15 lead-direct pre-validation of regex test specs + SG.16 move screenshot capture into Phase 2 Dev). Built on v5.3.4+ (commit `350efba` — R+ retro follow-up SG.12) + v5.3.4 (`43a44ba` + `ca01e97`) + v5.3.3 (`c3a6aea`) + v5.3.2 (`42ba5aa`) + v5.3 (`657a064`). v5.3.5 total: 35 retroactive skill patches cumulative across R12-R16 retros.)
 > **Status**: R16+ will run on v5.3.4+. R13-R15 ran on v5.3 + v5.3.2 + v5.3.3. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
 > **Migration from v2**: see `## Migration v2 → v5` section below.
 > **Status**: R16+ will run on v5.3.4. R13-R15 ran on v5.3 + v5.3.2 + v5.3.3. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
@@ -429,6 +429,73 @@ playwright-cli screenshot --filename docs/screenshots/r{N}-{name}.png
 6. Mock-server: leave running (dies with shell) | README + zh-CN update + commit
 
 Total time: ~5-10 min per round for the screenshot loop. Acceptable R+ cost.
+
+## R16 retro SG.13 — Tighten subagent regex test patterns (NEW v5.3.5)
+
+**Status**: PROPOSED in v5.3.5. R16 Dev subagent's first test run had 9 regex failures (all regex pattern bugs, NOT impl bugs).
+
+**Why add**: Subagent writes regex pattern assertions against source code as a defense-in-depth test pattern (R12 retro: "lock behavior with regression tests FIRST"). But subagent's first attempts had 4 common regex bugs:
+1. Multiline regex using `.` instead of `[\s\S]`
+2. HTML attribute matching `class="..."` when source uses `className = "..."` (JS form)
+3. Ordering assumptions in non-greedy regex
+4. Cross-function dependency regex (e.g., writeText followed by execCommand across function boundaries)
+
+**Mitigation** (applied to Phase 2 Dev prompts in v5.3.5+):
+- Lead-synthesize critical regex patterns in plan.md hand-off items
+- Subagent translates regex patterns to vitest assertions (purely mechanical)
+- Pre-R16 cycle time: +5 min lead-direct, -10 min subagent iteration
+- Phase 2 Dev prompt must include: "DO NOT use `.` in regex to match across lines — use `[\s\S]` instead. When matching class names, prefer source-form `className = "..."` over HTML-form `class="..."`. Avoid ordering assumptions — use `[\s\S]*?` only when both endpoints are in the same function block."
+
+**R16 retro verdict**: SG.13 patches the regex-test hallucination root cause. Future rounds save ~10 min subagent iteration.
+
+## R16 retro SG.14 — Add-only policy for existing utility helpers (NEW v5.3.5)
+
+**Status**: PROPOSED in v5.3.5. R16 Dev subagent lightly refactored `copyFindingPermalinkToClipboard`'s inner `fallbackCopy` to take a parameter. Refactor was functionally identical but represents a drift — subagent should ADD new helpers, not MODIFY existing ones.
+
+**Why add**: R12 retro Gap #2 rule: "Add-only for existing utilities" — refactoring existing helpers during feature work creates rebase hazards + test brittleness. R16's refactor was caught by existing permalink test (T11.2d) but shouldn't have happened.
+
+**Mitigation** (applied to Phase 2 Dev prompts in v5.3.5+):
+- Lead adds to plan.md hand-off items: "DO NOT modify existing utility functions in src/ui/app.ts. If you need a similar function, write a new one with a distinct name (e.g., `copyFindingAsMarkdownToClipboard` mirrors `copyFindingPermalinkToClipboard`). Existing utility functions are immutable."
+- Architect should list "immutable helpers" in plan.md as a hand-off item
+
+**R16 retro verdict**: SG.14 patches the helper-refactor drift root cause. Future rounds keep existing tests green at zero risk.
+
+## R16 retro SG.15 — Lead-direct pre-validation of regex test specs (NEW v5.3.5)
+
+**Status**: PROPOSED in v5.3.5. R16 Dev subagent had 9 failing tests on first run = 30% failure rate, all due to regex pattern bugs.
+
+**Why add**: This is subagent hallucination in test design — the patterns LOOK correct but fail on edge cases. Lead-synthesizing the regex patterns upfront reduces failure rate from 30% to ~0%.
+
+**Mitigation** (applied to Phase 1 Architect + Phase 2 Dev prompts in v5.3.5+):
+- Architect plan.md hand-off items should include "regex test patterns" as pre-validated TS code blocks (not descriptions)
+- Subagent only translates pre-validated patterns to vitest assertions (purely mechanical)
+- Pre-R16 cycle time: +5 min lead-direct, -10 min subagent iteration
+
+**R16 retro verdict**: SG.15 patches the regex-test hallucination root cause via lead-direct pre-validation. Future rounds have ~0% regex failure rate.
+
+## R16 retro SG.16 — Move screenshot capture into Phase 2 Dev (NEW v5.3.5)
+
+**Status**: PROPOSED in v5.3.5. R16 deferred screenshots to after Phase 4 closure (lead-direct pass). Same pattern as R12-R15. ~10 min per round spent on screenshots AFTER closure.
+
+**Why add**: R+ retro SG.10 mandates visual evidence. R+ retro SG.12 operationalizes the workflow. R16 retro finds that screenshots-after-closure is the WRONG timing — feature commits ship without visual evidence, and visual evidence arrives as a separate follow-up commit (drift-prone).
+
+**Mitigation** (applied to Phase 2 Dev prompts in v5.3.5+):
+- Phase 2 Dev prompt includes screenshot capture as part of feature validation
+- Subagent captures `docs/screenshots/r{N}-{feature-name}.png` for each feature BEFORE marking the feature done
+- Lead-direct verifies screenshot existence in Phase 2.5 Pre-Commit Audit
+- README + zh-CN updates include screenshot embedding in Phase 2 Dev's final docs commit (per SG.6 lockstep)
+
+**R16 retro verdict**: SG.16 patches the screenshot-timing drift root cause. Future rounds ship features WITH visual evidence (1 atomic commit per feature, not 2-commit split).
+
+## Cumulative R+ retro skill patches cumulative count (R12-R16)
+
+- v5 (R12 retro): 14 patches
+- v5.3.2 (R14 retro): 5 patches (SG.1-SG.5)
+- v5.3.3 (R+ retro): 6 patches (lead-direct model + 4 root-cause fixes)
+- v5.3.4 (R15 retro): 5 patches (SG.6-SG.9 + SG.11)
+- v5.3.4+ (R+ retro follow-up): 1 patch (SG.12)
+- **v5.3.5 (R16 retro proposed)**: 4 NEW patches (SG.13-SG.16)
+- **Total proposed**: 35 retroactive skill patches cumulative
 
 ## Mid-task check-in mechanism (v5.3.3) + v5.3.4 post-completion verification (R+ retro SG.7)
 
