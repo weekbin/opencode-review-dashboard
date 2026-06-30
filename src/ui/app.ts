@@ -1486,6 +1486,9 @@ const state = {
   showHelp: false,
 };
 
+// R25 #52: bulk-select set for sidebar multi-select
+const selectedFiles = new Set<string>();
+
 function resolvedTheme(): "light" | "dark" {
   if (state.themeMode === "auto")
     return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
@@ -2975,6 +2978,17 @@ function makeSidebarItem(file: FileEntry, index: number, extraClass = ""): HTMLB
   if (state.read.has(file.path)) item.setAttribute("data-read", "");
   if (file.source) item.setAttribute("data-source", file.source);
 
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.className = "sidebar-file-checkbox";
+  checkbox.dataset.path = file.path;
+  checkbox.addEventListener("change", (e) => {
+    e.stopPropagation();
+    if (checkbox.checked) selectedFiles.add(file.path);
+    else selectedFiles.delete(file.path);
+    renderBulkButton();
+  });
+
   const dot = document.createElement("span");
   dot.className = `sidebar-dot ${file.status}`;
 
@@ -3009,6 +3023,7 @@ function makeSidebarItem(file: FileEntry, index: number, extraClass = ""): HTMLB
   if (file.deletions) parts.push(`<span class="sd">-${file.deletions}</span>`);
   stats.innerHTML = parts.join(" ");
 
+  item.appendChild(checkbox);
   item.appendChild(dot);
   item.appendChild(typeIcon);
   item.appendChild(name);
@@ -3213,6 +3228,49 @@ function teardownScrollSpy() {
   }
 }
 
+function renderBulkButton(): void {
+  let bulkEl = document.querySelector<HTMLElement>(".sidebar-bulk-toolbar");
+  if (selectedFiles.size === 0) {
+    if (bulkEl) bulkEl.remove();
+    return;
+  }
+  if (!bulkEl) {
+    bulkEl = document.createElement("div");
+    bulkEl.className = "sidebar-bulk-toolbar";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "sidebar-bulk-mark-reviewed";
+    bulkEl.appendChild(btn);
+    btn.addEventListener("click", () => {
+      for (const path of selectedFiles) {
+        if (!state.read.has(path)) {
+          state.read.add(path);
+          const item = state.sidebarItems.get(path);
+          if (item) {
+            item.setAttribute("data-read", "");
+            const reviewed = item.querySelector<HTMLElement>(".sidebar-reviewed");
+            if (reviewed) reviewed.style.display = "";
+          }
+        }
+      }
+      selectedFiles.clear();
+      document.querySelectorAll<HTMLInputElement>(".sidebar-file-checkbox").forEach((cb) => {
+        cb.checked = false;
+      });
+      renderBulkButton();
+      renderReviewProgress();
+    });
+    fileListRoot.appendChild(bulkEl);
+  }
+  const btn = bulkEl.querySelector<HTMLButtonElement>(".sidebar-bulk-mark-reviewed");
+  if (btn) {
+    btn.textContent = `${t("sidebar.bulkDelete")} (${selectedFiles.size})`;
+  }
+  document.querySelectorAll<HTMLInputElement>(".sidebar-file-checkbox").forEach((cb) => {
+    cb.checked = selectedFiles.has(cb.dataset.path ?? "");
+  });
+}
+
 function setActiveFileInSidebar(file: string) {
   activeScrollSpyFile = file;
   for (const [path, item] of state.sidebarItems) {
@@ -3246,6 +3304,7 @@ function renderFilesPane() {
   } else {
     renderFlatSidebar(files);
   }
+  renderBulkButton();
 }
 
 function renderCommitsPane() {

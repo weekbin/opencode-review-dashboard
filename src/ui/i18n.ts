@@ -53,6 +53,8 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     "zh-CN": "已审查 {count} / {total} 个文件 ({percent}%)",
   },
   "sidebar.filter.unread": { en: "Show only unread", "zh-CN": "仅显示未审查" },
+  "sidebar.bulkDelete": { en: "Mark selected as reviewed", "zh-CN": "标记已审查" },
+  "sidebar.selected": { en: "Selected", "zh-CN": "已选" },
   "search.recent.title": { en: "Recent searches", "zh-CN": "最近搜索" },
   "search.recent.clear": { en: "Clear", "zh-CN": "清空" },
   "search.recent.clear.confirm": { en: "Recent searches cleared", "zh-CN": "最近搜索已清空" },
