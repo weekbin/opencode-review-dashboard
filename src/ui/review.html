@@ -2481,6 +2481,65 @@
       .submit-confirm-modal .modal-actions {
         margin-top: 16px;
       }
+      .submit-confirm-modal .round-notes-label {
+        display: block;
+        margin-top: 12px;
+        margin-bottom: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        color: light-dark(#4b5563, #9ca3af);
+      }
+      .submit-confirm-modal .round-notes-textarea {
+        width: 100%;
+        min-height: 5rem;
+        max-height: 14rem;
+        padding: 0.5rem 0.6rem;
+        resize: vertical;
+        font-family: inherit;
+        font-size: 13px;
+        border: 1px solid light-dark(#d1d5db, #374151);
+        border-radius: 4px;
+        background: light-dark(#fff, #1a1f24);
+        color: inherit;
+      }
+      .help-modal {
+        border-top: 4px solid light-dark(#1d5a96, #95c1e8);
+        max-width: 520px;
+      }
+      .help-modal h3 {
+        margin: 0 0 4px;
+      }
+      .help-modal .help-intro {
+        margin: 0 0 16px;
+        font-size: 13px;
+        color: light-dark(#4b5563, #9ca3af);
+      }
+      .help-modal .help-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px 16px;
+        margin-bottom: 16px;
+      }
+      .help-modal .help-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: light-dark(#1a1a1a, #e8e8e8);
+      }
+      .help-modal .help-row kbd {
+        display: inline-block;
+        padding: 2px 6px;
+        border: 1px solid light-dark(#ccc, #555);
+        border-radius: 3px;
+        font-family: ui-monospace, SFMono-Regular, monospace;
+        font-size: 11px;
+        background: light-dark(#f5f5f5, #2a2a2a);
+        color: light-dark(#1a1a1a, #e8e8e8);
+        flex-shrink: 0;
+        min-width: 24px;
+        text-align: center;
+      }
       .audit-trail-row {
         display: flex;
         align-items: flex-start;
@@ -2615,20 +2674,6 @@
     </nav>
 
     <div id="range-banner" class="range-banner" hidden></div>
-
-    <section class="notes-surface" data-testid="notes-surface">
-      <details open>
-        <summary>Round notes</summary>
-        <label for="notes"
-          >Round notes (always visible — appear in next round's "Previously discussed" panel)</label
-        >
-        <textarea
-          id="notes"
-          data-testid="notes-textarea"
-          placeholder="Optional global notes for this round"
-        ></textarea>
-      </details>
-    </section>
 
     <div class="layout">
       <div class="pane pane-files" data-pane="files">
