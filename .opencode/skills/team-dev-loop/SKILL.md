@@ -1,11 +1,11 @@
 ---
 name: team-dev-loop
-description: "v5.3.8 cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+Push (NEW v5.3.3) — 17 phases total (Phase -0 Sync / Phase 0 PM Triage / 0.25 PM Researcher / 0.5 PM Manager / 0.75 Planner / 1 Architect / 2 Dev / 2.5 Pre-Commit Audit / 2.6 Lead Merge+Push / 3a-c Tester / 3.5 Doc Writer / 4 Decision + 4.5-4.9 lead-owned). Lead-direct execution model (v5.3.3): 16 of 17 phases lead-direct, ONLY Phase 2 Dev uses subagent (for code generation). v5.3.4: zh-CN lockstep + READ ONLY ONCE + post-completion verification + user-manual README. v5.3.4+: SG.12 screenshot workflow. v5.3.5: SG.13-SG.16 (regex + immutable helpers + regex pre-validation + screenshots in Phase 2). v5.3.5+1: SG.17 append-only proposals.jsonl + SG.18 combine Triage+Researcher subagent + SG.19 single-commit bilingual docs + SG.20 Phase 3c Playwright minimum. v5.3.6: SG.R19.1-SG.R19.8 (R19 retro 8 patches). v5.3.7: SG.R20.1 + SG.R22.1 + SG.R22.2 (R20 + R22 retro 3 patches). v5.3.8: SG.R24.1 subagent worktree-per-Edit verification (R23+R24 recurring double-write prevention). Subagent scope: 5-20 min budget + decompose >20 min tasks. Default NO user pick (Planner autonomous); user MAY pre-pick A-E or 1-6 (R12 Gap #1). PM researcher advisories are advisory-only (R12 Gap #14: lead must verify independently). Subagent NEVER does git ops (merge/push/issue close) — lead's responsibility. Mid-task check-in every 5/10/15/20 min OR post-completion verification. ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
+description: "v5.3.9 cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+Push (NEW v5.3.3) — 17 phases total (Phase -0 Sync / Phase 0 PM Triage / 0.25 PM Researcher / 0.5 PM Manager / 0.75 Planner / 1 Architect / 2 Dev / 2.5 Pre-Commit Audit / 2.6 Lead Merge+Push / 3a-c Tester / 3.5 Doc Writer / 4 Decision + 4.5-4.9 lead-owned). Lead-direct execution model (v5.3.3): 16 of 17 phases lead-direct, ONLY Phase 2 Dev uses subagent (for code generation). v5.3.4: zh-CN lockstep + READ ONLY ONCE + post-completion verification + user-manual README. v5.3.4+: SG.12 screenshot workflow. v5.3.5: SG.13-SG.16 (regex + immutable helpers + regex pre-validation + screenshots in Phase 2). v5.3.5+1: SG.17 append-only proposals.jsonl + SG.18 combine Triage+Researcher subagent + SG.19 single-commit bilingual docs + SG.20 Phase 3c Playwright minimum. v5.3.6: SG.R19.1-SG.R19.8 (R19 retro 8 patches). v5.3.7: SG.R20.1 + SG.R22.1 + SG.R22.2 (R20 + R22 retro 3 patches). v5.3.8: SG.R24.1 subagent worktree-per-Edit verification (R23+R24 recurring double-write prevention). v5.3.9: SG.R25.1 pre-commit SG.R22.1 verify gate (R25 retro bilingual lockstep gap-fix precedent). Subagent scope: 5-20 min budget + decompose >20 min tasks. Default NO user pick (Planner autonomous); user MAY pre-pick A-E or 1-6 (R12 Gap #1). PM researcher advisories are advisory-only (R12 Gap #14: lead must verify independently). Subagent NEVER does git ops (merge/push/issue close) — lead's responsibility. Mid-task check-in every 5/10/15/20 min OR post-completion verification. ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
 ---
 
 # /team-dev-loop Command (v5)
 
-> **Last Updated**: 2026-06-30 (v5.3.8 R24 retro follow-up: 1 NEW gap fix — SG.R24.1 subagent worktree-per-Edit verification). Built on v5.3.7 (3 R22 retro patches — SG.R20.1 Phase 2.6 3-step rebuild + SG.R22.1 bilingual lockstep pre-commit verify + SG.R22.2 worktree env check at Phase -0). Built on v5.3.6 (8 R19 patches — SG.R19.1 Phase 2.5 build location + SG.R19.2 macOS setsid + SG.R19.3 STRINGS_USAGE_PLAN + SG.R19.4 Dev workdir verify + SG.R19.5 Playwright as Gap #14 + SG.R19.6/.7 consolidations + SG.R19.8 End-of-round mandatory gap-fix). Built on v5.3.5+1 (commit `74ee9a0` — R16 closure SG.17-SG.20) + v5.3.5 (`98b36b1`) + v5.3.4+ (`350efba`) + v5.3.4 (`43a44ba` + `ca01e97`) + v5.3.3 (`c3a6aea`) + v5.3.2 (`42ba5aa`) + v5.3 (`657a064`). v5.3.8 total: 51 retroactive skill patches cumulative across R12-R24 retros.
+> **Last Updated**: 2026-07-01 (v5.3.9 R27 retro: 1 NEW SG — SG.R25.1 pre-commit SG.R22.1 verify gate to prevent bilingual lockstep gaps). Built on v5.3.8 (R24 retro SG.R24.1 subagent worktree-per-Edit verification). Built on v5.3.7 (3 R22 retro patches — SG.R20.1 Phase 2.6 3-step rebuild + SG.R22.1 bilingual lockstep pre-commit verify + SG.R22.2 worktree env check at Phase -0). Built on v5.3.6 (8 R19 patches — SG.R19.1 Phase 2.5 build location + SG.R19.2 macOS setsid + SG.R19.3 STRINGS_USAGE_PLAN + SG.R19.4 Dev workdir verify + SG.R19.5 Playwright as Gap #14 + SG.R19.6/.7 consolidations + SG.R19.8 End-of-round mandatory gap-fix). Built on v5.3.5+1 (commit `74ee9a0` — R16 closure SG.17-SG.20) + v5.3.5 (`98b36b1`) + v5.3.4+ (`350efba`) + v5.3.4 (`43a44ba` + `ca01e97`) + v5.3.3 (`c3a6aea`) + v5.3.2 (`42ba5aa`) + v5.3 (`657a064`). v5.3.9 total: 52 retroactive skill patches cumulative across R12-R27 retros.
 > **Status**: R16+ will run on v5.3.4+. R13-R15 ran on v5.3 + v5.3.2 + v5.3.3. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
 > **Migration from v2**: see `## Migration v2 → v5` section below.
 > **Status**: R16+ will run on v5.3.4. R13-R15 ran on v5.3 + v5.3.2 + v5.3.3. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
@@ -1868,6 +1868,26 @@ pwd   # MUST still be worktree path
 **F.1 evidence (R24)**: Dev subagent #49 wrote 5 files (`src/ui/app.ts`, `src/ui/diff-virtualization.test.ts`, `src/ui/diff-virtualization.ts`, `src/ui/i18n.test.ts`, `src/ui/i18n.ts`) to BOTH worktree AND main directory, despite explicit "WRITE TO WORKTREE DIRECTORY ONLY" instruction. Fixed via `git stash push -u` + merge + drop. Same R23 pattern — embedding SG.R22.2 is NOT enough.
 
 **R25 prevention**: Apply SG.R24.1 to subagent prompts. Add explicit per-Edit `pwd` verification + absolute paths.
+
+## Pre-commit SG.R22.1 verify gate (NEW R25 retro SG.R25.1 — APPLIED, R25 gap-fix precedent)
+
+**Why** (R25 retro F.1): R25 doc edit had 2 missing visual sections (English `### Diff virtualization for 1000+ line files` retroactively removed + zh-CN `### 批量标记侧边栏文件已审查` never added). Oracle caught the gap post-commit. R25-gap-fix applied in-round via commit 52e6a3a. **This SG ensures the gap is caught BEFORE commit, not after.**
+
+**Rule** (mandatory, SG.R25.1): After EVERY doc commit (Phase 3.5 Doc Writer + Phase 4 Decision), BEFORE running `git commit`, run `grep -c` pre-commit verification:
+
+```bash
+# For each NEW section/feature added in the doc edit
+NEW_SECTION="Bulk delete in Conversation tab"
+echo "README.md: $(grep -c "$NEW_SECTION" README.md)"
+echo "README.zh-CN.md: $(grep -c "$(zh-equivalent)" README.zh-CN.md)"
+# Counts MUST match (1=1). If not, fix immediately BEFORE commit.
+```
+
+**Block git commit until bilingual lockstep verified**.
+
+**F.1 evidence (R25)**: R25 ship `65a1c43` (or its pre-merge commit) had 2 missing visual sections. Caught by Oracle post-merge. Fixed in-round via `docs(r22-zh-fix): add missing zh-CN visual sections` style repair commit.
+
+**R26 evidence**: SG.R25.1 applied at Phase 3.5 doc update. Pre-commit `grep -c` verification showed all 4 counts match (1=1). Zero silent failures. No R26-gap-fix needed.
 
 ## Examples
 
