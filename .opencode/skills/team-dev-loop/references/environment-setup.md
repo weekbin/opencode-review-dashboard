@@ -255,6 +255,75 @@ ls ~/.cache/ms-playwright/chromium-*/chrome-linux/chrome 2>&1
 
 ---
 
+## macOS-specific cleanup (NEW R18 — fixes Chrome accumulation across rounds)
+
+> **Why this section**: Pre-R18 the team-dev-loop cleanup pattern used `pkill -9 -f "chrome.*--type=zygote"`, which only matched Linux Chrome processes. On macOS Chrome children are `--type=renderer` / `--type=gpu-process` / `--type=utility` — there is no `--type=zygote`. User-reported symptom: "macOS opens 10+ windows across rounds, but Ubuntu runs clean."
+
+### Per-OS Chrome process tree reference
+
+| Process type | Linux/Ubuntu | macOS |
+|---|---|---|
+| Parent (`Google Chrome`) | `--type=` (none) | `--type=` (none), launched from `/Applications/Google Chrome.app/...` |
+| Zygote | `--type=zygote` | **DOES NOT EXIST** |
+| Renderer | `--type=renderer` | `--type=renderer` |
+| GPU | `--type=gpu-process` | `--type=gpu-process` |
+| Utility | `--type=utility` | `--type=utility` |
+| Crashpad | `chrome_crashpad_handler` | `chrome_crashpad_handler` |
+| Playwright marker (in `--user-data-dir` path) | `~/.cache/ms-playwright/chromium-*/...` | `/var/folders/.../playwright_chromiumdev_profile-*` |
+| Playwright daemon | `cliDaemon.js` (npx-spawned node) | `cliDaemon.js` (npm-global node) |
+
+### macOS-safe pkill pattern (R18, replaces all `chrome.*--type=zygote` cleanup)
+
+Use this pattern in every Pre-test + Post-test cleanup block:
+
+```bash
+# 1. Kill the persistent playwright-cli daemon (cliDaemon.js is its process name on both OSes)
+pkill -9 -f "cliDaemon" 2>/dev/null || true
+
+# 2. Kill Chrome spawned BY playwright-cli (R18 macOS-safe marker — see table above)
+#    This matches Chrome whose --user-data-dir contains the playwright_chromiumdev_profile substring
+#    (or the Linux-equivalent ms-playwright/chromium-* path). Does NOT touch user's manual Chrome.
+pkill -9 -f "playwright_chromiumdev_profile-" 2>/dev/null || true
+
+# 3. Legacy Ubuntu pattern (kept for backward compat — no-op on macOS)
+pkill -9 -f "chrome.*--type=zygote" 2>/dev/null || true
+
+# 4. Verification (universal — counts the playwright-marker processes only)
+ps aux | grep -c "playwright_chromiumdev_profile-" | head -1   # should be 0 after cleanup
+ps aux | grep -c "cliDaemon" | head -1                          # should be 0 after cleanup
+```
+
+### Why this is safe on the user's manual Chrome
+
+Manual Chrome processes have command lines like:
+```
+/Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+```
+No `cliDaemon`, no `playwright_chromiumdev_profile`. The new `pkill` patterns match ONLY:
+- Node processes with `cliDaemon` in the path (playwright-cli's persistent daemon)
+- Chrome processes with `playwright_chromiumdev_profile` in `--user-data-dir` (playwright-spawned)
+
+User's manual Chrome is NEVER matched.
+
+### User-reported symptom → diagnosis matrix
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| "macOS opens 10+ windows across rounds" | cliDaemon survived + Chrome with `--user-data-dir=.../playwright_chromiumdev_profile-*` never reaped | Run R18 cleanup pattern manually: `pkill -9 -f cliDaemon && pkill -9 -f playwright_chromiumdev_profile-` |
+| "Playwright Phase 3c subagent stalls 7+ min" (R4) | Same root cause — `pkill chrome --type=zygote` matched nothing, Chrome accumulated until OOM | R18 fix applies |
+| "Ubuntu runs clean, macOS doesn't" | Ubuntu has `--type=zygote` children; macOS doesn't | R18 macOS-safe pattern is universal (matches both OSes via `cliDaemon` + `playwright_chromiumdev_profile-`) |
+| "User's manual Chrome closed unexpectedly" | (NOT a R18 regression — this would be a pkill pattern too broad) | Verify your pattern only includes `cliDaemon` and `playwright_chromiumdev_profile` markers, not bare `chrome` |
+
+### Files updated by R18
+
+- `SKILL.md` L1078 + L1284-1295 — Test environment policy + Pre-test cleanup block
+- `references/phase-prompts.md` L906-940 (pre-test) + L947-953 (heartbeat) + L1083-1097 (post-test)
+- `references/environment-setup.md` (this section)
+- `references/sync-spec.md` Phase -0 Sync tool pre-flight (macOS cleanup gate)
+- `scripts/test-review-ui/take-screenshots.sh` (Ubuntu-path fix — replaces the dead `take-screenshots.mjs` from R1 backlog)
+
+---
+
 ## Phase-by-phase dependency map
 
 | Phase | Required tools | Failure mode |

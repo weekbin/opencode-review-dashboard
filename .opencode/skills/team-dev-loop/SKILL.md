@@ -1075,7 +1075,24 @@ Order is fixed (v5): **Phase -0 Sync → Phase 0 PM Triage v5 → Phase 0.25 PM 
 - **3a Tester Playwright** and **3.5 PM Doc Writer** (when capturing screenshots) use the **`playwright-cli` global command** (installed via `npm install -g @playwright/cli@latest`, requires Node 18+ via nvm). The bash tool calls `playwright-cli` directly. **NOT Playwright MCP** — playwright-cli is token-efficient (no accessibility tree in LLM context), has built-in session management (`playwright-cli -s=name`, `list`, `close-all`, `kill-all`), and prevents the page-leak + Chrome-accumulation pattern that R4 retro found.
 - `playwright-cli` is at `$HOME/.nvm/versions/node/<version>/bin/playwright-cli` (path is Node-version-dependent) OR runnable via `bunx playwright`. Verify: `playwright-cli --version` OR `bunx playwright --version` → `0.1.x`. **If missing on a fresh machine, see `references/environment-setup.md` for install instructions** (e.g., `npm install -g @playwright/cli@latest`).
 - **Test session lifecycle** (mandatory):
-  1. **Pre-test cleanup** (mandatory): kill any orphan Chrome (`pkill -9 -f "chrome.*--type=zygote"`) + kill any orphan mock-server (`pkill -9 -f "mock-server.py"`) + verify port 8890 free (`ss -ltn | grep -q :8890`) + verify Chrome count < 3.
+  1. **Pre-test cleanup** (mandatory, **macOS-safe pattern, NEW R18 retro**):
+     ```bash
+     # Universal pattern: works on macOS + Linux. AVOID `pkill -f chrome` (R5 Gap G: hangs 120s on macOS).
+     # 1. Kill the persistent playwright-cli daemon (it owns the Chrome lifecycle)
+     pkill -9 -f "cliDaemon" 2>/dev/null || true
+     # 2. Kill Chrome processes spawned BY playwright-cli (only those with playwright_chromiumdev_profile in --user-data-dir).
+     #    Does NOT touch user's manual Chrome. Safe on macOS (no --type=zygote there).
+     pkill -9 -f "playwright_chromiumdev_profile-" 2>/dev/null || true
+     # 3. Kill orphan mock-server (universal)
+     pkill -9 -f "mock-server.py" 2>/dev/null || true
+     # 4. Legacy Ubuntu pattern (kept for backward compat — no-op on macOS)
+     pkill -9 -f "chrome.*--type=zygote" 2>/dev/null || true
+     # 5. Port + Chrome count verification
+     ss -ltn | grep -q :8890 && echo "port 8890 IN USE" || echo "port 8890 free"
+     ps aux | grep -c "playwright_chromiumdev_profile-" | head -1   # should be 0
+     ps aux | grep -c "cliDaemon" | head -1                          # should be 0
+     ```
+     **Why this pattern** (R18 retro): The old `pkill -9 -f "chrome.*--type=zygote"` only worked on Linux/Ubuntu (Chrome there spawns `--type=zygote` children). On macOS Chrome children are `--type=renderer`/`--type=gpu-process`/`--type=utility`, no `--type=zygote`, so the old command matched ZERO processes and Chrome accumulated across rounds. The new pattern targets (a) the persistent `cliDaemon` node process and (b) Chrome instances whose `--user-data-dir` contains the playwright-cli-marker substring `playwright_chromiumdev_profile-` — safe on both OSes, doesn't touch user's manual Chrome. See `references/environment-setup.md` § macOS-specific cleanup for the full rationale + per-OS process tree reference.
   2. **Pre-warm + goto pattern** (5.7x speedup measured): `playwright-cli open <url>` ONCE at the start of the test run (~1.5-2.5s cold start, one-time cost), then use `playwright-cli goto <url>` between scenarios (~65ms each, reuses the warm browser). **DO NOT call `playwright-cli close` between scenarios** — it kills the session and forces a 1.5-2.5s cold start for the NEXT scenario. If state isolation is needed between scenarios, use `playwright-cli localstorage-clear && playwright-cli cookie-clear` instead (fast, ~100ms).
   3. **Post-test cleanup** (mandatory): `playwright-cli close-all` + `playwright-cli kill-all` + kill mock server PID (record on start) + kill orphan Chrome + verify clean state (Chrome count = 0, port 8890 free). **NEVER end a Playwright test session without this step** — that's how the user-reported "machine freezes" happens.
 - See `.opencode/skills/review-dashboard-ui-test/SKILL.md` for the exact commands per scenario, including the A/B test results that justify the pre-warm + goto pattern.
@@ -1281,18 +1298,28 @@ Lead takes over:
 2. **Process inspection**: `ps aux | grep -E "<task-pattern>" | grep -v grep` — if processes exist but no artifacts, that's a stall.
 3. **If stall detected**: Cancel via `background_cancel(taskId="bg_...")`, kill orphan processes (Chrome, mock-server, cliDaemon), and lead takes over using the established pattern (e.g., for Playwright: pre-warm + goto + walkthrough).
 
-**Pre-test cleanup before Playwright tasks** (R5 retro Gap 4):
+**Pre-test cleanup before Playwright tasks** (R5 retro Gap 4 + **R18 macOS fix**):
 
 The Playwright Phase 3c prompt must include in its pre-test cleanup step:
 ```bash
-# Kill orphan Playwright MCP processes from prior sessions (R5 retro evidence: 2 leftover npm-exec playwright-mcp processes from earlier sessions interfered with R5's cliDaemon)
+# 1. Kill orphan Playwright MCP processes from prior sessions (R5 retro evidence: 2 leftover npm-exec playwright-mcp processes from earlier sessions interfered with R5's cliDaemon)
 pkill -9 -f "playwright-mcp" 2>/dev/null || true
 pkill -9 -f "@playwright/mcp" 2>/dev/null || true
-# Then standard cleanup
+# 2. Kill the persistent playwright-cli daemon (R18 macOS fix — without this, cliDaemon survives across rounds and accumulates Chrome)
+pkill -9 -f "cliDaemon" 2>/dev/null || true
+# 3. Kill Chrome processes spawned BY playwright-cli (R18 macOS-safe pattern — targets playwright_chromiumdev_profile --user-data-dir, leaves user's manual Chrome alone)
+pkill -9 -f "playwright_chromiumdev_profile-" 2>/dev/null || true
+# 4. Legacy Ubuntu pattern (kept for backward compat — no-op on macOS)
 pkill -9 -f "chrome.*--type=zygote" 2>/dev/null || true
+# 5. Kill orphan mock-server
 pkill -9 -f "mock-server.py" 2>/dev/null || true
+# 6. Port + Chrome count verification
 ss -ltn | grep -q :55006 && echo "port 55006 in use" || echo "port 55006 free"
+ps aux | grep -c "playwright_chromiumdev_profile-" | head -1   # should be 0
+ps aux | grep -c "cliDaemon" | head -1                          # should be 0
 ```
+
+**R18 macOS rationale**: The old `pkill -f "chrome.*--type=zygote"` matched 0 Chrome processes on macOS (macOS Chrome spawns `--type=renderer`/`--type=gpu-process`/`--type=utility`, no zygote). User-reported symptom: "macOS opens 10+ windows across rounds" — root cause was cliDaemon (PID persists across rounds because `playwright-cli close-all` only closes browser pages, NOT the daemon itself) + Chrome instances with `--user-data-dir=/var/folders/.../playwright_chromiumdev_profile-*` (one per session, never reaped). Both fixed by the new pattern.
 
 **Playwright minimum + quota-override** (R14 retro SG.5 — codified above): Default minimum is 1 screenshot per feature. Quota-override exception applies only when user signals quota exhaustion explicitly + all 4 test gates pass + Dev self-check has been lead-verified. Document skip in retro + add to next round's follow-up queue.
 

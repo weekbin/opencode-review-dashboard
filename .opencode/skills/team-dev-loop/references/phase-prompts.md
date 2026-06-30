@@ -903,18 +903,32 @@ TASK: Run the plugin's UI in a real browser via **playwright-cli** (NOT Playwrig
 ### Setup (R4 retro, MANDATORY)
 
 ```bash
-# 1. Pre-test cleanup (R5 retro Gap 4 + Gap G — kill orphan Playwright MCP processes from prior sessions; AVOID pkill -f chrome on this system, hangs at 120s)
+# 1. Pre-test cleanup (R5 retro Gap 4 + Gap G + R18 macOS fix)
+#    AVOID `pkill -f chrome` on macOS (R5 Gap G: hangs 120s). Use targeted pattern instead.
+
+# 1a. Kill orphan Playwright MCP processes from prior sessions (R5 retro evidence)
 pkill -9 -f "playwright-mcp" 2>/dev/null || true
 pkill -9 -f "@playwright/mcp" 2>/dev/null || true
+
+# 1b. Kill the persistent playwright-cli daemon (R18 macOS fix — without this, cliDaemon survives rounds and accumulates Chrome)
+pkill -9 -f "cliDaemon" 2>/dev/null || true
+
+# 1c. Kill Chrome processes spawned BY playwright-cli (R18 macOS-safe pattern)
+#     Targets Chrome with --user-data-dir containing playwright_chromiumdev_profile marker.
+#     On macOS this is the ONLY effective pattern (--type=zygote doesn't exist).
+#     On Ubuntu/Legacy also kills zygote-spawned Chrome. Safe on both — does NOT touch user's manual Chrome.
+pkill -9 -f "playwright_chromiumdev_profile-" 2>/dev/null || true
+
+# 1d. Legacy Ubuntu pattern (kept for backward compat — no-op on macOS)
+pkill -9 -f "chrome.*--type=zygote" 2>/dev/null || true
+
+# 1e. Kill orphan mock-server
 pkill -9 -f "mock-server.py" 2>/dev/null || true
-# Use specific PIDs for cliDaemon + Chrome (avoids pkill -f chrome hang)
-CLI_PIDS=$(ps aux | grep -E "cliDaemon.*r5|playwright-cli" | grep -v grep | awk '{print $2}' | tr '\n' ' ')
-[ -n "$CLI_PIDS" ] && kill -9 $CLI_PIDS 2>/dev/null || true
-# Specific Chrome cleanup (only --type=zygote + --type=renderer)
-CHROME_PIDS=$(ps aux | grep -E "chrome.*--type=zygote|chrome.*--type=renderer|chrome.*--type=gpu" | grep -v grep | awk '{print $2}' | tr '\n' ' ')
-[ -n "$CHROME_PIDS" ] && kill -9 $CHROME_PIDS 2>/dev/null || true
+
+# 1f. Verification
 ss -ltn | grep -q :55006 && echo "port 55006 in use" || echo "port 55006 free"
-ps aux | grep -c "chrome" | head -1  # verify Chrome count < 3
+ps aux | grep -c "playwright_chromiumdev_profile-" | head -1   # should be 0
+ps aux | grep -c "cliDaemon" | head -1                          # should be 0
 
 # 2. Build
 cd <worktree-path>
@@ -936,7 +950,8 @@ After 5 minutes from `playwright-cli open`, check for artifacts:
 ```bash
 ls docs/screenshots/r5-*.png 2>/dev/null | wc -l  # should be > 0 by now
 ls .omo/round-N/playwright-report.md 2>/dev/null  # may not exist yet
-ps aux | grep -E "cliDaemon.*r5|chrome.*headless" | grep -v grep | wc -l  # should be 1-3 processes
+# R18 macOS fix: count via playwright_chromiumdev_profile marker (works on both OSes)
+ps aux | grep -E "cliDaemon.*r5|playwright_chromiumdev_profile-" | grep -v grep | wc -l  # should be 1-3 processes
 ```
 
 If artifacts are 0 AND processes are accumulating (5+ Chrome zygotes) — STALL DETECTED. Cancel via `background_cancel(taskId="bg_...")`, kill orphan Chrome + mock-server + cliDaemon, lead takes over using the direct `playwright-cli` pattern (~2 min for 5 scenarios).
@@ -1066,21 +1081,25 @@ Then re-snapshot via `playwright-cli snapshot` to confirm the click landed.
 
 Avoid using playwright-cli's `ref=` identifiers in JS evaluate (refs are session-local to playwright-cli).
 
-### Post-test cleanup (MANDATORY)
+### Post-test cleanup (MANDATORY, **R18 macOS-safe pattern**)
 
 ```bash
 playwright-cli -s=r5 close
 playwright-cli close-all
-playwright-cli kill-all
+playwright-cli kill-all  # kills the cliDaemon + all its spawned Chrome (R18 macOS fix — kill-all reaps the persistent daemon too)
 kill $MOCK_PID 2>/dev/null
 pkill -9 -f "mock-server.py 55006" 2>/dev/null || true
-# Specific-PID Chrome cleanup (avoids pkill -f chrome 120s hang on this system)
-CHROME_PIDS=$(ps aux | grep -E "chrome.*--type=zygote|chrome.*--type=renderer|chrome.*--type=gpu" | grep -v grep | awk '{print $2}' | tr '\n' ' ')
-[ -n "$CHROME_PIDS" ] && kill -9 $CHROME_PIDS 2>/dev/null || true
+# Belt-and-suspenders cleanup: even if kill-all missed something, this targets the playwright-spawned Chrome.
+# Does NOT touch user's manual Chrome (whose --user-data-dir lacks playwright_chromiumdev_profile marker).
+pkill -9 -f "playwright_chromiumdev_profile-" 2>/dev/null || true
+pkill -9 -f "cliDaemon" 2>/dev/null || true
 # Verify clean state
-ps aux | grep -c "chrome"  # should be 0-1
+ps aux | grep -c "playwright_chromiumdev_profile-" | head -1   # should be 0
+ps aux | grep -c "cliDaemon" | head -1                          # should be 0
 ss -ltn | grep :55006 || echo "port 55006 free"
 ```
+
+**R18 macOS rationale**: Old `playwright-cli close-all` only closed browser pages within the named session. Old `pkill chrome --type=zygote` matched 0 processes on macOS. The cliDaemon itself was never killed (survived across rounds, accumulating Chrome instances with one `--user-data-dir=/var/folders/.../playwright_chromiumdev_profile-*` per session). New pattern: `kill-all` reaps the daemon + the targeted `playwright_chromiumdev_profile-` pkill catches any orphan Chrome from prior session names.
 
 Output `.omo/round-N/playwright-report.md` (R5+ canonical structure):
 

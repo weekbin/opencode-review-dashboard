@@ -50,6 +50,29 @@ if [ ! -f "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ] && \
   echo "[sync] MISSING: chrome (no system browser AND no playwright-bundled chromium)"
 fi
 
+# 1.6 macOS Chrome cleanup gate (NEW R18 — fixes Chrome accumulation across rounds)
+#     On macOS, `chrome --type=zygote` cleanup matches 0 processes. Without this gate,
+#     cliDaemon + playwright_chromiumdev_profile Chrome instances accumulate over many rounds.
+echo "[sync] macOS Chrome cleanup gate..."
+PW_CHROME_COUNT=$(ps aux | grep -c "playwright_chromiumdev_profile-" | head -1 || echo 0)
+CLI_DAEMON_COUNT=$(ps aux | grep -c "cliDaemon" | head -1 || echo 0)
+if [ "$PW_CHROME_COUNT" -gt 0 ] || [ "$CLI_DAEMON_COUNT" -gt 0 ]; then
+  echo "[sync] WARNING: Pre-round Chrome residue detected (playwright_chromiumdev_profile=$PW_CHROME_COUNT, cliDaemon=$CLI_DAEMON_COUNT)"
+  echo "[sync] Auto-cleaning before sync (R18 pattern)..."
+  pkill -9 -f "cliDaemon" 2>/dev/null || true
+  pkill -9 -f "playwright_chromiumdev_profile-" 2>/dev/null || true
+  pkill -9 -f "chrome.*--type=zygote" 2>/dev/null || true  # legacy Ubuntu pattern, no-op on macOS
+  sleep 1
+  PW_CHROME_COUNT_AFTER=$(ps aux | grep -c "playwright_chromiumdev_profile-" | head -1 || echo 0)
+  CLI_DAEMON_COUNT_AFTER=$(ps aux | grep -c "cliDaemon" | head -1 || echo 0)
+  echo "[sync] Post-cleanup: playwright_chromiumdev_profile=$PW_CHROME_COUNT_AFTER, cliDaemon=$CLI_DAEMON_COUNT_AFTER"
+  if [ "$PW_CHROME_COUNT_AFTER" -gt 0 ] || [ "$CLI_DAEMON_COUNT_AFTER" -gt 0 ]; then
+    echo "[sync] WARNING: Cleanup incomplete — manual intervention may be needed. See references/environment-setup.md § macOS-specific cleanup"
+  fi
+else
+  echo "[sync] OK: no Chrome residue"
+fi
+
 if [ ${#MISSING_TOOLS[@]} -gt 0 ]; then
   echo "[sync] WARNING: Missing tools: ${MISSING_TOOLS[*]}"
   echo "[sync] See references/environment-setup.md for install instructions"
@@ -105,6 +128,11 @@ fi
 - python3: OK/MISSING
 - chrome: OK (at <path>) / MISSING
 - Overall: PASS / WARNING (missing tools: <list>)
+
+## macOS Chrome cleanup gate (NEW R18)
+- Pre-cleanup: playwright_chromiumdev_profile=<N>, cliDaemon=<N>
+- Action: cleanup-applied / cleanup-skipped (no residue) / cleanup-incomplete (manual intervention needed)
+- Post-cleanup: playwright_chromiumdev_profile=<N>, cliDaemon=<N>
 
 ## Network
 - git fetch origin: PASS / FAIL: <error>
