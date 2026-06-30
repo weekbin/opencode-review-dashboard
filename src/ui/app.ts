@@ -1,6 +1,6 @@
-import { FileDiff, type DiffLineAnnotation } from "@pierre/diffs";
+import { FileDiff, parseDiffFromFile, type DiffLineAnnotation } from "@pierre/diffs";
 
-import { DiffVirtualizer } from "./diff-virtualization";
+import { DiffVirtualizer, computeHunkRanges } from "./diff-virtualization";
 
 import { cycleTab, TAB_ORDER, tabIndexFor, type TabKey } from "../sidebar-keyboard";
 import { filterByQuery } from "../search-utils";
@@ -2776,6 +2776,17 @@ function createView(file: FileEntry, mount: HTMLElement) {
   const virtualizer = new DiffVirtualizer(mount);
   diffVirtualizers.set(file.path, virtualizer);
 
+  const oldContent = state.ignoreWhitespace ? stripWhitespace(file.before || "") : file.before || "";
+  const newContent = state.ignoreWhitespace ? stripWhitespace(file.after || "") : file.after || "";
+  const metadata = parseDiffFromFile(
+    { name: file.path, contents: oldContent },
+    { name: file.path, contents: newContent },
+  );
+  const ranges = computeHunkRanges(metadata.hunks);
+  const wrappers = virtualizer.markHunkBoundaries(ranges, file.path);
+  virtualizer.observe(wrappers);
+  injectHunkCollapseButtons(mount, file.path, virtualizer);
+
   return {
     kind: "diff" as const,
     instance,
@@ -2832,6 +2843,16 @@ function createAddedFileView(file: FileEntry, mount: HTMLElement) {
   const virtualizer = new DiffVirtualizer(mount);
   diffVirtualizers.set(file.path, virtualizer);
 
+  const newContent = state.ignoreWhitespace ? stripWhitespace(file.after || "") : file.after || "";
+  const metadata = parseDiffFromFile(
+    { name: file.path, contents: "\n\n" },
+    { name: file.path, contents: newContent },
+  );
+  const ranges = computeHunkRanges(metadata.hunks);
+  const wrappers = virtualizer.markHunkBoundaries(ranges, file.path);
+  virtualizer.observe(wrappers);
+  injectHunkCollapseButtons(mount, file.path, virtualizer);
+
   return { kind: "diff" as const, instance };
 }
 
@@ -2884,6 +2905,16 @@ function createDeletedFileView(file: FileEntry, mount: HTMLElement) {
 
   const virtualizer = new DiffVirtualizer(mount);
   diffVirtualizers.set(file.path, virtualizer);
+
+  const oldContent = state.ignoreWhitespace ? stripWhitespace(file.before || "") : file.before || "";
+  const metadata = parseDiffFromFile(
+    { name: file.path, contents: oldContent },
+    { name: file.path, contents: "\n\n" },
+  );
+  const ranges = computeHunkRanges(metadata.hunks);
+  const wrappers = virtualizer.markHunkBoundaries(ranges, file.path);
+  virtualizer.observe(wrappers);
+  injectHunkCollapseButtons(mount, file.path, virtualizer);
 
   return { kind: "diff" as const, instance };
 }
@@ -4563,6 +4594,26 @@ function setAllExpanded(expand: boolean) {
   setStatus(expand ? "Expanded all files" : "Collapsed all files");
 }
 
+function injectHunkCollapseButtons(mount: HTMLElement, filePath: string, virtualizer: DiffVirtualizer): void {
+  const wrappers = mount.querySelectorAll<HTMLElement>("[data-hunk]");
+  for (const wrapper of wrappers) {
+    const hunkIndex = parseInt(wrapper.getAttribute("data-hunk") ?? "-1", 10);
+    if (hunkIndex < 0) continue;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "diff-hunk-collapse-btn";
+    btn.setAttribute("aria-label", virtualizer.isCollapsed(filePath, hunkIndex) ? t("diff.hunk.expand") : t("diff.hunk.collapse"));
+    btn.textContent = virtualizer.isCollapsed(filePath, hunkIndex) ? "▶" : "▼";
+    btn.addEventListener("click", () => {
+      virtualizer.toggleHunk(filePath, hunkIndex);
+      const isCollapsed = virtualizer.isCollapsed(filePath, hunkIndex);
+      btn.setAttribute("aria-label", isCollapsed ? t("diff.hunk.expand") : t("diff.hunk.collapse"));
+      btn.textContent = isCollapsed ? "▶" : "▼";
+    });
+    wrapper.insertBefore(btn, wrapper.firstChild);
+  }
+}
+
 function renderDiffPanel() {
   for (const view of state.views.values()) {
     view.instance.cleanUp();
@@ -4704,6 +4755,31 @@ function renderDiffPanel() {
     if (file.source === "working") header.appendChild(uncommittedBadge);
     header.appendChild(cardReviewed);
     header.appendChild(meta);
+
+    const fileVirtualizer = diffVirtualizers.get(file.path);
+    if (fileVirtualizer) {
+      const perFileExpandBtn = document.createElement("button");
+      perFileExpandBtn.type = "button";
+      perFileExpandBtn.className = "diff-per-file-expand-btn";
+      perFileExpandBtn.textContent = t("panel.expandAll");
+      perFileExpandBtn.title = t("panel.expandAll");
+      perFileExpandBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        fileVirtualizer.expandAll(file.path);
+      });
+      const perFileCollapseBtn = document.createElement("button");
+      perFileCollapseBtn.type = "button";
+      perFileCollapseBtn.className = "diff-per-file-collapse-btn";
+      perFileCollapseBtn.textContent = t("panel.collapseAll");
+      perFileCollapseBtn.title = t("panel.collapseAll");
+      perFileCollapseBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        fileVirtualizer.collapseAll(file.path);
+      });
+      header.appendChild(perFileExpandBtn);
+      header.appendChild(perFileCollapseBtn);
+    }
+
     header.appendChild(actions);
 
     // ── Card body ──

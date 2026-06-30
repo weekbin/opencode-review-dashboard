@@ -298,4 +298,20 @@ describe("AC1.2 — toggle re-renders static-HTML labels via registerUITranslato
     expect(i18n.includes('"Delete selected"')).toBe(true);
     expect(i18n.includes('"删除选中"')).toBe(true);
   });
+
+  // R24 #49: STRINGS_USAGE_PLAN regression for diff.hunk.collapse (per-hunk collapse button).
+  it("STRINGS['diff.hunk.collapse'] has both en + zh-CN translations", async () => {
+    const i18n = await readSource(I18N);
+    expect(i18n.includes('"diff.hunk.collapse":')).toBe(true);
+    expect(i18n.includes('"Collapse hunk"')).toBe(true);
+    expect(i18n.includes('"折叠 hunk"')).toBe(true);
+  });
+
+  // R24 #49: STRINGS_USAGE_PLAN regression for diff.hunk.expand (per-hunk expand button).
+  it("STRINGS['diff.hunk.expand'] has both en + zh-CN translations", async () => {
+    const i18n = await readSource(I18N);
+    expect(i18n.includes('"diff.hunk.expand":')).toBe(true);
+    expect(i18n.includes('"Expand hunk"')).toBe(true);
+    expect(i18n.includes('"展开 hunk"')).toBe(true);
+  });
 });

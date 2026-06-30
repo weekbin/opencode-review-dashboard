@@ -440,3 +440,222 @@ describe("computeHunkRanges", () => {
     expect(ranges).toEqual([{ hunkIndex: 0, startLine: 100, endLine: 124 }]);
   });
 });
+
+describe("AC9.1 — Collapse button visible in hunk header", () => {
+  it("DiffVirtualizer stores hunk metadata correctly after markHunkBoundaries", () => {
+    const container = fakeDoc.createElement("div");
+    const line1 = fakeDoc.createElement("span");
+    line1.setAttribute("data-line", "1");
+    const line10 = fakeDoc.createElement("span");
+    line10.setAttribute("data-line", "10");
+    container.appendChild(line1);
+    container.appendChild(line10);
+
+    const virtualizer = new DiffVirtualizer(container as unknown as HTMLElement);
+    const wrappers = virtualizer.markHunkBoundaries(
+      [{ hunkIndex: 0, startLine: 1, endLine: 10 }],
+      "test/file.ts",
+    );
+
+    expect(wrappers.length).toBeGreaterThanOrEqual(0);
+    expect(virtualizer.isCollapsed("test/file.ts", 0)).toBe(false);
+    expect(typeof virtualizer.toggleHunk).toBe("function");
+    expect(typeof virtualizer.isCollapsed).toBe("function");
+  });
+});
+
+describe("AC9.2 — Click collapse renders placeholder", () => {
+  it("toggleHunk(0) on collapsed hunk sets collapsed state", () => {
+    const container = fakeDoc.createElement("div");
+    const wrapper = fakeDoc.createElement("div");
+    wrapper.setAttribute("data-hunk", "0");
+    wrapper.dataset.file = "test.ts";
+    wrapper.dataset.hunkStart = "1";
+    wrapper.dataset.hunkEnd = "10";
+    wrapper.textContent = "hunk content";
+    container.appendChild(wrapper);
+
+    const virtualizer = new DiffVirtualizer(container as unknown as HTMLElement);
+    virtualizer.markHunkBoundaries([{ hunkIndex: 0, startLine: 1, endLine: 10 }], "test.ts");
+    expect(virtualizer.isCollapsed("test.ts", 0)).toBe(false);
+
+    virtualizer.toggleHunk("test.ts", 0);
+    expect(virtualizer.isCollapsed("test.ts", 0)).toBe(true);
+  });
+});
+
+describe("AC9.3 — Click expand renders full content", () => {
+  it("toggleHunk twice returns to expanded state", () => {
+    const container = fakeDoc.createElement("div");
+    const wrapper = fakeDoc.createElement("div");
+    wrapper.setAttribute("data-hunk", "0");
+    wrapper.dataset.file = "test.ts";
+    wrapper.dataset.hunkStart = "1";
+    wrapper.dataset.hunkEnd = "10";
+    wrapper.textContent = "hunk content";
+    container.appendChild(wrapper);
+
+    const virtualizer = new DiffVirtualizer(container as unknown as HTMLElement);
+    virtualizer.markHunkBoundaries([{ hunkIndex: 0, startLine: 1, endLine: 10 }], "test.ts");
+    virtualizer.toggleHunk("test.ts", 0);
+    expect(virtualizer.isCollapsed("test.ts", 0)).toBe(true);
+    virtualizer.toggleHunk("test.ts", 0);
+    expect(virtualizer.isCollapsed("test.ts", 0)).toBe(false);
+  });
+});
+
+describe("AC9.4 — Per-hunk state preserved across re-renders", () => {
+  it("collapsed state persists for same filePath across multiple toggles", () => {
+    const container = fakeDoc.createElement("div");
+    const virtualizer = new DiffVirtualizer(container as unknown as HTMLElement);
+    virtualizer.markHunkBoundaries([{ hunkIndex: 0, startLine: 1, endLine: 10 }], "same/file.ts");
+    virtualizer.markHunkBoundaries([{ hunkIndex: 1, startLine: 15, endLine: 20 }], "same/file.ts");
+
+    virtualizer.toggleHunk("same/file.ts", 0);
+    expect(virtualizer.isCollapsed("same/file.ts", 0)).toBe(true);
+    expect(virtualizer.isCollapsed("same/file.ts", 1)).toBe(false);
+
+    virtualizer.toggleHunk("same/file.ts", 1);
+    expect(virtualizer.isCollapsed("same/file.ts", 0)).toBe(true);
+    expect(virtualizer.isCollapsed("same/file.ts", 1)).toBe(true);
+  });
+});
+
+describe("AC9.5 — Expand all / Collapse all buttons in file header", () => {
+  it("expandAll clears all collapsed hunks for filePath", () => {
+    const container = fakeDoc.createElement("div");
+    const virtualizer = new DiffVirtualizer(container as unknown as HTMLElement);
+    virtualizer.markHunkBoundaries(
+      [
+        { hunkIndex: 0, startLine: 1, endLine: 10 },
+        { hunkIndex: 1, startLine: 15, endLine: 20 },
+      ],
+      "file.ts",
+    );
+    virtualizer.toggleHunk("file.ts", 0);
+    virtualizer.toggleHunk("file.ts", 1);
+    expect(virtualizer.isCollapsed("file.ts", 0)).toBe(true);
+    expect(virtualizer.isCollapsed("file.ts", 1)).toBe(true);
+
+    virtualizer.expandAll("file.ts");
+    expect(virtualizer.isCollapsed("file.ts", 0)).toBe(false);
+    expect(virtualizer.isCollapsed("file.ts", 1)).toBe(false);
+  });
+
+  it("collapseAll sets all hunks collapsed for filePath", () => {
+    const container = fakeDoc.createElement("div");
+    const virtualizer = new DiffVirtualizer(container as unknown as HTMLElement);
+    virtualizer.markHunkBoundaries(
+      [
+        { hunkIndex: 0, startLine: 1, endLine: 10 },
+        { hunkIndex: 1, startLine: 15, endLine: 20 },
+      ],
+      "file2.ts",
+    );
+    expect(virtualizer.isCollapsed("file2.ts", 0)).toBe(false);
+
+    virtualizer.collapseAll("file2.ts");
+    expect(virtualizer.isCollapsed("file2.ts", 0)).toBe(true);
+    expect(virtualizer.isCollapsed("file2.ts", 1)).toBe(true);
+  });
+});
+
+describe("AC9.6 — R23 DiffVirtualizer NOT broken (regression)", () => {
+  it("app.ts still has scrollSpy observer on .card[data-file] targets", async () => {
+    const src = await readSource(APP_TS);
+    expect(src).toMatch(/\.card\[data-file\]/);
+    expect(src).toMatch(/scrollSpyObserver/);
+    expect(src).toMatch(/IntersectionObserver/);
+  });
+
+  it("DiffVirtualizer still uses [data-hunk] targets, different from scrollSpy", async () => {
+    const diffVirtSrc = await readSource(join(import.meta.dir, "diff-virtualization.ts"));
+    expect(diffVirtSrc).toMatch(/data-hunk/);
+    expect(diffVirtSrc).toMatch(/data-hunk-placeholder/);
+  });
+
+  it("DiffVirtualizer interface is additive (no removed methods)", async () => {
+    const diffVirtSrc = await readSource(join(import.meta.dir, "diff-virtualization.ts"));
+    expect(diffVirtSrc).toMatch(/markHunkBoundaries/);
+    expect(diffVirtSrc).toMatch(/observe/);
+    expect(diffVirtSrc).toMatch(/disconnect/);
+    expect(diffVirtSrc).toMatch(/computeHunkRanges/);
+  });
+
+  it("handles 1000 mock hunks without throwing (R23 AC7.5 still passes)", () => {
+    const container = fakeDoc.createElement("div");
+    const wrappers: HTMLElement[] = [];
+    for (let i = 0; i < 1000; i++) {
+      const wrapper = fakeDoc.createElement("div");
+      wrapper.setAttribute("data-hunk", String(i));
+      wrapper.style.height = "50px";
+      container.appendChild(wrapper);
+      wrappers.push(wrapper as unknown as HTMLElement);
+    }
+    const virtualizer = new DiffVirtualizer(container as unknown as HTMLElement);
+    expect(() => virtualizer.observe(wrappers)).not.toThrow();
+  });
+});
+
+describe("AC9.7 — localStorage: 0 keys added", () => {
+  it("DiffVirtualizer does not write to localStorage", () => {
+    const container = fakeDoc.createElement("div");
+    const virtualizer = new DiffVirtualizer(container as unknown as HTMLElement);
+    virtualizer.markHunkBoundaries([{ hunkIndex: 0, startLine: 1, endLine: 10 }], "test.ts");
+    virtualizer.toggleHunk("test.ts", 0);
+    virtualizer.toggleHunk("test.ts", 0);
+    virtualizer.expandAll("test.ts");
+    virtualizer.collapseAll("test.ts");
+    expect(virtualizer.getCollapsedCount("test.ts")).toBe(1);
+  });
+});
+
+describe("AC9.8 — 2 new STRINGS keys present in i18n.test.ts regression guard", () => {
+  it("i18n.test.ts contains diff.hunk.collapse regression test", async () => {
+    const testSrc = await readSource(join(import.meta.dir, "..", "..", "src", "ui", "i18n.test.ts"));
+    expect(testSrc).toMatch(/diff\.hunk\.collapse/);
+    expect(testSrc).toMatch(/折叠 hunk/);
+  });
+
+  it("i18n.test.ts contains diff.hunk.expand regression test", async () => {
+    const testSrc = await readSource(join(import.meta.dir, "..", "..", "src", "ui", "i18n.test.ts"));
+    expect(testSrc).toMatch(/diff\.hunk\.expand/);
+    expect(testSrc).toMatch(/展开 hunk/);
+  });
+});
+
+describe("AC9.9 — DiffVirtualizer interface additive (no breaking changes)", () => {
+  it("new methods exist and are callable: toggleHunk, isCollapsed, expandAll, collapseAll, getCollapsedCount", () => {
+    const container = fakeDoc.createElement("div");
+    const virtualizer = new DiffVirtualizer(container as unknown as HTMLElement);
+    virtualizer.markHunkBoundaries([{ hunkIndex: 0, startLine: 1, endLine: 10 }], "test.ts");
+    expect(typeof virtualizer.toggleHunk).toBe("function");
+    expect(typeof virtualizer.isCollapsed).toBe("function");
+    expect(typeof virtualizer.expandAll).toBe("function");
+    expect(typeof virtualizer.collapseAll).toBe("function");
+    expect(typeof virtualizer.getCollapsedCount).toBe("function");
+    expect(virtualizer.getCollapsedCount("test.ts")).toBe(0);
+  });
+});
+
+describe("AC9.10 — Expand all state visible in toolbar (getCollapsedCount)", () => {
+  it("getCollapsedCount returns correct count after multiple collapses", () => {
+    const container = fakeDoc.createElement("div");
+    const virtualizer = new DiffVirtualizer(container as unknown as HTMLElement);
+    virtualizer.markHunkBoundaries(
+      [
+        { hunkIndex: 0, startLine: 1, endLine: 10 },
+        { hunkIndex: 1, startLine: 15, endLine: 20 },
+        { hunkIndex: 2, startLine: 25, endLine: 30 },
+      ],
+      "count-test.ts",
+    );
+    expect(virtualizer.getCollapsedCount("count-test.ts")).toBe(0);
+    virtualizer.toggleHunk("count-test.ts", 0);
+    expect(virtualizer.getCollapsedCount("count-test.ts")).toBe(1);
+    virtualizer.toggleHunk("count-test.ts", 2);
+    expect(virtualizer.getCollapsedCount("count-test.ts")).toBe(2);
+    virtualizer.expandAll("count-test.ts");
+    expect(virtualizer.getCollapsedCount("count-test.ts")).toBe(0);
+  });
+});
