@@ -1,11 +1,11 @@
 ---
 name: team-dev-loop
-description: "v5.3.5 cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+Push (NEW v5.3.3) — 17 phases total (Phase -0 Sync / Phase 0 PM Triage / 0.25 PM Researcher / 0.5 PM Manager / 0.75 Planner / 1 Architect / 2 Dev / 2.5 Pre-Commit Audit / 2.6 Lead Merge+Push / 3a-c Tester / 3.5 Doc Writer / 4 Decision + 4.5-4.9 lead-owned). Lead-direct execution model (v5.3.3): 16 of 17 phases lead-direct, ONLY Phase 2 Dev uses subagent (for code generation). v5.3.4: zh-CN lockstep + READ ONLY ONCE in subagent prompts + post-completion verification + README user-manual style. v5.3.4+: SG.12 R+ screenshot capture workflow. v5.3.5: SG.13 tighten subagent regex + SG.14 add-only policy + SG.15 lead-direct pre-validation + SG.16 screenshot-in-Phase-2. Subagent scope: 5-20 min budget + decompose >20 min tasks. Default NO user pick (Planner autonomous); user MAY pre-pick A-E or 1-6 (R12 Gap #1). PM researcher advisories are advisory-only (R12 Gap #14: lead must verify independently). Subagent NEVER does git ops (merge/push/issue close) — lead's responsibility. Mid-task check-in every 5/10/15/20 min OR post-completion verification. ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
+description: "v5.3.5+1 cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+Push (NEW v5.3.3) — 17 phases total (Phase -0 Sync / Phase 0 PM Triage / 0.25 PM Researcher / 0.5 PM Manager / 0.75 Planner / 1 Architect / 2 Dev / 2.5 Pre-Commit Audit / 2.6 Lead Merge+Push / 3a-c Tester / 3.5 Doc Writer / 4 Decision + 4.5-4.9 lead-owned). Lead-direct execution model (v5.3.3): 16 of 17 phases lead-direct, ONLY Phase 2 Dev uses subagent (for code generation). v5.3.4: zh-CN lockstep + READ ONLY ONCE + post-completion verification + user-manual README. v5.3.4+: SG.12 screenshot workflow. v5.3.5: SG.13-SG.16 (regex + immutable helpers + regex pre-validation + screenshots in Phase 2). v5.3.5+1: SG.17 append-only proposals.jsonl + SG.18 combine Triage+Researcher subagent + SG.19 single-commit bilingual docs + SG.20 Phase 3c Playwright minimum. Subagent scope: 5-20 min budget + decompose >20 min tasks. Default NO user pick (Planner autonomous); user MAY pre-pick A-E or 1-6 (R12 Gap #1). PM researcher advisories are advisory-only (R12 Gap #14: lead must verify independently). Subagent NEVER does git ops (merge/push/issue close) — lead's responsibility. Mid-task check-in every 5/10/15/20 min OR post-completion verification. ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
 ---
 
 # /team-dev-loop Command (v5)
 
-> **Last Updated**: 2026-06-30 (v5.3.5: R16 retro patches — 4 NEW gap fixes: SG.13 tighten subagent regex test patterns + SG.14 add-only policy for existing utility helpers + SG.15 lead-direct pre-validation of regex test specs + SG.16 move screenshot capture into Phase 2 Dev). Built on v5.3.4+ (commit `350efba` — R+ retro follow-up SG.12) + v5.3.4 (`43a44ba` + `ca01e97`) + v5.3.3 (`c3a6aea`) + v5.3.2 (`42ba5aa`) + v5.3 (`657a064`). v5.3.5 total: 35 retroactive skill patches cumulative across R12-R16 retros.)
+> **Last Updated**: 2026-06-30 (v5.3.5+1: R16 closure follow-up patches — 4 NEW gap fixes: SG.17 append-only proposals.jsonl pattern + SG.18 combine PM Triage+Researcher into single subagent + SG.19 single-commit bilingual docs batch + SG.20 Phase 3c Playwright minimum). Built on v5.3.5 (commit `98b36b1` — R16 retro SG.13-SG.16) + v5.3.4+ (`350efba`) + v5.3.4 (`43a44ba` + `ca01e97`) + v5.3.3 (`c3a6aea`) + v5.3.2 (`42ba5aa`) + v5.3 (`657a064`). v5.3.5+1 total: 39 retroactive skill patches cumulative across R12-R16 retros + R16 closure follow-up.)
 > **Status**: R16+ will run on v5.3.4+. R13-R15 ran on v5.3 + v5.3.2 + v5.3.3. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
 > **Migration from v2**: see `## Migration v2 → v5` section below.
 > **Status**: R16+ will run on v5.3.4. R13-R15 ran on v5.3 + v5.3.2 + v5.3.3. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
@@ -486,6 +486,102 @@ Total time: ~5-10 min per round for the screenshot loop. Acceptable R+ cost.
 - README + zh-CN updates include screenshot embedding in Phase 2 Dev's final docs commit (per SG.6 lockstep)
 
 **R16 retro verdict**: SG.16 patches the screenshot-timing drift root cause. Future rounds ship features WITH visual evidence (1 atomic commit per feature, not 2-commit split).
+
+## R16 closure SG.17 — Append-only pattern for proposals.jsonl (NEW v5.3.5+1)
+
+**Status**: PROPOSED in v5.3.5+1. R16 archive commit `fe1830c` accidentally overwrote R1-R15 history when archiving R16 entries — required recovery commit `4538fd0` to restore 16 lines.
+
+**Why add**: proposals.jsonl is the audit trail for every round's PM Triage → Manager → Planner → Decision. Loss of history = loss of decision context for future retros. The append-only pattern prevents silent data loss.
+
+**Mitigation** (applied to lead-direct workflow in v5.3.5+1):
+- NEVER use `cat >> .omo/proposals.jsonl` (atomic overwrites the whole file if git merge produces conflicts)
+- ALWAYS use `git diff .omo/proposals.jsonl` before any commit to verify delta is additive only
+- Commit each round's append as a separate `chore(round-N): append PM Triage entry to proposals.jsonl` commit (1 commit per round, not bundled into R closure)
+- If the file already has the new R entry on `main`, skip the archive step entirely (don't re-archive what was already committed at Phase 0)
+- Lead-direct verifies proposals.jsonl size increases monotonically across rounds: `git log --oneline -- .omo/proposals.jsonl` should show N commits with N lines per round
+
+**R16 closure verdict**: SG.17 patches the data-integrity risk. Future rounds can't accidentally lose audit trail.
+
+## R16 closure SG.18 — Combine PM Triage + PM Researcher into single subagent (NEW v5.3.5+1)
+
+**Status**: PROPOSED in v5.3.5+1. R16 fired 2 separate subagents (PM Triage 3m 17s + PM Researcher 2m 9s = 5m 26s total). Both read the same `.omo/round-N/` files.
+
+**Why add**: Two subagents for verification = 2x context-loading + 2x result-parsing overhead. One subagent doing both saves ~2 min/round when verification is needed.
+
+**Mitigation** (applied to Phase 0 PM Triage prompts in v5.3.5+1):
+- Subagent prompt includes BOTH tasks:
+  1. **PM Triage**: surface 6-8 fresh user-stories with file:line evidence + 3-test gate verdict
+  2. **PM Researcher**: verify 5 specific claims about top-3 candidates (Pierre205 API reality, clipboard pattern reuse, FileDiff constructor pattern, 3-test gate reverse-validation)
+- Single subagent, single report with `## PM Triage` and `## PM Researcher Verification` sections
+- Returns to `.omo/round-N/pm-triage-and-research-report.md`
+
+**When to use combined vs separate**:
+- **Combined** (default): when scope is fresh (R16 user picked from 14 candidates), verification is needed
+- **Separate subagents**: when scope is locked and only verification is needed (rare)
+- **Skip both, lead-synthesize**: when scope is small (≤ 2 features) and changes are obvious (R14/R15 pattern)
+
+**R16 closure verdict**: SG.18 saves ~2-3 min/round when verification is needed. R16 86 min → ~83 min.
+
+## R16 closure SG.19 — Single-commit batch for bilingual docs (NEW v5.3.5+1)
+
+**Status**: PROPOSED in v5.3.5+1. R16 had 2 docs commits (1d53bf1 for English README, 284dd21 for zh-CN follow-up). Should be 1 atomic commit per SG.6 lockstep.
+
+**Why add**: 2-commit split for bilingual docs = inconsistent history (English-only commit appears first; zh-CN "follow-up" looks like a fixup). SG.6 mandates lockstep — but the workflow doesn't enforce it.
+
+**Mitigation** (applied to Phase 3.5 Doc Writer + Phase 2 Dev prompts in v5.3.5+1):
+- Phase 3.5 Doc Writer prompt: "ALWAYS update README.md AND README.zh-CN.md in the same `git add` + `git commit`. NEVER commit English README.md separately from README.zh-CN.md. If you forgot zh-CN, use `git commit --amend` to add it before pushing — don't create a 2nd commit."
+- Phase 2 Dev prompt (SG.6 enforcement): "If implementation includes doc updates, BOTH README.md AND README.zh-CN.md must be in the same commit. Verify with `git diff --cached --stat` before committing."
+- Lead-direct verifies bilingual files move together: `git diff main --stat -- README.md README.zh-CN.md` should show same commit hash for both
+
+**R16 closure verdict**: SG.19 saves 1-2 min/round + cleaner git history. R16 had `1d53bf1` then `284dd21` (2 commits for one logical change).
+
+## R16 closure SG.20 — Phase 3c Playwright minimum (loosen R+ retro SG.5 quota-override) (NEW v5.3.5+1)
+
+**Status**: PROPOSED in v5.3.5+1. R+ retro SG.5 lets Phase 3c Playwright be SKIPPED. R12-R15 all skipped. R16 also skipped — only the 3 lead-direct screenshots I captured manually provide visual verification.
+
+**Why add**: SG.5 was added to save 10-15 min/round (Playwright walkthrough + scenario execution). But it left a quality gap — no automated visual regression safety net. The lead-direct screenshots (SG.12) are good but they're snapshots, not interaction tests.
+
+**Mitigation** (applied to Phase 3c Playwright prompt in v5.3.5+1):
+- REQUIRE at least 1 Playwright scenario per round that exercises the new features
+- Subagent (not lead-direct) captures during Phase 3c
+- Re-allocates 5-8 min from lead-direct post-closure work (SG.12) to subagent Phase 3c work
+- Net effect: same total time, but QUALITY is higher (interactive scenarios, not static snapshots)
+
+**When to skip Playwright minimum**:
+- R is a pure bugfix round (no UI changes)
+- R is a SKILL.md-only patch (no app.ts changes)
+- User explicitly opts out
+
+**When to require Playwright**:
+- R has UI changes (state.visibleChanges > 0)
+- New button / modal / tab / sidebar element
+- New keyboard shortcut
+- New visual rendering path (e.g., diff layout change)
+
+**R16 closure verdict**: SG.20 patches the visual regression safety gap. Future rounds with UI changes get automated Playwright validation, not just lead-direct snapshots.
+
+## Cumulative R+ retro skill patches count (R12-R16 closure)
+
+- v5 (R12 retro): 14 patches
+- v5.3.2 (R14 retro): 5 patches (SG.1-SG.5)
+- v5.3.3 (R+ retro): 6 patches (lead-direct model + 4 root-cause fixes)
+- v5.3.4 (R15 retro): 5 patches (SG.6-SG.9 + SG.11)
+- v5.3.4+ (R+ retro follow-up): 1 patch (SG.12)
+- **v5.3.5 (R16 retro)**: 4 patches (SG.13-SG.16) — applied in 98b36b1
+- **v5.3.5+1 (R16 closure follow-up)**: 4 NEW patches (SG.17-SG.20) — this commit
+- **Total**: **39 retroactive skill patches cumulative**
+
+## Top 5 patches by ROI (R+ retro + R16 retro combined)
+
+| Rank | Patch | Time saved | Status |
+|---|---|---|---|
+| 1 | SG.16 (screenshots into Phase 2 Dev) | 10 min/round | v5.3.5 (98b36b1) |
+| 2 | SG.15 (lead-direct regex pre-validation) | 10 min/round | v5.3.5 (98b36b1) |
+| 3 | SG.18 (combine Triage + Researcher) | 2-3 min/round | v5.3.5+1 (this commit) |
+| 4 | SG.13 (tighten subagent regex) | 1-2 min/round | v5.3.5 (98b36b1) |
+| 5 | SG.19 (batch bilingual docs) | 1-2 min/round + cleaner history | v5.3.5+1 (this commit) |
+
+**Combined: -24-27 min/round if all 5 applied.** R16's 86 min → ~60 min target.
 
 ## Cumulative R+ retro skill patches cumulative count (R12-R16)
 
