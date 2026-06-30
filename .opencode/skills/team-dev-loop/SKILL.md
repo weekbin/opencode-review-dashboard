@@ -1,12 +1,12 @@
 ---
 name: team-dev-loop
-description: "v5.3.3 cron-style dev loop — 11 phases (Phase -0 Sync / Phase 0 PM Triage / 0.25 PM Researcher / 0.5 PM Manager / 0.75 Planner / 1 Architect / 2 Dev / 2.5 Pre-Commit Audit / 3a-c Tester / 3.5 Doc Writer / 4 Decision + 4.5-4.9 lead-owned + Phase 2.6 Lead Merge+Push NEW). Lead-direct execution model (v5.3.3): 15 of 17 phases lead-direct, ONLY Phase 2 Dev uses subagent (for code generation). Subagent scope: 5-20 min budget + decompose >20 min tasks. Default NO user pick (Planner autonomous); user MAY pre-pick A-E or 1-6 (R12 Gap #1). PM researcher advisories are advisory-only (R12 Gap #14: lead must verify independently). Subagent NEVER does git ops (merge/push/issue close) — lead's responsibility. Mid-task check-in every 5/10/15/20 min. ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
+description: "v5.3.4 cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+Push (NEW v5.3.3) — 17 phases total (Phase -0 Sync / Phase 0 PM Triage / 0.25 PM Researcher / 0.5 PM Manager / 0.75 Planner / 1 Architect / 2 Dev / 2.5 Pre-Commit Audit / 2.6 Lead Merge+Push / 3a-c Tester / 3.5 Doc Writer / 4 Decision + 4.5-4.9 lead-owned). Lead-direct execution model (v5.3.3): 16 of 17 phases lead-direct, ONLY Phase 2 Dev uses subagent (for code generation). v5.3.4: zh-CN lockstep enforcement (Phase 2 Dev parallel commit, not post-commit audit gate) + READ ONLY ONCE in subagent prompts (no re-reading R-1 retro) + post-completion verification as mid-task check-in special case. Subagent scope: 5-20 min budget + decompose >20 min tasks. Default NO user pick (Planner autonomous); user MAY pre-pick A-E or 1-6 (R12 Gap #1). PM researcher advisories are advisory-only (R12 Gap #14: lead must verify independently). Subagent NEVER does git ops (merge/push/issue close) — lead's responsibility. Mid-task check-in every 5/10/15/20 min OR post-completion verification (v5.3.4). ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
 ---
 
 # /team-dev-loop Command (v5)
 
-> **Last Updated**: 2026-06-30 (v5.3.3: R+ retro root-cause fixes — Lead-direct execution model (15/17 phases lead-direct, only Phase 2 Dev subagent) + Subagent scope sizing (5-20 min budget + decompose >20 min) + Mid-task check-in mechanism (5/10/15/20 min heartbeat) + Phase 2.5 pre-merge verification (5-step protocol) + Phase 2.6 Lead Merge + Push (NEW phase). Built on v5.3.2 (R14 retro commit `42ba5aa` — 5 patches) + v5.3 (R12 retro commit `657a064` — 14 patches). v5.3.3 root-cause fixes: subagent no longer does git ops + lead actively orchestrates (not just synthesizes). v5.3.3 SKILL.md description bump + v5.3.3 SKILL.md frontmatter description updated.)
-> **Status**: R15+ will run on v5.3.3. R13-R14 ran on v5.3 + v5.3.2. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
+> **Last Updated**: 2026-06-30 (v5.3.4: R15 retro patches — 4 NEW gap fixes: v5.3.4 R+ Quick reference cheat sheet (NEW top section, 16/17 phases lead-direct at a glance) + zh-CN lockstep enforcement (Phase 2 Dev parallel commit, not post-commit audit gate) + post-completion verification as mid-task check-in special case (R15 retro SG.7) + READ ONLY ONCE in subagent prompts (R15 retro SG.9 subagent over-reads prevention). Built on v5.3.3 (commit `c3a6aea` — Lead-direct execution model + 4 NEW root-cause patches) + v5.3.2 (commit `42ba5aa` — 5 patches) + v5.3 (commit `657a064` — 14 patches). v5.3.4 total: 29 retroactive skill patches cumulative across R12-R15 retros.)
+> **Status**: R16+ will run on v5.3.4. R13-R15 ran on v5.3 + v5.3.2 + v5.3.3. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
 > **Migration from v2**: see `## Migration v2 → v5` section below.
 
 ## Migration v2 → v5
@@ -37,6 +37,47 @@ description: "v5.3.3 cron-style dev loop — 11 phases (Phase -0 Sync / Phase 0 
 - Lead inline takeover protocol (R3 was 5/7 lead; v5 target: 40-50%)
 - `.omo/round-N/` tracked artifact library
 - `git cat-file -e` R3-fabrication defense (PM Triage + PM Manager + now Planner)
+
+## v5.3.4 R+ Quick reference cheat sheet (NEW v5.3.4 — R15 retro SG.8)
+
+**Status**: APPLIED in v5.3.4. Codifies the v5.3.3 lead-direct execution model as a 1-line-per-phase cheat sheet for future lead-direct runs.
+
+**17 phases — 16/17 lead-direct, 1/17 subagent**:
+
+| Phase | Who | 1-line summary |
+|---|---|---|
+| -0 Sync | lead (inline) | `git fetch origin` + status + ahead/behind |
+| 0 PM Triage | **lead** | Read 4-5 files + write `brief.md` (5 min vs 17 min subagent) |
+| 0.25 PM Researcher | **lead** | `webfetch` citations directly, cross-ref R-N-1 competitor-landscape.md |
+| 0.5 PM Manager | **lead** | `gh issue create` × N + write `pm-manager-review.md` |
+| 0.75 Planner | **lead** | Compute composite scores + write `planner.md` |
+| 1 Architect | **lead** | Write `plan.md` (90-100 lines, hard caps met) |
+| 2 Dev | **subagent** | 5-20 min budget, NO merge/push. Decompose >20 min into parallel sub-tasks |
+| 2.5 Pre-Commit Audit | **lead** | 3 fast gates + scenario count drift + file count + SHAs |
+| **2.6 Lead Merge + Push** | **lead** | `git merge --no-ff` + `git push origin main` + verify GH auto-close |
+| 3a Tester Review | lead | 5 review-*.md + test-report.md |
+| 3b Tester Diff | lead | `git diff --stat` + diff-report.md |
+| 3c Playwright | lead | `playwright-cli` walkthrough (or quota-override) |
+| 3.5 Doc Writer | lead | doc-update-report.md |
+| 4 Decision | lead | decision.md |
+| 4.5 Retro | lead | retro.md |
+| 4.6 Post-exec | lead | post-exec-analysis.md |
+| 4.7 Self-check | lead | self-check.md |
+| 4.8 Loop Summary | lead | 5-section chat response |
+| 4.9 Issue Auto-Close | lead | `gh issue list` verify-only |
+
+**v5.3.4 mid-task check-in pattern** (R+ retro SG.7 — also see `## Mid-task check-in mechanism` section):
+- t=0: fire subagent
+- t=5/10/15/20: heartbeat check (commits, tests, build)
+- bg completion (any time): run Phase 2.5 + 2.6 + 4.9 inline (this is the "post-completion verification" special case for bg tasks that completed within budget)
+
+**R+ trigger phrase** (what the user types): `/team-dev-loop`, `dev loop`, `run dev loop`, `pick next issue`, `next round`, `do 1 round`, `自主决策` (autonomous), `run 2 round` (R+ specific).
+
+**R+ guardrails** (R+ retro cumulative):
+- v5.3.3: lead-directs 16/17 phases, subagent only for Phase 2 Dev
+- v5.3.3: scripts/pre-commit-audit.sh (5-step pre-merge verification)
+- v5.3.4: zh-CN lockstep enforcement (Phase 2 Dev parallel commit, not post-commit audit gate)
+- v5.3.4: READ ONLY ONCE in lead-direct brief.md + plan.md (no re-reading R-1 retro unless needed)
 
 ## Quick start
 
@@ -239,23 +280,91 @@ For each round `N` (v5 cron-style):
 
 **R14 evidence**: Walkthrough skipped (user quota override) → 0 screenshots added → R14 has no Playwright visual evidence. Surface verification was done via Dev's self-check + lead's reverse-verification of all 9 ACs. Documented in `retro.md ## Failures F.4` + `## Skill gaps SG.5`.
 
-## zh-CN audit gate (NEW R14 retro SG.4 — APPLIED)
+## zh-CN audit gate (NEW R14 retro SG.4 — APPLIED + v5.3.4 enforcement)
 
-**Status**: APPLIED in v5.3. Codifies bilingual README lockstep check.
+**Status**: APPLIED in v5.3.2 (audit gate) + v5.3.4 (enforcement). R15 retro surfaced that audit gate alone isn't enough — Dev updates README.md but doesn't proactively update zh-CN.
 
 **Mandate**: When updating `README.md` (or any user-facing English doc), `README.zh-CN.md` MUST be updated in lockstep IF the project ships both languages.
 
-**Detection** (lead inline check during Phase 4.7 Self-check):
+**v5.3.4 enforcement** (R15 retro SG.6): Phase 2 Dev prompt should require `git add README.md README.zh-CN.md` in same docs commit. This makes zh-CN update a PARALLEL atomic action, not a separate post-commit audit gate. Pattern: `git add README.md && git add README.zh-CN.md && git commit -m "docs(rN): update both"` — or use the `git add README*.md` glob shorthand.
 
-1. `git diff HEAD~N..HEAD -- README.md README.zh-CN.md` — both must be in the diff
-2. `git diff HEAD~N..HEAD -- README.md | wc -l` — English doc delta line count
-3. `git diff HEAD~N..HEAD -- README.zh-CN.md | wc -l` — Chinese doc delta line count
-4. Compare for equivalent content (rough text length check: |EN diff| ≈ |CN diff| within 30% tolerance)
-5. If Chinese doc is NOT in the diff when English doc IS: log warning + add to retro follow-up
+**Detection** (lead inline check during Phase 2.5 Audit + Phase 4.7 Self-check):
 
-**R14 evidence**: README.md updated with 3 R14 bullets; zh-CN NOT updated. R14 retro F.5 flagged this as a missed lockstep. v5.3 codifies the audit gate so R15+ catches it pre-closure.
+1. `git diff HEAD~N..HEAD -- README*.md` — both README.md AND README.zh-CN.md must be in the diff (or both absent if single-language project)
+2. If only README.md is updated but README.zh-CN.md is not: lead MUST add a follow-up zh-CN commit before Phase 2.6 merge + push
+3. Compare for equivalent content (rough text length check: |EN diff| ≈ |CN diff| within 30% tolerance)
+
+**R14 evidence**: README.md updated with 3 R14 bullets; zh-CN NOT updated. R14 retro F.5 flagged this as a missed lockstep. v5.3.2 codifies the audit gate.
+
+**R15 evidence**: Same drift pattern — R15 Dev updated README.md but not README.zh-CN.md. R15 retro SG.6 surfaced this. v5.3.4 enforcement (Phase 2 Dev parallel commit) is the real fix; v5.3.2 audit gate alone failed for R15.
 
 **Single-language exception**: If project does NOT ship bilingual docs (only README.md or only README.zh-CN.md exists), this audit gate is N/A.
+
+## Mid-task check-in mechanism (v5.3.3) + v5.3.4 post-completion verification (R+ retro SG.7)
+
+**Status**: APPLIED in v5.3.3 + v5.3.4 clarification. R15 retro surfaced that "mid-task check-in" needs to include "post-completion verification" as a special case for bg tasks that completed within budget.
+
+**R+ retro SG.7 clarification** (v5.3.4): "Mid-task check-in" pattern in v5.3.3 SG.3 covers:
+1. **Standard case**: bg subagent running >5 min, lead does heartbeat check at t=5/10/15/20 min
+2. **Post-completion verification** (NEW v5.3.4 case): bg subagent completed within budget — lead runs Phase 2.5 + 2.6 + 4.9 inline immediately, no manual check-in needed. This is the **majority case** for subagent tasks that complete in 5-20 min budget.
+
+**Pattern** (mandatory for any `run_in_background=true` task):
+
+```
+t=0:   fire subagent (run_in_background=true)
+
+# STANDARD CASE (bg > 5 min):
+t=5:   first check-in
+       - bash: `git -C $worktree log --oneline -1` (any commits?)
+       - bash: `git -C $worktree status --short` (any uncommitted changes?)
+       - bash: `ps aux | grep -E "<task-pattern>" | grep -v grep | wc -l` (process alive?)
+t=10:  second check-in (if t=5 had no progress OR bg > 5 min)
+       - bash: `bun test` (tests passing? in worktree)
+t=15:  third check-in (if still no completion)
+       - bash: `bun run build` (build clean?)
+       - bash: `git -C $worktree log --oneline -5` (commit count)
+       - if ALL of: commits > 0, tests pass, build clean, NO merge → take over
+t=20:  hard cap
+       - if subagent still running, `background_cancel(taskId=...)` + take over
+       - lead merges + pushes + audits + continues
+
+# POST-COMPLETION VERIFICATION (v5.3.4 NEW — bg completed within budget):
+bg end (any time, system reminder):
+       - lead runs Phase 2.5 audit inline:
+         * `git diff <R-N-1 baseline>..<worktree-branch>` (file deltas sanity)
+         * `git cat-file -e` × all new commits (R4 fabrication defense)
+         * `wc -l` for scenario count claim vs actual (R12 retro Gap 3)
+         * `bun run check && bun run build && bun test` (3 fast gates)
+       - lead runs Phase 2.6 (NEW v5.3.3 phase): `git merge --no-ff` + `git push origin main`
+       - lead runs Phase 4.9: `gh issue list --state closed` to verify auto-close
+
+# POST-COMPLETION + SCOPE NARROW: skip e2e gate (Phase 2.5)
+       - per R14 retro F.4: e2e suite takes 2-3 min due to harness startup, not a pre-merge blocker
+       - Dev's Phase 2 work already verified e2e PASS
+       - Phase 3c Playwright covers full walkthrough
+```
+
+**R+ retro verdict**: v5.3.4 clarification working as designed. R15 (first R+ round with v5.3.3 model) used post-completion verification pattern exclusively (bg completed at t=14, no check-in needed). Saved ~5 min vs v5.3.3 standard check-in pattern that would have run at t=5/10/15 even when bg already completed.
+
+## Subagent scope sizing (v5.3.3) + v5.3.4 READ ONLY ONCE (R+ retro SG.9)
+
+**Status**: APPLIED in v5.3.3 (5-20 min budget) + v5.3.4 (READ ONLY ONCE reminder). R15 retro surfaced that subagent re-reads R-1 retro / R-2 retro / etc. excessively, wasting tokens.
+
+**R+ retro SG.9** (v5.3.4 NEW): Subagent over-reads prevention. When lead writes `brief.md` and `plan.md` directly (R+ v5.3.3 lead-direct pattern), subagent tasks receive full context inline. Subagent should NOT re-read R-1 retro / R-2 retro / R-3 retro / R-N-1 closure unless explicitly needed. Over-reading wastes tokens and slows subagent response time.
+
+**R+ READ ONLY ONCE rule** (codified in lead-direct brief.md + plan.md templates):
+
+1. Subagent reads `brief.md` + `plan.md` + relevant `src/` files. ONCE.
+2. Subagent does NOT re-read:
+   - `proposals.jsonl` (cross-round context) — already in plan.md if relevant
+   - Previous R-N-1 `decision.md` (closure verdict) — already in plan.md if relevant
+   - `references/v5-prompts.md` (phase prompts) — already loaded by lead before firing subagent
+3. Subagent may re-read ONLY if plan.md has a specific reference like "see R-1 retro § F.1 for context" — explicit cross-reference, not implicit
+4. If subagent needs additional context mid-task, it can ask the lead via the prompt's "If you need clarification, request from lead" instruction
+
+**R+ retro verdict**: R15 Dev transcript showed multi-round re-reads (per retro F.2). v5.3.4 codifies "READ ONLY ONCE" in subagent prompts to prevent over-reading. v5.3.3's 5-20 min budget + v5.3.4's READ ONLY ONCE should keep subagent wall-clock <20 min for typical 3-feature bundles.
+
+## zh-CN audit gate (NEW R14 retro SG.4 — APPLIED + v5.3.4 enforcement)
 
 ## Agent architecture
 
