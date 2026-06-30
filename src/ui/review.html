@@ -438,6 +438,43 @@
         text-transform: none;
         letter-spacing: 0;
       }
+      /* R20 #40: sidebar review progress (X / Y reviewed + visual bar). */
+      .sidebar-progress {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-width: 0;
+        gap: 2px;
+        text-transform: none;
+        letter-spacing: 0;
+        font-size: 12px;
+        font-weight: 500;
+      }
+      .sidebar-progress-text {
+        color: light-dark(#444, #bbb);
+      }
+      .sidebar-progress-text[data-complete="true"] {
+        color: light-dark(#1d5a96, #95c1e8);
+        font-weight: 700;
+      }
+      .sidebar-progress-bar {
+        display: block;
+        width: 100%;
+        height: 4px;
+        background: light-dark(#e6e6e6, #2a2a2a);
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      .sidebar-progress-fill {
+        display: block;
+        height: 100%;
+        width: 0%;
+        background: light-dark(#1d5a96, #95c1e8);
+        transition: width 120ms ease-out;
+      }
+      .sidebar-progress-fill[data-complete="true"] {
+        background: light-dark(#1e8a4a, #6fcf97);
+      }
       .sidebar-toolbar {
         margin-left: auto;
         display: flex;
@@ -2751,6 +2788,12 @@
               >
                 Flat
               </button>
+            </div>
+            <div class="sidebar-progress" id="sidebar-progress" role="status" aria-live="polite">
+              <span class="sidebar-progress-text" id="sidebar-progress-text"></span>
+              <span class="sidebar-progress-bar" aria-hidden="true">
+                <span class="sidebar-progress-fill" id="sidebar-progress-fill"></span>
+              </span>
             </div>
           </div>
           <div class="sidebar-list" id="file-list"></div>

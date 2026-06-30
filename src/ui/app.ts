@@ -16,6 +16,8 @@ import {
   setLanguage,
   t,
 } from "./i18n";
+// R20 #40: sidebar review progress (X / Y reviewed + visual bar).
+import { formatReviewProgress } from "./review-progress";
 
 type Category = "bug" | "style" | "perf" | "question" | "recommend";
 type Severity = "high" | "medium" | "low";
@@ -1407,6 +1409,11 @@ onLanguageChange(() => applyLanguageToggle());
 
 // R19 #33 AC1.2 follow-up: register static-HTML elements for i18n re-render.
 registerUITranslator("app.title", () => t("app.title"));
+// R20 #40: re-render the sidebar progress counter on language change —
+// its text comes from t("sidebar.reviewProgress", {count,total,percent})
+// with runtime params, so it can't go through the static data-i18n
+// pipeline. Cheaper than re-walking the DOM.
+onLanguageChange(() => renderReviewProgress());
 registerUITranslator("skipLink", () => t("skipLink"));
 registerUITranslator("toolbar.layout.unified", () => t("toolbar.layout.unified"));
 registerUITranslator("toolbar.layout.split", () => t("toolbar.layout.split"));
@@ -2292,6 +2299,55 @@ function applyFileState(file: string) {
     else item.removeAttribute("data-read");
     const badge = item.querySelector(".sidebar-reviewed") as HTMLElement | null;
     if (badge) badge.style.display = marked ? "" : "none";
+  }
+
+  // R20 #40: progress counter derives from state.read.size + total file
+  // count, so any toggleRead path must re-render the counter too.
+  // Live update is required by AC1.2.
+  renderReviewProgress();
+}
+
+/**
+ * R20 #40: re-render the sidebar review progress indicator (AC1.1,
+ * AC1.2, AC1.3, AC1.4). Reads `state.read.size` + total file count,
+ * hands them to `formatReviewProgress()` (pure helper), and writes
+ * the localized text + visual-bar width into `#sidebar-progress-text`
+ * / `#sidebar-progress-fill` declared in `review.html`. Safe on the
+ * first paint when no data has loaded yet (renders empty). i18n lives
+ * here, not in the helper, per SG.R19.3.
+ */
+function renderReviewProgress(): void {
+  const total = state.data?.files.length ?? 0;
+  const progress = formatReviewProgress(state.read.size, total);
+
+  const textEl = document.querySelector<HTMLElement>("#sidebar-progress-text");
+  const fillEl = document.querySelector<HTMLElement>("#sidebar-progress-fill");
+  const container = document.querySelector<HTMLElement>("#sidebar-progress");
+
+  if (textEl) {
+    if (progress.total === 0) {
+      textEl.textContent = "";
+      textEl.removeAttribute("data-complete");
+    } else {
+      textEl.textContent = t("sidebar.reviewProgress", {
+        count: progress.count,
+        total: progress.total,
+        percent: progress.percent,
+      });
+      if (progress.complete) textEl.setAttribute("data-complete", "true");
+      else textEl.removeAttribute("data-complete");
+    }
+  }
+
+  if (fillEl) {
+    fillEl.style.width = progress.widthPct;
+    if (progress.complete) fillEl.setAttribute("data-complete", "true");
+    else fillEl.removeAttribute("data-complete");
+  }
+
+  if (container) {
+    if (progress.total === 0) container.setAttribute("data-empty", "true");
+    else container.removeAttribute("data-empty");
   }
 }
 
@@ -5222,6 +5278,11 @@ async function init() {
   renderFindings();
   renderSelection();
   syncAll();
+  // R20 #40: sidebar progress depends on state.read.size + total file
+  // count — must render after state.data is loaded and after every
+  // language change (the text uses t() with params, so it can't ride
+  // the static data-i18n / registerUITranslator pipeline).
+  renderReviewProgress();
   resolveHashOnLoad();
   // R14 #24: kick off the 5s "Saved Xs ago" indicator ticker. The
   // indicator starts in the "idle" / "All changes saved" state; the

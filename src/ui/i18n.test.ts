@@ -220,4 +220,21 @@ describe("AC1.2 — toggle re-renders static-HTML labels via registerUITranslato
       expect(i18n.includes(`"${key}":`)).toBe(true);
     }
   });
+
+  // R20 #40: SG.R19.3 STRINGS_USAGE_PLAN regression — guard that the
+  // sidebar.reviewProgress key has BOTH en + zh-CN translations (the
+  // R19 AC1.2 PARTIAL regression root-caused missing-translation bugs
+  // that one-locale STRINGS entries caused in production).
+  it("STRINGS['sidebar.reviewProgress'] has both en + zh-CN translations", async () => {
+    const i18n = await readSource(I18N);
+    expect(i18n.includes('"sidebar.reviewProgress":')).toBe(true);
+    expect(i18n.includes("reviewed ({percent}%)")).toBe(true);
+    // Capture the zh-CN value. Use non-greedy [\s\S]*? so we don't
+    // swallow past the closing brace of this STRINGS entry.
+    const zhMatch = i18n.match(/"sidebar\.reviewProgress":\s*\{[\s\S]*?"zh-CN":\s*"([^"]+)"/);
+    expect(zhMatch).not.toBeNull();
+    const zh = zhMatch![1]!;
+    expect(zh.length).toBeGreaterThan(0);
+    expect(/\p{Script=Han}/u.test(zh)).toBe(true);
+  });
 });
