@@ -1510,6 +1510,9 @@ const state = {
 // R25 #52: bulk-select set for sidebar multi-select
 const selectedFiles = new Set<string>();
 
+// R26 #54: bulk-select set for conversation multi-select
+const selectedFindings = new Set<string>();
+
 function resolvedTheme(): "light" | "dark" {
   if (state.themeMode === "auto")
     return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
@@ -3904,6 +3907,21 @@ function renderConversationPanel(root: HTMLElement) {
     item.className = "conversation-item";
     item.dataset.status = entry.status;
     item.dataset.origin = entry.origin;
+    // R26 #54: per-finding checkbox for bulk delete
+    if (entry.id) {
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.className = "conversation-finding-checkbox";
+      cb.dataset.id = entry.id;
+      cb.setAttribute("aria-label", t("conversation.selected"));
+      if (selectedFindings.has(entry.id)) cb.checked = true;
+      cb.addEventListener("change", () => {
+        if (cb.checked) selectedFindings.add(entry.id);
+        else selectedFindings.delete(entry.id);
+        renderConversationPane();
+      });
+      item.appendChild(cb);
+    }
     // R11 #2: stable element-id for permalink deep-linking.
     if (entry.id) item.id = `finding-${entry.id}`;
 
@@ -4390,6 +4408,28 @@ function renderConversationPanel(root: HTMLElement) {
     item.appendChild(commentsRoot);
 
     root.appendChild(item);
+  }
+
+  // R26 #54: bulk delete toolbar (shown when ≥1 finding selected)
+  if (selectedFindings.size > 0) {
+    const bulkToolbar = document.createElement("div");
+    bulkToolbar.className = "conversation-bulk-toolbar";
+    const bulkBtn = document.createElement("button");
+    bulkBtn.className = "conversation-bulk-delete";
+    bulkBtn.setAttribute("data-i18n", "conversation.bulkDelete");
+    bulkBtn.textContent = `${t("conversation.bulkDelete")} (${selectedFindings.size})`;
+    bulkBtn.addEventListener("click", () => {
+      const toDelete = [...selectedFindings];
+      state.fresh = state.fresh.filter((f) => !selectedFindings.has(f.id));
+      state.existing = state.existing.filter((f) => !selectedFindings.has(f.id));
+      selectedFindings.clear();
+      renderConversationPane();
+      renderFindings();
+      syncAll();
+      scheduleSave();
+    });
+    bulkToolbar.appendChild(bulkBtn);
+    root.appendChild(bulkToolbar);
   }
 }
 

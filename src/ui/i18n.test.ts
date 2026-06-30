@@ -345,4 +345,20 @@ describe("AC1.2 — toggle re-renders static-HTML labels via registerUITranslato
     expect(i18n.includes('"Removed from history"')).toBe(true);
     expect(i18n.includes('"已从历史中移除"')).toBe(true);
   });
+
+  // R26 #54: STRINGS_USAGE_PLAN regression for conversation.bulkDelete (bulk delete button).
+  it("STRINGS['conversation.bulkDelete'] has both en + zh-CN translations", async () => {
+    const i18n = await readSource(I18N);
+    expect(i18n.includes('"conversation.bulkDelete":')).toBe(true);
+    expect(i18n.includes('"Delete selected findings"')).toBe(true);
+    expect(i18n.includes('"删除选中的 finding"')).toBe(true);
+  });
+
+  // R26 #54: STRINGS_USAGE_PLAN regression for conversation.selected (checkbox aria-label).
+  it("STRINGS['conversation.selected'] has both en + zh-CN translations", async () => {
+    const i18n = await readSource(I18N);
+    expect(i18n.includes('"conversation.selected":')).toBe(true);
+    expect(i18n.includes('"Selected"')).toBe(true);
+    expect(i18n.includes('"已选"')).toBe(true);
+  });
 });
