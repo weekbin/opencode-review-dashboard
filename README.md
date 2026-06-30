@@ -108,13 +108,17 @@ If you review pull requests or diffs on a regular basis, this saves you the back
 
 *Click "Clear" in the Recent Searches dropdown header to empty your search history instantly. Mirrors GitHub's `Cmd+K` → "Clear all" and VS Code's search history Clear button. Toast confirms the action. Pending debounced commits are cancelled so the dropdown stays empty.*
 
-### Bulk delete recent searches (multi-select)
-
-*Each entry in the Recent Searches dropdown now has a checkbox. Check the ones you want to remove, then click "Delete selected" to remove just those (leaving the rest intact). When ≥1 entry is selected, the "Clear" button is replaced by "Delete selected". When 0 entries are selected, "Clear" works as before. Mirrors Chrome history multi-select delete and VS Code search multi-select clear.*
-
 ### Settings panel (centralized preferences)
 
-*Click the ⚙ button in the header to open a centralized settings panel with 4 sections: Appearance (theme: light/auto/dark), Layout (unified/split), Search (history max), and Language (English / Chinese). Toolbar toggles still work as quick shortcuts; the settings panel is the canonical view for full control. Includes a Reset-to-defaults button.*
+*Click the ⚙ button in the header to open a centralized settings panel with 4 sections: Appearance (theme: light/auto/dark + diff virtualization toggle), Layout (unified/split), Search (history max), and Language (English / Chinese). Toolbar toggles still work as quick shortcuts; the settings panel is the canonical view for full control. Includes a Reset-to-defaults button.*
+
+### Diff virtualization for 1000+ line files
+
+*IntersectionObserver-based hunk virtualization. Only visible hunks render fully; off-screen hunks collapse to placeholders. Smooth scroll even on 5000+ line files. Toggle in settings (Appearance section) — OFF renders all hunks eagerly. Mirrors GitHub Turbo Frames / VS Code virtualized editor / Phabricator chunked diffs.*
+
+### Bulk mark sidebar files as reviewed
+
+*Each file card in the sidebar has a checkbox. Check the files you've reviewed, then click "Mark selected as reviewed" to mark them all in one action. The review progress counter (X/Y reviewed) updates immediately. Mirrors GitHub PR file tree multi-select.*
 
 ### IME-safe search
 
@@ -181,6 +185,8 @@ If you review pull requests or diffs on a regular basis, this saves you the back
 - **Bulk delete recent searches** *(added R23)* — per-item checkboxes in the Recent Searches dropdown let you multi-select and remove just the entries you want (without nuking everything). Mirrors Chrome history / VS Code search multi-select delete
 - **Diff virtualization for 1000+ line files** *(added R23)* — IntersectionObserver-based hunk virtualization. Only visible hunks render fully; off-screen hunks collapse to placeholders. Smooth scroll even on 5000+ line files. Mirrors GitHub Turbo Frames / VS Code virtualized editor / Phabricator chunked diffs
 - **Settings panel** *(added R21)* — click the ⚙ button in the header for a centralized preferences panel (theme / layout / search / language / reset-to-defaults). Toolbar controls stay as quick shortcuts; both paths share the same handlers
+- **Diff virtualization toggle** *(added R25)* — settings panel toggle (Appearance section) to enable/disable IntersectionObserver-based hunk virtualization for users who want eager rendering on small diffs
+- **Bulk mark sidebar files as reviewed** *(added R25)* — per-file checkboxes in the sidebar + "Mark selected as reviewed" bulk button. Multi-select pattern matching GitHub PR file tree
 
 ### Resolving findings
 
