@@ -16,11 +16,29 @@
 
 *改过的文件高亮，没碰过的文件淡灰色显示。*
 
+### 隐藏空白噪音
+
+![Diff 面板开启 Ignore ws 之后 — 连续的空白被折叠成单个空格](docs/screenshots/r16-hide-whitespace-on.png)
+
+*点工具栏的 `Ignore ws`，把连续空白折叠成单个空格并去掉行尾空格。纯格式调整（tab↔space、缩进宽度）就会从 diff 中消失。设置在 reload 后保持。*
+
+### 一键展开或折叠
+
+![Diff 面板工具栏，Expand all / Collapse all 按钮并列在每个文件 diff 上方](docs/screenshots/r16-diff-toolbar.png)
+
+*两个按钮一键切换所有文件的折叠上下文设置。30 个文件的 diff 想要快速扫一遍，按一下就展开。*
+
 ### 加 finding 和 emoji 反应
 
 ![Finding 卡片，显示评论、类别、严重程度、emoji 反应行](docs/screenshots/r12-conversation-with-finding.png)
 
 *点行号加 finding。一键 emoji 反应快速反馈。*
+
+### 一键复制 finding 为 Markdown
+
+![Finding 卡片的 Copy as MD 按钮在操作行中高亮](docs/screenshots/r16-conversation-copy-as-md.png)
+
+*点一下，整段自包含的 Markdown 片段（轮次标签、文件:行永久链接、评论、修改次数、反应）就到剪贴板了。直接粘贴到 PR 评论、Slack 聊天或 Notion 文档。*
 
 ### 过滤和排序 Conversation
 
