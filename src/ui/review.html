@@ -2039,6 +2039,153 @@
         border-radius: 3px;
       }
 
+      /* ── R13 #22 — In-diff search bar (Cmd+F / Ctrl+F / /) ── */
+      .diff-search-bar {
+        position: fixed;
+        top: 8px;
+        right: 16px;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        background: light-dark(#ffffff, #161b22);
+        border: 1px solid light-dark(#d1d5db, #1f2937);
+        border-radius: 8px;
+        box-shadow: 0 2px 12px light-dark(rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.5));
+      }
+      .diff-search-bar input {
+        width: 260px;
+        padding: 4px 8px;
+        font: inherit;
+        font-size: 13px;
+        border: 1px solid light-dark(#d1d5db, #374151);
+        border-radius: 4px;
+        background: light-dark(#f9fafb, #0f1419);
+        color: inherit;
+      }
+      .diff-search-bar input:focus {
+        outline: none;
+        border-color: light-dark(#5fade6, #5fade6);
+        box-shadow: 0 0 0 2px light-dark(rgba(95, 173, 230, 0.25), rgba(95, 173, 230, 0.4));
+      }
+      .diff-search-counter {
+        font-size: 11px;
+        color: light-dark(#6b7280, #9ca3af);
+        min-width: 90px;
+        white-space: nowrap;
+      }
+      .diff-search-nav,
+      .diff-search-close {
+        font: inherit;
+        font-size: 13px;
+        padding: 2px 8px;
+        background: light-dark(#f3f4f6, #0f1419);
+        border: 1px solid light-dark(#d1d5db, #374151);
+        border-radius: 4px;
+        color: inherit;
+        cursor: pointer;
+      }
+      .diff-search-nav:hover,
+      .diff-search-close:hover {
+        background: light-dark(#e5e7eb, #1c2330);
+      }
+      .diff-search-close {
+        font-size: 16px;
+        line-height: 1;
+        padding: 0 8px;
+      }
+      mark.diff-search-match {
+        background: light-dark(#fde68a, #f59e0b);
+        color: inherit;
+        padding: 0 1px;
+        border-radius: 2px;
+      }
+      @keyframes diff-search-match-flash {
+        0% {
+          background: light-dark(#f59e0b, #fbbf24);
+          box-shadow: 0 0 0 3px light-dark(rgba(245, 158, 11, 0.55), rgba(245, 158, 11, 0.5));
+        }
+        100% {
+          background: light-dark(#fde68a, #f59e0b);
+          box-shadow: 0 0 0 0 transparent;
+        }
+      }
+      .diff-search-match-flash {
+        animation: diff-search-match-flash 1.5s ease-out forwards;
+        border-radius: 2px;
+      }
+      /* R13 #20 resolve-reason modal chips + R13 #21 wontfix radios */
+      .resolve-reason-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin: 0.5rem 0;
+      }
+      .resolve-reason-chip {
+        font: inherit;
+        font-size: 12px;
+        padding: 4px 10px;
+        background: light-dark(#f3f4f6, #0f1419);
+        border: 1px solid light-dark(#d1d5db, #374151);
+        border-radius: 999px;
+        cursor: pointer;
+        color: inherit;
+      }
+      .resolve-reason-chip:hover {
+        background: light-dark(#e5e7eb, #1c2330);
+      }
+      .wontfix-radios {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin: 0.5rem 0;
+      }
+      .wontfix-radio {
+        display: flex;
+        flex-direction: column;
+        padding: 6px 10px;
+        border: 1px solid light-dark(#d1d5db, #374151);
+        border-radius: 6px;
+        cursor: pointer;
+        background: light-dark(#fafbfc, #0f1419);
+      }
+      .wontfix-radio:hover {
+        background: light-dark(#f3f4f6, #1a1f24);
+      }
+      .wontfix-radio-label {
+        font-weight: 600;
+        font-size: 13px;
+      }
+      .wontfix-radio-hint {
+        font-size: 11px;
+        color: light-dark(#6b7280, #9ca3af);
+      }
+      .finding-wontfix {
+        font-size: 13px !important;
+        font-weight: 500;
+      }
+      .badge-resolution-wontfix {
+        background: light-dark(#f3f4f6, #1f2937);
+        color: light-dark(#4b5563, #d1d5db);
+        font-weight: 500;
+      }
+      .badge-resolution-out_of_scope {
+        background: light-dark(#fef3c7, #3d2c00);
+        color: light-dark(#92400e, #fde68a);
+        font-weight: 500;
+      }
+      .badge-resolution-false_positive {
+        background: light-dark(#dbeafe, #0c2c5b);
+        color: light-dark(#1e40af, #bfdbfe);
+        font-weight: 500;
+      }
+      .badge-resolution-duplicate {
+        background: light-dark(#fce7f3, #500724);
+        color: light-dark(#9d174d, #fbcfe8);
+        font-weight: 500;
+      }
+
       /* ── Notes surface (always-visible, collapsible) ── */
       .notes-surface {
         padding: 0.5rem 1rem;

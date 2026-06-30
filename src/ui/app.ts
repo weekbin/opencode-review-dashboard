@@ -489,6 +489,325 @@ function updateNavHint(): void {
 window.addEventListener("focusin", () => updateNavHint());
 window.addEventListener("focusout", () => updateNavHint());
 
+// ── R13 #22 — In-diff search (Cmd+F / Ctrl+F / `/`) ──
+//
+// Pure client-side. Mirrors vimdiff's `/` search, GitHub's `t` file
+// finder, and the n/p nav focus-guard at :445-453. Reuses
+// `flashFindingPermaHighlight` style scroll-into-view + 1.5s flash
+// (R11 helper). sessionStorage persistence (NOT localStorage — diff
+// is round-scoped, so the search query should NOT leak across
+// sessions). Fixed-top overlay sits above the diff cards and does not
+// scroll with the page.
+//
+// Flow:
+//  - Cmd+F / Ctrl+F / `/` opens the overlay (capture-phase listener
+//    intercepts the native browser find so we own the experience;
+//    when a text input is focused, the native find still fires
+//    because we skip intercept).
+//  - User types → substring case-insensitive match across
+//    `[data-line-number]` inside every `.card[data-file]`; wraps
+//    each hit in `<mark class="diff-search-match">`. Counter
+//    shows "N matches" (or "100+ matches, refine your query" past
+//    the 100-match cap).
+//  - Enter / F3 → next match; Shift+Enter / Shift+F3 → prev match.
+//    Each jump scrolls the match into view + 1.5s flash highlight.
+//  - Escape → close overlay, remove all `<mark>` wrappers.
+//  - Re-opening the overlay restores the last query from
+//    sessionStorage (try/catch wrapped for private-mode safety).
+
+const DIFF_SEARCH_KEY = "diff-review:diff-search-query";
+const DIFF_SEARCH_MAX_MATCHES = 100;
+const DIFF_SEARCH_FLASH_MS = 1500;
+
+type DiffSearchState = {
+  query: string;
+  matchElements: HTMLElement[];
+  currentIndex: number;
+  overlay: HTMLElement | null;
+  input: HTMLInputElement | null;
+  counter: HTMLElement | null;
+};
+
+const diffSearch: DiffSearchState = {
+  query: "",
+  matchElements: [],
+  currentIndex: -1,
+  overlay: null,
+  input: null,
+  counter: null,
+};
+
+function readSessionStored(key: string): string | null {
+  try {
+    if (typeof sessionStorage === "undefined") return null;
+    return sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeSessionStored(key: string, value: string): void {
+  try {
+    if (typeof sessionStorage === "undefined") return;
+    sessionStorage.setItem(key, value);
+  } catch {
+    // ignore — private mode, quota, etc.
+  }
+}
+
+function clearSessionStored(key: string): void {
+  try {
+    if (typeof sessionStorage === "undefined") return;
+    sessionStorage.removeItem(key);
+  } catch {
+    // ignore
+  }
+}
+
+function clearDiffSearchHighlights(): void {
+  const marks = diffsRoot.querySelectorAll<HTMLElement>("mark.diff-search-match");
+  for (const mark of marks) {
+    const parent = mark.parentNode;
+    if (!parent) continue;
+    while (mark.firstChild) parent.insertBefore(mark.firstChild, mark);
+    parent.removeChild(mark);
+    parent.normalize();
+  }
+  diffSearch.matchElements = [];
+  diffSearch.currentIndex = -1;
+}
+
+function flashDiffSearchMatch(el: HTMLElement): void {
+  el.classList.remove("diff-search-match-flash");
+  // Force reflow so the animation restarts even on rapid re-triggers.
+  void el.offsetWidth;
+  el.classList.add("diff-search-match-flash");
+  setTimeout(() => el.classList.remove("diff-search-match-flash"), DIFF_SEARCH_FLASH_MS);
+}
+
+function escapeRegExp(input: string): string {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function findMatchesInDiff(query: string): HTMLElement[] {
+  clearDiffSearchHighlights();
+  if (!query) return [];
+  const re = new RegExp(escapeRegExp(query), "gi");
+  const cards = diffsRoot.querySelectorAll<HTMLElement>(".card[data-file]");
+  const found: HTMLElement[] = [];
+  outer: for (const card of cards) {
+    const lines = card.querySelectorAll<HTMLElement>("[data-line-number]");
+    for (const line of lines) {
+      // The @pierre/diffs library nests the actual code text inside
+      // child <span> elements (one per token). Walk text nodes
+      // directly so we don't break the syntax-highlight spans.
+      const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT, {
+        acceptNode: (node) => {
+          if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_ACCEPT;
+        },
+      });
+      const targets: Text[] = [];
+      let node: Node | null = walker.nextNode();
+      while (node) {
+        targets.push(node as Text);
+        node = walker.nextNode();
+      }
+      for (const text of targets) {
+        const value = text.nodeValue ?? "";
+        re.lastIndex = 0;
+        let match: RegExpExecArray | null;
+        const positions: { start: number; end: number }[] = [];
+        while ((match = re.exec(value)) !== null) {
+          positions.push({ start: match.index, end: match.index + match[0].length });
+          if (positions.length > 0 && re.lastIndex === match.index) {
+            re.lastIndex += 1;
+          }
+        }
+        if (positions.length === 0) continue;
+        const parent = text.parentNode;
+        if (!parent) continue;
+        const frag = document.createDocumentFragment();
+        let cursor = 0;
+        for (const pos of positions) {
+          if (pos.start > cursor) {
+            frag.appendChild(document.createTextNode(value.slice(cursor, pos.start)));
+          }
+          const mark = document.createElement("mark");
+          mark.className = "diff-search-match";
+          mark.textContent = value.slice(pos.start, pos.end);
+          frag.appendChild(mark);
+          found.push(mark);
+          cursor = pos.end;
+          if (found.length >= DIFF_SEARCH_MAX_MATCHES) break outer;
+        }
+        if (cursor < value.length) {
+          frag.appendChild(document.createTextNode(value.slice(cursor)));
+        }
+        parent.replaceChild(frag, text);
+      }
+    }
+  }
+  return found;
+}
+
+function updateDiffSearchCounter(): void {
+  if (!diffSearch.counter) return;
+  const total = diffSearch.matchElements.length;
+  if (total === 0) {
+    diffSearch.counter.textContent = diffSearch.query ? "0 matches" : "";
+  } else if (total >= DIFF_SEARCH_MAX_MATCHES) {
+    diffSearch.counter.textContent = `${DIFF_SEARCH_MAX_MATCHES}+ matches, refine your query`;
+  } else {
+    const current = diffSearch.currentIndex + 1;
+    diffSearch.counter.textContent = `${current} of ${total} matches`;
+  }
+}
+
+function jumpToDiffSearchMatch(index: number): void {
+  if (diffSearch.matchElements.length === 0) return;
+  const total = diffSearch.matchElements.length;
+  const wrapped = ((index % total) + total) % total;
+  if (diffSearch.currentIndex >= 0) {
+    const prev = diffSearch.matchElements[diffSearch.currentIndex];
+    prev?.classList.remove("diff-search-match-flash");
+  }
+  diffSearch.currentIndex = wrapped;
+  const target = diffSearch.matchElements[wrapped];
+  if (!target) return;
+  target.scrollIntoView({ behavior: "smooth", block: "center" });
+  flashDiffSearchMatch(target);
+  updateDiffSearchCounter();
+}
+
+function closeDiffSearch(): void {
+  if (diffSearch.overlay?.parentNode) {
+    diffSearch.overlay.parentNode.removeChild(diffSearch.overlay);
+  }
+  diffSearch.overlay = null;
+  diffSearch.input = null;
+  diffSearch.counter = null;
+  clearDiffSearchHighlights();
+  diffSearch.query = "";
+  clearSessionStored(DIFF_SEARCH_KEY);
+}
+
+function openDiffSearch(initialQuery: string | null = null): void {
+  if (diffSearch.overlay) {
+    diffSearch.input?.focus();
+    diffSearch.input?.select();
+    return;
+  }
+  const overlay = document.createElement("div");
+  overlay.className = "diff-search-bar";
+  overlay.setAttribute("role", "search");
+  overlay.innerHTML = `
+    <input type="text" id="diff-search-input" placeholder="Find in diffs (case-insensitive substring)" aria-label="Search diffs">
+    <span class="diff-search-counter" id="diff-search-counter"></span>
+    <button type="button" class="diff-search-nav" id="diff-search-prev" title="Previous match (Shift+Enter)">↑</button>
+    <button type="button" class="diff-search-nav" id="diff-search-next" title="Next match (Enter)">↓</button>
+    <button type="button" class="diff-search-close" id="diff-search-close" title="Close (Escape)">×</button>
+  `;
+  document.body.appendChild(overlay);
+  diffSearch.overlay = overlay;
+  diffSearch.input = overlay.querySelector<HTMLInputElement>("#diff-search-input");
+  diffSearch.counter = overlay.querySelector<HTMLElement>("#diff-search-counter");
+  const prevBtn = overlay.querySelector<HTMLButtonElement>("#diff-search-prev");
+  const nextBtn = overlay.querySelector<HTMLButtonElement>("#diff-search-next");
+  const closeBtn = overlay.querySelector<HTMLButtonElement>("#diff-search-close");
+
+  const startQuery =
+    initialQuery !== null ? initialQuery : (readSessionStored(DIFF_SEARCH_KEY) ?? "");
+  if (diffSearch.input) {
+    diffSearch.input.value = startQuery;
+    diffSearch.input.focus();
+    diffSearch.input.select();
+  }
+
+  const runSearch = () => {
+    const q = diffSearch.input?.value ?? "";
+    diffSearch.query = q;
+    if (!q) {
+      clearDiffSearchHighlights();
+      clearSessionStored(DIFF_SEARCH_KEY);
+      updateDiffSearchCounter();
+      return;
+    }
+    writeSessionStored(DIFF_SEARCH_KEY, q);
+    diffSearch.matchElements = findMatchesInDiff(q);
+    diffSearch.currentIndex = diffSearch.matchElements.length > 0 ? 0 : -1;
+    updateDiffSearchCounter();
+    if (diffSearch.currentIndex >= 0) {
+      const target = diffSearch.matchElements[0];
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        flashDiffSearchMatch(target);
+      }
+    }
+  };
+
+  diffSearch.input?.addEventListener("input", runSearch);
+  diffSearch.input?.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      closeDiffSearch();
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (diffSearch.matchElements.length === 0) return;
+      jumpToDiffSearchMatch(diffSearch.currentIndex + (e.shiftKey ? -1 : 1));
+    }
+  });
+  prevBtn?.addEventListener("click", () => {
+    if (diffSearch.matchElements.length === 0) return;
+    jumpToDiffSearchMatch(diffSearch.currentIndex - 1);
+  });
+  nextBtn?.addEventListener("click", () => {
+    if (diffSearch.matchElements.length === 0) return;
+    jumpToDiffSearchMatch(diffSearch.currentIndex + 1);
+  });
+  closeBtn?.addEventListener("click", closeDiffSearch);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) closeDiffSearch();
+  });
+
+  if (startQuery) runSearch();
+}
+
+// Capture-phase listener so we beat the browser's native find
+// (which would steal focus from the comment textarea and behave
+// inconsistently across the @pierre/diffs canvas). We skip when a
+// text input is focused (so native find still works inside comment
+// textareas — the user can search inside their own draft comment if
+// they prefer).
+window.addEventListener(
+  "keydown",
+  (event) => {
+    if (event.isComposing) return;
+    const isFindCombo =
+      (event.key === "f" || event.key === "F") && (event.metaKey || event.ctrlKey);
+    if (isFindCombo) {
+      event.preventDefault();
+      openDiffSearch();
+      return;
+    }
+    if (event.key === "F3") {
+      event.preventDefault();
+      if (!diffSearch.overlay) openDiffSearch();
+      if (diffSearch.matchElements.length === 0) return;
+      jumpToDiffSearchMatch(diffSearch.currentIndex + (event.shiftKey ? -1 : 1));
+      return;
+    }
+    if (event.key === "/" && !event.metaKey && !event.ctrlKey && !event.altKey) {
+      if (isTextInputFocused()) return;
+      event.preventDefault();
+      openDiffSearch();
+      return;
+    }
+  },
+  true,
+);
+
 // ── File-type icon table ──
 //
 // The icon table is a curated subset of vscode-material-icon-theme (Apache-2.0),
@@ -3332,6 +3651,14 @@ function renderDiffPanel() {
   for (const view of state.views.values()) {
     view.instance.cleanUp();
   }
+  // R13 #22 — clear in-diff search state when the diff panel is
+  // rebuilt. The previous `<mark>` wrappers are gone (innerHTML
+  // reset), so any cached matchElements would point at detached
+  // nodes. The overlay input stays put (it's outside diffsRoot);
+  // the next input event re-runs the search against the new diffs.
+  diffSearch.matchElements = [];
+  diffSearch.currentIndex = -1;
+  updateDiffSearchCounter();
   diffsRoot.innerHTML = "";
   state.views.clear();
   state.cards.clear();
