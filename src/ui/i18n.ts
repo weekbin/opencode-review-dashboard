@@ -117,6 +117,8 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "action.mark": { en: "Mark as wontfix", "zh-CN": "标记为不修复" },
   "panel.expandAll": { en: "Expand all", "zh-CN": "全部展开" },
   "panel.collapseAll": { en: "Collapse all", "zh-CN": "全部折叠" },
+  "diff.hunk.collapse": { en: "Collapse hunk", "zh-CN": "折叠 hunk" },
+  "diff.hunk.expand": { en: "Expand hunk", "zh-CN": "展开 hunk" },
 };
 
 let currentLanguage: Lang = DEFAULT_LANGUAGE;

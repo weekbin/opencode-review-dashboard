@@ -72,9 +72,13 @@ If you review pull requests or diffs on a regular basis, this saves you the back
 
 ### Toast notifications for your actions
 
+![Toast notification confirming a finding was added](docs/screenshots/r24-s1-toast-added-review.png)
+
 *Brief 3-second confirmation toasts appear in the top-right when you copy a permalink, copy a finding as Markdown, add a finding, or submit a review. Screen readers announce them via `aria-live="polite"`. Replaces the R14-era intrusive toast with a non-blocking alternative.*
 
 ### Better keyboard and screen-reader accessibility
+
+![Header showing auto-save indicator "All changes saved"](docs/screenshots/r24-s5-autosave-indicator.png)
 
 *Skip-to-content link at the top of every page. Sidebar tabs have proper `role="tablist"` / `role="tab"` ARIA semantics. Auto-save indicator has `role="status"` so screen readers announce save state. All modals trap focus and close on Escape.*
 
