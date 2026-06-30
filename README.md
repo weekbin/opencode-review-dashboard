@@ -267,7 +267,7 @@ Originally forked from [`oorestisime/opencode-diffs`](https://github.com/ooresti
 | `bun run check` | `format:check && lint && typecheck`. |
 | `bun run prepublishOnly` | Runs `check` then `build` before `npm publish`. |
 | `bun run test:unit` | Unit tests (`bun test src/`) — atomic-write invariant, corrupt-file recovery, concurrent saves. |
-| `bun run test:ui` | End-to-end browser tests (Playwright MCP) — 31 git scenarios with mock review server. |
+| `bun run test:ui` | End-to-end browser tests (Playwright MCP) — 30 git scenarios with mock review server. |
 
 ### Setup
 
