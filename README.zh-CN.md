@@ -8,6 +8,40 @@
 
 ---
 
+## 看起来是什么样的
+
+### 看 diff
+
+![Dashboard 概览，左侧是文件树，右侧是渲染的 diff](docs/screenshots/dashboard-overview.png)
+
+*改过的文件高亮，没碰过的文件淡灰色显示。*
+
+### 加 finding 和 emoji 反应
+
+![Finding 卡片，显示评论、类别、严重程度、emoji 反应行](docs/screenshots/r12-conversation-with-finding.png)
+
+*点行号加 finding。一键 emoji 反应快速反馈。*
+
+### 过滤和排序 Conversation
+
+![Conversation tab，★ Pinned 过滤 chip、Sort 下拉、Reacted 过滤](docs/screenshots/r15-s1-conversation-pinned-sort.png)
+
+*星标 finding 下一轮回看。按严重程度排序优先处理。*
+
+### 在 diff 内搜索
+
+![In-diff 搜索栏覆盖层和匹配高亮](docs/screenshots/r13-in-diff-search.png)
+
+*`Ctrl+F`（Mac `Cmd+F`）在已加载 diff 里找任意文本。*
+
+### 提交前确认
+
+![Submit review 确认弹窗，显示「Submit review?」加 Cancel / Submit 按钮](docs/screenshots/r15-s4-submit-confirm.png)
+
+*提交前的二次确认，防止误操作丢工作。*
+
+---
+
 ## 它能做什么
 
 **在浏览器里看 diff。** 你所有的改动（已 commit + 未 commit）都渲染在同一个页面上。没改动的区域默认折叠起来，点一下展开。还没碰过的文件是淡灰色显示，一眼就能看出改了什么。

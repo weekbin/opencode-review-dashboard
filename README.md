@@ -8,6 +8,40 @@ If you review pull requests or diffs on a regular basis, this saves you the back
 
 ---
 
+## What it looks like
+
+### Browse the diff
+
+![Dashboard overview showing the file tree on the left and rendered diff on the right](docs/screenshots/dashboard-overview.png)
+
+*Files with changes are highlighted. Files you haven't touched appear dimmed.*
+
+### Add findings and react with emoji
+
+![A finding card showing the comment, category, severity, and emoji reaction row](docs/screenshots/r12-conversation-with-finding.png)
+
+*Click any line number to add a finding. One-click reactions for quick feedback.*
+
+### Filter and sort the conversation
+
+![Conversation tab with ★ Pinned filter chip, Sort dropdown, and Reacted filter](docs/screenshots/r15-s1-conversation-pinned-sort.png)
+
+*Pin findings to revisit them in the next round. Sort by severity to prioritize.*
+
+### Search inside the diff
+
+![In-diff search bar overlay with match highlighting](docs/screenshots/r13-in-diff-search.png)
+
+*`Ctrl+F` (or `Cmd+F`) to find any text in the loaded diff.*
+
+### Submit with confidence
+
+![Submit review confirmation modal showing "Submit review?" with Cancel/Submit buttons](docs/screenshots/r15-s4-submit-confirm.png)
+
+*A confirmation step before final submit so you don't lose work accidentally.*
+
+---
+
 ## What you can do with it
 
 **Browse a diff in your browser.** All your changes (committed + uncommitted) are rendered in a single page. Unchanged regions are collapsed by default — click to expand. Files you haven't touched yet are dimmed so you can see at a glance what changed.
