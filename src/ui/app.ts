@@ -14,6 +14,13 @@ type FindingComment = {
   created_at: number;
 };
 
+type ReactionEmoji = "👍" | "👎" | "😄" | "❤️" | "🎉" | "👀";
+type Reaction = {
+  emoji: ReactionEmoji;
+  author: "user";
+  created_at: number;
+};
+
 type Finding = {
   id: string;
   file: string;
@@ -32,6 +39,9 @@ type Finding = {
   edited_at?: number;
   close_reason?: "file_removed" | "anchor_missing";
   comments?: FindingComment[];
+  pinned?: { by: "user"; at: number };
+  manually_pinned?: boolean;
+  reactions?: Reaction[];
 };
 
 type Draft = {
@@ -347,6 +357,122 @@ window.addEventListener("hashchange", () => {
   if (target) flashFindingPermaHighlight(target);
 });
 
+// ── R12 #19 — Keyboard nav n/p ──
+//
+// Pure client-side. `n` jumps to the next finding card (round DESC,
+// created_at ASC) in the current conversationFilter view; `p` jumps
+// to the previous. Focus guard: skip when a <textarea>/<input> is
+// focused so typing 'n' or 'p' inside the comment box doesn't fire
+// nav. Wraps on overflow. Reuses flashFindingPermaHighlight (R11
+// helper) for the scroll-into-view + 1.5s flash effect.
+
+type SortedFinding = {
+  id: string;
+  round: number;
+  created_at: number;
+  status: string;
+  origin: "existing" | "new";
+};
+
+let currentFindingIndex = -1;
+
+function getSortedFindings(): SortedFinding[] {
+  const entries: SortedFinding[] = [
+    ...state.existing.map((item) => ({
+      id: item.id,
+      round: item.round ?? 0,
+      created_at: item.created_at ?? 0,
+      status: item.status ?? "open",
+      origin: "existing" as const,
+    })),
+    ...state.fresh.map((item, index) => ({
+      id: item.id,
+      round: 0,
+      created_at: Date.now() + index,
+      status: "open",
+      origin: "new" as const,
+    })),
+  ];
+  let filtered = entries;
+  if (state.conversationFilter === "open") {
+    filtered = filtered.filter((e) => e.status === "open" || e.status === "closed_auto");
+  } else if (state.conversationFilter === "resolved") {
+    filtered = filtered.filter((e) => e.status === "resolved");
+  } else if (state.conversationFilter === "pinned") {
+    filtered = filtered.filter((e) =>
+      state.existing.some((item) => item.id === e.id && Boolean(item.pinned)),
+    );
+  } else if (state.conversationFilter === "reacted") {
+    filtered = filtered.filter((e) =>
+      state.existing.some(
+        (item) => item.id === e.id && Boolean(item.reactions && item.reactions.length > 0),
+      ),
+    );
+  }
+  return [...filtered].sort((a, b) => {
+    if (a.round !== b.round) return b.round - a.round;
+    return a.created_at - b.created_at;
+  });
+}
+
+function jumpToFindingByIndex(index: number): void {
+  const sorted = getSortedFindings();
+  if (sorted.length === 0) return;
+  const wrapped = ((index % sorted.length) + sorted.length) % sorted.length;
+  currentFindingIndex = wrapped;
+  const target = sorted[wrapped];
+  if (!target) return;
+  flashFindingPermaHighlight(target.id);
+  updateNavHint();
+}
+
+function isTextInputFocused(): boolean {
+  if (typeof document === "undefined") return false;
+  const active = document.activeElement;
+  if (!(active instanceof HTMLElement)) return false;
+  if (active.tagName === "TEXTAREA") return true;
+  if (active.tagName === "INPUT") return true;
+  if (active.isContentEditable) return true;
+  return false;
+}
+
+window.addEventListener("keydown", (event) => {
+  if (event.isComposing || event.metaKey || event.ctrlKey || event.altKey) return;
+  if (event.key !== "n" && event.key !== "p") return;
+  if (isTextInputFocused()) return;
+  if (state.activeTab !== "conversation") return;
+  event.preventDefault();
+  if (event.key === "n") {
+    jumpToFindingByIndex(currentFindingIndex + 1);
+  } else {
+    jumpToFindingByIndex(currentFindingIndex - 1);
+  }
+});
+
+let navHintEl: HTMLElement | null = null;
+function ensureNavHint(): HTMLElement | null {
+  if (typeof document === "undefined") return null;
+  if (navHintEl) return navHintEl;
+  const el = document.createElement("div");
+  el.className = "nav-hint";
+  el.id = "nav-hint";
+  el.innerHTML = "Press <kbd>n</kbd> / <kbd>p</kbd> to navigate findings";
+  el.hidden = true;
+  document.body.appendChild(el);
+  navHintEl = el;
+  return el;
+}
+
+function updateNavHint(): void {
+  const el = ensureNavHint();
+  if (!el) return;
+  const showHint = !isTextInputFocused() && state.activeTab === "conversation";
+  el.hidden = !showHint;
+}
+
+window.addEventListener("focusin", () => updateNavHint());
+window.addEventListener("focusout", () => updateNavHint());
+
 // ── File-type icon table ──
 //
 // The icon table is a curated subset of vscode-material-icon-theme (Apache-2.0),
@@ -585,9 +711,9 @@ const state = {
     ["files", "commits", "conversation", "previously"],
     "files",
   ),
-  conversationFilter: readStored<"open" | "resolved" | "all">(
+  conversationFilter: readStored<"open" | "resolved" | "all" | "pinned" | "reacted">(
     CONV_FILTER_KEY,
-    ["open", "resolved", "all"],
+    ["open", "resolved", "all", "pinned", "reacted"],
     "open",
   ),
   priorNotes: [] as Array<{ round: number; notes: string }>,
@@ -702,6 +828,7 @@ function applyActiveTab() {
 function setActiveTab(tab: TabKey) {
   if (state.activeTab === tab) {
     renderActivePane();
+    updateNavHint();
     return;
   }
   state.activeTab = tab;
@@ -711,6 +838,7 @@ function setActiveTab(tab: TabKey) {
   writeStored(ACTIVE_TAB_KEY, tab);
   updateTabCounts();
   renderActivePane();
+  updateNavHint();
   // R8 #2: keep keyboard focus in sync with the new active tab.
   const newTab = navbarTabs.querySelector<HTMLButtonElement>(`button[data-tab="${tab}"]`);
   newTab?.focus();
@@ -756,7 +884,7 @@ navbarTabs.addEventListener("keydown", (event) => {
   if (nextTab) setActiveTab(nextTab);
 });
 
-function setConversationFilter(filter: "open" | "resolved" | "all") {
+function setConversationFilter(filter: "open" | "resolved" | "all" | "pinned" | "reacted") {
   if (state.conversationFilter === filter) return;
   state.conversationFilter = filter;
   writeStored(CONV_FILTER_KEY, filter);
@@ -781,7 +909,13 @@ if (conversationFilter) {
   conversationFilter.addEventListener("click", (event) => {
     const btn = (event.target as HTMLElement).closest("button");
     if (!btn) return;
-    const filter = btn.dataset.filter as "open" | "resolved" | "all" | undefined;
+    const filter = btn.dataset.filter as
+      | "open"
+      | "resolved"
+      | "all"
+      | "pinned"
+      | "reacted"
+      | undefined;
     if (filter) setConversationFilter(filter);
   });
 }
@@ -1087,6 +1221,38 @@ function updateTabCounts() {
     convEl.textContent = String(totalConv);
     convEl.hidden = totalConv === 0;
   }
+  updateConversationTabBadge();
+}
+
+function updateConversationTabBadge(): void {
+  const tab = document.querySelector('button[data-tab="conversation"]') as HTMLElement | null;
+  if (!tab) return;
+  const pinnedCount = state.existing.filter((item) => Boolean(item.pinned)).length;
+  const reactCount = state.existing.filter((item) =>
+    Boolean(item.reactions && item.reactions.length > 0),
+  ).length;
+  let existingBadge = tab.querySelector(".tab-meta-badges") as HTMLElement | null;
+  if (!existingBadge) {
+    existingBadge = document.createElement("span");
+    existingBadge.className = "tab-meta-badges";
+    tab.appendChild(existingBadge);
+  }
+  existingBadge.innerHTML = "";
+  if (pinnedCount > 0) {
+    const star = document.createElement("span");
+    star.className = "tab-badge tab-badge-pinned";
+    star.textContent = `★${pinnedCount}`;
+    star.title = `${pinnedCount} pinned finding${pinnedCount === 1 ? "" : "s"}`;
+    existingBadge.appendChild(star);
+  }
+  if (reactCount > 0) {
+    const react = document.createElement("span");
+    react.className = "tab-badge tab-badge-reacted";
+    react.textContent = `😀${reactCount}`;
+    react.title = `${reactCount} reacted finding${reactCount === 1 ? "" : "s"}`;
+    existingBadge.appendChild(react);
+  }
+  existingBadge.hidden = existingBadge.childElementCount === 0;
 }
 
 function diffAnnotations(file: string) {
@@ -1756,7 +1922,19 @@ function renderConversationPane() {
   conversationListRoot.innerHTML = "";
   // R8 #1: search bar at top of the Conversation pane.
   conversationListRoot.appendChild(renderSearchInput("conversation"));
+  updateConversationFilterCounts();
   renderConversationPanel(conversationListRoot);
+}
+
+function updateConversationFilterCounts(): void {
+  const pinnedCount = state.existing.filter((item) => Boolean(item.pinned)).length;
+  const reactCount = state.existing.filter((item) =>
+    Boolean(item.reactions && item.reactions.length > 0),
+  ).length;
+  const pinnedEl = document.querySelector('[data-count-for="pinned"]');
+  const reactEl = document.querySelector('[data-count-for="reacted"]');
+  if (pinnedEl) pinnedEl.textContent = `(${pinnedCount})`;
+  if (reactEl) reactEl.textContent = `(${reactCount})`;
 }
 
 function renderCommitsPanel(root: HTMLElement) {
@@ -1949,6 +2127,9 @@ type ConversationEntry = {
   manually_edited?: boolean;
   edited_at?: number;
   comments?: FindingComment[];
+  pinned?: { by: "user"; at: number };
+  manually_pinned?: boolean;
+  reactions?: Reaction[];
 };
 
 function formatRelativeTime(ts: number): string {
@@ -2243,7 +2424,11 @@ function renderConversationPanel(root: HTMLElement) {
       ? entries.filter((e) => e.status === "open" || e.status === "closed_auto")
       : state.conversationFilter === "resolved"
         ? entries.filter((e) => e.status === "resolved")
-        : entries;
+        : state.conversationFilter === "pinned"
+          ? entries.filter((e) => Boolean(e.pinned))
+          : state.conversationFilter === "reacted"
+            ? entries.filter((e) => Boolean(e.reactions && e.reactions.length > 0))
+            : entries;
   // R8 #1: search filter composes with the 3-button conversationFilter.
   // Match against comment text + category + severity (per AC8-1.2).
   const searched = filterByQuery(
@@ -2262,7 +2447,11 @@ function renderConversationPanel(root: HTMLElement) {
           ? "No unresolved findings."
           : state.conversationFilter === "resolved"
             ? "No resolved findings."
-            : "No findings found.";
+            : state.conversationFilter === "pinned"
+              ? "No pinned findings — star a finding to revisit it later."
+              : state.conversationFilter === "reacted"
+                ? "No reacted findings — click an emoji on a finding to give feedback."
+                : "No findings found.";
     }
     root.appendChild(empty);
     return;
@@ -2411,6 +2600,27 @@ function renderConversationPanel(root: HTMLElement) {
       });
       actions.appendChild(copyLinkBtn);
     }
+
+    if (entry.id) {
+      const starBtn = document.createElement("button");
+      starBtn.type = "button";
+      const isPinned = Boolean(entry.pinned);
+      starBtn.className = `finding-star${isPinned ? " is-pinned" : ""}`;
+      starBtn.textContent = isPinned ? "★" : "☆";
+      starBtn.title = isPinned
+        ? `Pinned for revisit (${formatRelativeTime(entry.pinned?.at ?? 0)}) — click to unpin`
+        : "Pin this finding to revisit it later";
+      starBtn.setAttribute("aria-pressed", isPinned ? "true" : "false");
+      starBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (entry.pinned) {
+          void unpinFinding(entry.id);
+        } else {
+          void pinFinding(entry.id);
+        }
+      });
+      actions.appendChild(starBtn);
+    }
     head.appendChild(actions);
     item.appendChild(head);
 
@@ -2455,6 +2665,49 @@ function renderConversationPanel(root: HTMLElement) {
     body.className = "conversation-body";
     body.textContent = entry.comment;
     item.appendChild(body);
+
+    if (entry.id) {
+      const reactionRow = document.createElement("div");
+      reactionRow.className = "reaction-row";
+      const existingReactions = entry.reactions ?? [];
+      const emojiSet: ReactionEmoji[] = ["👍", "👎", "😄", "❤️", "🎉", "👀"];
+      const grouped = new Map<ReactionEmoji, Reaction[]>();
+      for (const r of existingReactions) {
+        const list = grouped.get(r.emoji) ?? [];
+        list.push(r);
+        grouped.set(r.emoji, list);
+      }
+      if (grouped.size > 0) {
+        for (const [emoji, list] of grouped.entries()) {
+          const pill = document.createElement("span");
+          pill.className = "reaction-display";
+          pill.textContent = emoji;
+          const count = document.createElement("span");
+          count.className = "reaction-display-count";
+          count.textContent = ` ${list.length}`;
+          pill.appendChild(count);
+          pill.title = `${emoji} · ${list.length} reaction${list.length === 1 ? "" : "s"}`;
+          reactionRow.appendChild(pill);
+        }
+      }
+      const picker = document.createElement("div");
+      picker.className = "reaction-picker";
+      for (const emoji of emojiSet) {
+        const pill = document.createElement("button");
+        pill.type = "button";
+        const isActive = grouped.has(emoji);
+        pill.className = `reaction-pill${isActive ? " is-active" : ""}`;
+        pill.textContent = emoji;
+        pill.title = isActive ? `Remove your ${emoji} reaction` : `React with ${emoji}`;
+        pill.addEventListener("click", (event) => {
+          event.stopPropagation();
+          void toggleReaction(entry.id, emoji);
+        });
+        picker.appendChild(pill);
+      }
+      reactionRow.appendChild(picker);
+      item.appendChild(reactionRow);
+    }
 
     const commentsRoot = document.createElement("div");
     commentsRoot.className = "conversation-comments";
@@ -3119,6 +3372,90 @@ async function editFinding(
   syncAll();
   setStatus("Finding edited");
   return true;
+}
+
+async function pinFinding(id: string): Promise<void> {
+  const response = await fetch(endpoint("/pin"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ finding_id: id }),
+  }).catch(() => undefined);
+  if (!response?.ok) {
+    const data = await response?.json().catch(() => undefined);
+    setStatus(data?.error ?? "Failed to pin finding", true);
+    return;
+  }
+  const payload = (await response.json().catch(() => undefined)) as
+    | { ok: true; pinned: { by: "user"; at: number } }
+    | undefined;
+  if (!payload?.ok || !payload.pinned) return;
+  const existing = state.existing.find((item) => item.id === id);
+  if (existing) {
+    existing.pinned = payload.pinned;
+    existing.manually_pinned = true;
+  } else {
+    const fresh = state.fresh.find((item) => item.id === id);
+    if (fresh) {
+      fresh.pinned = payload.pinned;
+      fresh.manually_pinned = true;
+    }
+  }
+  renderConversationPane();
+  updateConversationTabBadge();
+  setStatus("Pinned — will revisit this finding");
+}
+
+async function unpinFinding(id: string): Promise<void> {
+  const response = await fetch(endpoint("/unpin"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ finding_id: id }),
+  }).catch(() => undefined);
+  if (!response?.ok) {
+    const data = await response?.json().catch(() => undefined);
+    setStatus(data?.error ?? "Failed to unpin finding", true);
+    return;
+  }
+  const existing = state.existing.find((item) => item.id === id);
+  if (existing) {
+    existing.pinned = undefined;
+    existing.manually_pinned = undefined;
+  } else {
+    const fresh = state.fresh.find((item) => item.id === id);
+    if (fresh) {
+      fresh.pinned = undefined;
+      fresh.manually_pinned = undefined;
+    }
+  }
+  renderConversationPane();
+  updateConversationTabBadge();
+  setStatus("Unpinned");
+}
+
+async function toggleReaction(id: string, emoji: ReactionEmoji): Promise<void> {
+  const response = await fetch(endpoint("/reaction"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ finding_id: id, emoji }),
+  }).catch(() => undefined);
+  if (!response?.ok) {
+    const data = await response?.json().catch(() => undefined);
+    setStatus(data?.error ?? "Failed to toggle reaction", true);
+    return;
+  }
+  const payload = (await response.json().catch(() => undefined)) as
+    | { ok: true; reactions?: Reaction[] }
+    | undefined;
+  if (!payload?.ok) return;
+  const existing = state.existing.find((item) => item.id === id);
+  if (existing) {
+    existing.reactions = payload.reactions ?? [];
+  } else {
+    const fresh = state.fresh.find((item) => item.id === id);
+    if (fresh) fresh.reactions = payload.reactions ?? [];
+  }
+  renderConversationPane();
+  updateConversationTabBadge();
 }
 
 function showEditFindingModal(finding: {

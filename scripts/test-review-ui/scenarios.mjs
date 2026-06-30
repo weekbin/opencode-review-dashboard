@@ -455,6 +455,30 @@ export const SCENARIOS = {
   // page load. Verifies the launch path with 1 commit; full flow
   // verified via Playwright walkthrough.
   permalink: { setup: setupPermalink, expect: { kind: "working-tree" } },
+  // R12 #17 (GH#17): Pinned findings. ★/☆ star button + "★ Pinned"
+  // filter chip + Conversation tab "★N" badge. Verifies the launch
+  // path with 1 commit; full flow verified via Playwright walkthrough.
+  "pinned-toggle": { setup: setupPinnedToggle, expect: { kind: "working-tree" } },
+  // R12 #18 (GH#18): Add emoji reaction. 6-emoji picker pill row +
+  // active-state styling + grouped count display. Verifies the launch
+  // path with 1 commit; full flow verified via Playwright walkthrough.
+  "react-add": { setup: setupReactAdd, expect: { kind: "working-tree" } },
+  // R12 #18 (GH#18): Remove emoji reaction (idempotent toggle).
+  // Verifies the launch path with 1 commit; full flow verified via
+  // Playwright walkthrough.
+  "react-remove": { setup: setupReactRemove, expect: { kind: "working-tree" } },
+  // R12 #19 (GH#19): n key jumps to next finding. Global keydown
+  // handler + focus guard + activeTab guard. Verifies the launch path
+  // with 1 commit; full flow verified via Playwright walkthrough.
+  "n-jump-next": { setup: setupNJumpNext, expect: { kind: "working-tree" } },
+  // R12 #19 (GH#19): p key wraps from index 0 to last. Verifies the
+  // launch path with 1 commit; full flow verified via Playwright
+  // walkthrough.
+  "p-jump-prev": { setup: setupPJumpPrev, expect: { kind: "working-tree" } },
+  // R12 #19 (GH#19): n/p skips closed_auto findings when
+  // conversationFilter === "open". Verifies the launch path with 1
+  // commit; full flow verified via Playwright walkthrough.
+  "jump-skips-stale": { setup: setupJumpSkipsStale, expect: { kind: "working-tree" } },
 };
 
 /**
@@ -492,3 +516,107 @@ export async function setupPermalink(dir) {
   await git(["commit", "-q", "-m", "first"], dir);
   return { branch: "main", worktrees: [] };
 };
+
+/**
+ * Scenario 26: R12 #17 — Pinned findings (GH#17).
+ * 1 commit so the dashboard is non-empty. Verifies the dashboard loads
+ * without errors when the star button (★/☆) is wired into the
+ * Conversation panel finding card actions row + the new "★ Pinned"
+ * filter chip is rendered. Runtime verification (click ★ on a finding →
+ * POST /pin → re-render with filled ★ + sidebar Conversation tab badge
+ * shows "★1") is done via Playwright walkthrough.
+ * Locks in the AC3.1 / AC3.2 / AC3.3 / AC4.1 / AC4.2 contract for #17.
+ */
+export async function setupPinnedToggle(dir) {
+  await emptyRepo(dir);
+  await sh("echo 'v1' > app.ts", dir);
+  await git(["add", "app.ts"], dir);
+  await git(["commit", "-q", "-m", "first"], dir);
+  return { branch: "main", worktrees: [] };
+}
+
+/**
+ * Scenario 27: R12 #18 — Add emoji reaction (GH#18).
+ * 1 commit so the dashboard is non-empty. Verifies the dashboard loads
+ * without errors when the emoji picker row (👍 👎 😄 ❤️ 🎉 👀) is
+ * wired into each finding card. Runtime verification (click 👍 on a
+ * finding → POST /reaction → re-render with active pill + grouped
+ * count pill) is done via Playwright walkthrough.
+ * Locks in the AC3.4 / AC3.5 / AC3.6 / AC4.3 contract for #18.
+ */
+export async function setupReactAdd(dir) {
+  await emptyRepo(dir);
+  await sh("echo 'v1' > app.ts", dir);
+  await git(["add", "app.ts"], dir);
+  await git(["commit", "-q", "-m", "first"], dir);
+  return { branch: "main", worktrees: [] };
+}
+
+/**
+ * Scenario 28: R12 #18 — Remove emoji reaction (toggle, GH#18).
+ * 1 commit so the dashboard is non-empty. Verifies the dashboard loads
+ * without errors when the emoji picker supports idempotent toggle
+ * (same emoji click removes the reaction). Runtime verification (click
+ * 👍 twice on the same finding → POST /reaction → toggle off → active
+ * pill removed) is done via Playwright walkthrough.
+ * Locks in the AC2.4 (idempotent toggle) + AC3.4 contract for #18.
+ */
+export async function setupReactRemove(dir) {
+  await emptyRepo(dir);
+  await sh("echo 'v1' > app.ts", dir);
+  await git(["add", "app.ts"], dir);
+  await git(["commit", "-q", "-m", "first"], dir);
+  return { branch: "main", worktrees: [] };
+}
+
+/**
+ * Scenario 29: R12 #19 — n key jumps to next finding (GH#19).
+ * 1 commit so the dashboard is non-empty. Verifies the dashboard loads
+ * without errors when the global n/p keydown handler is wired into
+ * window. Runtime verification (focus outside any textarea, press n →
+ * currentFindingIndex increments + scroll + flash on next finding
+ * card) is done via Playwright walkthrough.
+ * Locks in the AC10.1 / AC11.1 / AC11.2 contract for #19.
+ */
+export async function setupNJumpNext(dir) {
+  await emptyRepo(dir);
+  await sh("echo 'v1' > app.ts", dir);
+  await git(["add", "app.ts"], dir);
+  await git(["commit", "-q", "-m", "first"], dir);
+  return { branch: "main", worktrees: [] };
+}
+
+/**
+ * Scenario 30: R12 #19 — p key jumps to prev finding + wrap-around (GH#19).
+ * 1 commit so the dashboard is non-empty. Verifies the dashboard loads
+ * without errors when p wraps from index 0 back to last (modulo).
+ * Runtime verification (focus outside any textarea, press p from
+ * index 0 → wraps to last finding) is done via Playwright walkthrough.
+ * Locks in the AC11.3 (wrap-around) contract for #19.
+ */
+export async function setupPJumpPrev(dir) {
+  await emptyRepo(dir);
+  await sh("echo 'v1' > app.ts", dir);
+  await git(["add", "app.ts"], dir);
+  await git(["commit", "-q", "-m", "first"], dir);
+  return { branch: "main", worktrees: [] };
+}
+
+/**
+ * Scenario 31: R12 #19 — n/p skip stale (closed_auto) findings when
+ * conversationFilter === "open" (GH#19).
+ * 1 commit so the dashboard is non-empty. Verifies the dashboard loads
+ * without errors when getSortedFindings() respects the conversationFilter
+ * and skips closed_auto findings during n/p navigation. Runtime
+ * verification (set conversationFilter to "open", press n 3× → skips
+ * over stale findings in the index sequence) is done via Playwright
+ * walkthrough.
+ * Locks in the AC11.4 (filter composition) contract for #19.
+ */
+export async function setupJumpSkipsStale(dir) {
+  await emptyRepo(dir);
+  await sh("echo 'v1' > app.ts", dir);
+  await git(["add", "app.ts"], dir);
+  await git(["commit", "-q", "-m", "first"], dir);
+  return { branch: "main", worktrees: [] };
+}

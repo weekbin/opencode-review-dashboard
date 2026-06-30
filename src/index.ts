@@ -25,6 +25,28 @@ type FindingComment = {
   created_at: number;
 };
 
+// R12 #18 — emoji reactions on findings. Additive parallel to
+// `FindingComment`, deliberately NOT embedded in `comments[]` so the
+// audit trail stays clean (reactions are feedback signals, not
+// discussion entries). Whitelist enforced by EMOJI_WHITELIST below +
+// server-side `/reaction` validation; unit test asserts the 6 emojis
+// are accepted and a 7th (non-whitelisted) emoji is rejected with 400.
+type ReactionEmoji = "👍" | "👎" | "😄" | "❤️" | "🎉" | "👀";
+type Reaction = {
+  emoji: ReactionEmoji;
+  author: "user";
+  created_at: number;
+};
+const EMOJI_WHITELIST: ReadonlySet<ReactionEmoji> = new Set(["👍", "👎", "😄", "❤️", "🎉", "👀"]);
+function isReactionEmoji(input: unknown): input is ReactionEmoji {
+  return typeof input === "string" && EMOJI_WHITELIST.has(input as ReactionEmoji);
+}
+
+type FindingPin = {
+  by: "user";
+  at: number;
+};
+
 type Finding = {
   id: string;
   round: number;
@@ -46,6 +68,9 @@ type Finding = {
   manually_edited?: boolean;
   edited_at?: number;
   comments?: FindingComment[];
+  pinned?: FindingPin;
+  manually_pinned?: boolean;
+  reactions?: Reaction[];
 };
 
 type DraftFinding = {
@@ -1477,6 +1502,13 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
             "   - Example: `F-007` was closed in round N with `close_reason: 'anchor_missing'`. The user clicked Force Reopen in round N+1 with reason `still applies — the fix removed the symptom not the cause`. You MUST treat F-007 as open in round N+2's auto-close pass and act on it (apply a fix, or `add_review_comment` explaining why you can't).",
             "1a. **Manually-edited findings (R10 honor directive)**:",
             "   If `state.json`'s `findings[]` contains any entry with `manually_edited: true`, the user has corrected that finding's category / severity / comment via the in-place Edit button. Re-read those fields as the user's current intent — do NOT re-derive severity/category/comment from your prior fix attempt. The most recent `Edited by user` comment in `comments[]` (with the changes summary appended) is your source of truth.",
+            "1b. **Manually-pinned findings (R12 honor directive)**:",
+            '   If `state.json`\'s `findings[]` contains any entry with `manually_pinned: true` (and `pinned.by === "user"`), the user has starred that finding to revisit it after your prior fix attempt — even if your previous fix moved the anchor (closing it as `closed_auto`) or fixed the symptom.',
+            "   Honor directive:",
+            "   - Treat the finding as still-open-for-revisit in this round. The `pinned` field survives stale auto-close by design (the user wants to verify the fix, not forget about it).",
+            '   - Apply a fix if actionable AND the user\'s most recent comment thread does not already say "verified — pin can be removed". If you fix the finding, still keep the pin intact until the user explicitly unpins it via the UI; the pin is a revisit-intent, not a skip-fix-intent.',
+            "   - When you address the finding, call `add_review_comment` with a short note that explicitly references the pin: e.g., `Re-visiting pinned finding: <what you changed>`. This lets the user trace which round re-addressed the pin.",
+            "   - Example: `F-014` has `pinned: { by: \"user\", at: 1717000000 }` and `manually_pinned: true`. It was closed in round N with `close_reason: 'anchor_missing'`. In round N+1 the pin survives. You MUST re-treat F-014 as a revisit-target in N+1's auto-apply pass: re-read the original comment, verify whether your prior fix actually addresses the root cause, and either apply a follow-up fix or call `add_review_comment` explaining why the pin can be cleared.",
             "2. **Round Summary (must print AFTER reading history, before any tool calls or edits)**:",
             "   Once you have read state.json, ALWAYS print a short human-readable summary in this exact shape:",
             "   ```",
@@ -2041,6 +2073,126 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                   }),
                   { headers: { "content-type": "application/json" } },
                 );
+              }
+
+              // R12 #17 — pin a finding for revisit. Idempotent: a second
+              // pin call on an already-pinned finding keeps the original
+              // `at` timestamp. The `manually_pinned` flag mirrors R9's
+              // `manually_reopened` so the agent's auto-apply loop honors
+              // the user's "revisit this" intent.
+              if (request.method === "POST" && pathname === `/api/review/${id}/pin`) {
+                const input = (await request.json().catch(() => ({}))) as { finding_id?: string };
+                const finding_id = input.finding_id;
+                if (!finding_id) {
+                  return new Response(JSON.stringify({ error: "finding_id required" }), {
+                    status: 400,
+                    headers: { "content-type": "application/json" },
+                  });
+                }
+                const target = base.findings.find((item) => item.id === finding_id);
+                if (!target) {
+                  return new Response(JSON.stringify({ error: "finding not found" }), {
+                    status: 404,
+                    headers: { "content-type": "application/json" },
+                  });
+                }
+                if (!target.pinned) {
+                  target.pinned = { by: "user", at: Date.now() };
+                  target.manually_pinned = true;
+                  target.updated_at = Date.now();
+                  base.updated_at = Date.now();
+                  await saveState(state_file, base);
+                  const idx = data.existing_findings.findIndex((item) => item.id === finding_id);
+                  if (idx !== -1) data.existing_findings[idx] = { ...target };
+                  else data.existing_findings.push({ ...target });
+                }
+                return new Response(JSON.stringify({ ok: true, pinned: target.pinned }), {
+                  headers: { "content-type": "application/json" },
+                });
+              }
+
+              // R12 #17 — unpin a finding. Symmetric to `/pin`. Idempotent.
+              if (request.method === "POST" && pathname === `/api/review/${id}/unpin`) {
+                const input = (await request.json().catch(() => ({}))) as { finding_id?: string };
+                const finding_id = input.finding_id;
+                if (!finding_id) {
+                  return new Response(JSON.stringify({ error: "finding_id required" }), {
+                    status: 400,
+                    headers: { "content-type": "application/json" },
+                  });
+                }
+                const target = base.findings.find((item) => item.id === finding_id);
+                if (!target) {
+                  return new Response(JSON.stringify({ error: "finding not found" }), {
+                    status: 404,
+                    headers: { "content-type": "application/json" },
+                  });
+                }
+                if (target.pinned) {
+                  target.pinned = undefined;
+                  target.manually_pinned = undefined;
+                  target.updated_at = Date.now();
+                  base.updated_at = Date.now();
+                  await saveState(state_file, base);
+                  const idx = data.existing_findings.findIndex((item) => item.id === finding_id);
+                  if (idx !== -1) data.existing_findings[idx] = { ...target };
+                  else data.existing_findings.push({ ...target });
+                }
+                return new Response(JSON.stringify({ ok: true }), {
+                  headers: { "content-type": "application/json" },
+                });
+              }
+
+              // R12 #18 — add/toggle an emoji reaction. Idempotent toggle:
+              // same emoji + same author = remove the reaction. Validates
+              // emoji against the 6-emoji whitelist (400 on miss).
+              if (request.method === "POST" && pathname === `/api/review/${id}/reaction`) {
+                const input = (await request.json().catch(() => ({}))) as {
+                  finding_id?: string;
+                  emoji?: string;
+                };
+                const finding_id = input.finding_id;
+                if (!finding_id) {
+                  return new Response(JSON.stringify({ error: "finding_id required" }), {
+                    status: 400,
+                    headers: { "content-type": "application/json" },
+                  });
+                }
+                if (!isReactionEmoji(input.emoji)) {
+                  return new Response(
+                    JSON.stringify({
+                      error: `invalid emoji: ${input.emoji ?? ""} (allowed: ${[...EMOJI_WHITELIST].join(" ")})`,
+                    }),
+                    { status: 400, headers: { "content-type": "application/json" } },
+                  );
+                }
+                const target = base.findings.find((item) => item.id === finding_id);
+                if (!target) {
+                  return new Response(JSON.stringify({ error: "finding not found" }), {
+                    status: 404,
+                    headers: { "content-type": "application/json" },
+                  });
+                }
+                const existing = (target.reactions ?? []).findIndex(
+                  (item) => item.emoji === input.emoji && item.author === "user",
+                );
+                if (existing !== -1) {
+                  target.reactions = (target.reactions ?? []).filter((_, i) => i !== existing);
+                } else {
+                  target.reactions = [
+                    ...(target.reactions ?? []),
+                    { emoji: input.emoji as ReactionEmoji, author: "user", created_at: Date.now() },
+                  ];
+                }
+                target.updated_at = Date.now();
+                base.updated_at = Date.now();
+                await saveState(state_file, base);
+                const idx = data.existing_findings.findIndex((item) => item.id === finding_id);
+                if (idx !== -1) data.existing_findings[idx] = { ...target };
+                else data.existing_findings.push({ ...target });
+                return new Response(JSON.stringify({ ok: true, reactions: target.reactions }), {
+                  headers: { "content-type": "application/json" },
+                });
               }
 
               if (request.method === "POST" && pathname === `/api/review/${id}/submit`) {

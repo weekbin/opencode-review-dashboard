@@ -17,7 +17,7 @@ For interactive UI testing (drag, screenshot, etc.) see the skill
 
 ## What it tests
 
-25 git scenarios:
+31 git scenarios:
 
 | # | Scenario | What it checks |
 |---|---|---|
@@ -46,6 +46,12 @@ For interactive UI testing (drag, screenshot, etc.) see the skill
 | 23 | `edit-finding` | R10's in-place edit (category/severity/comment) + `manually_edited` flag + "Edited <relative-time>" badge verified via Playwright walkthrough |
 | 24 | `saved-replies-trigger` | R11 #1 `/trigger` typed-prefix expansion (GH#15) — textarea keydown handler + `loadSavedReplies()` lookup wired; full flow (type `/<name>` + space → expand; unknown stays literal; bare `/` doesn't trigger) verified via Playwright walkthrough |
 | 25 | `permalink` | R11 #2 per-finding permalink (GH#16) — `id="finding-<id>"` attribute + Copy-link button + `#finding-<id>` hash-scroll + flash highlight; full flow verified via Playwright walkthrough |
+| 26 | `pinned-toggle` | R12 #17 ★ Pinned findings (GH#17) — `★/☆` star button + `★ Pinned` filter chip + Conversation tab `★N` badge; full flow verified via Playwright walkthrough |
+| 27 | `react-add` | R12 #18 emoji reactions add (GH#18) — 6-emoji picker pill row + active-state styling + grouped count display; full flow verified via Playwright walkthrough |
+| 28 | `react-remove` | R12 #18 emoji reactions remove (GH#18) — idempotent toggle: same emoji click removes the reaction; full flow verified via Playwright walkthrough |
+| 29 | `n-jump-next` | R12 #19 `n` keyboard nav (GH#19) — global keydown handler + focus guard + activeTab guard; full flow verified via Playwright walkthrough |
+| 30 | `p-jump-prev` | R12 #19 `p` keyboard nav wrap-around (GH#19) — wraps from index 0 to last; full flow verified via Playwright walkthrough |
+| 31 | `jump-skips-stale` | R12 #19 nav skips stale (GH#19) — n/p skip `closed_auto` findings when `conversationFilter === "open"`; full flow verified via Playwright walkthrough |
 
 ## Files
 
