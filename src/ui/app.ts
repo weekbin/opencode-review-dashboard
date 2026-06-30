@@ -2548,6 +2548,49 @@ function renderConversationPanel(root: HTMLElement) {
     body.textContent = entry.comment;
     item.appendChild(body);
 
+    if (entry.id) {
+      const reactionRow = document.createElement("div");
+      reactionRow.className = "reaction-row";
+      const existingReactions = entry.reactions ?? [];
+      const emojiSet: ReactionEmoji[] = ["👍", "👎", "😄", "❤️", "🎉", "👀"];
+      const grouped = new Map<ReactionEmoji, Reaction[]>();
+      for (const r of existingReactions) {
+        const list = grouped.get(r.emoji) ?? [];
+        list.push(r);
+        grouped.set(r.emoji, list);
+      }
+      if (grouped.size > 0) {
+        for (const [emoji, list] of grouped.entries()) {
+          const pill = document.createElement("span");
+          pill.className = "reaction-display";
+          pill.textContent = emoji;
+          const count = document.createElement("span");
+          count.className = "reaction-display-count";
+          count.textContent = ` ${list.length}`;
+          pill.appendChild(count);
+          pill.title = `${emoji} · ${list.length} reaction${list.length === 1 ? "" : "s"}`;
+          reactionRow.appendChild(pill);
+        }
+      }
+      const picker = document.createElement("div");
+      picker.className = "reaction-picker";
+      for (const emoji of emojiSet) {
+        const pill = document.createElement("button");
+        pill.type = "button";
+        const isActive = grouped.has(emoji);
+        pill.className = `reaction-pill${isActive ? " is-active" : ""}`;
+        pill.textContent = emoji;
+        pill.title = isActive ? `Remove your ${emoji} reaction` : `React with ${emoji}`;
+        pill.addEventListener("click", (event) => {
+          event.stopPropagation();
+          void toggleReaction(entry.id, emoji);
+        });
+        picker.appendChild(pill);
+      }
+      reactionRow.appendChild(picker);
+      item.appendChild(reactionRow);
+    }
+
     const commentsRoot = document.createElement("div");
     commentsRoot.className = "conversation-comments";
 
@@ -3269,6 +3312,32 @@ async function unpinFinding(id: string): Promise<void> {
   renderConversationPane();
   updateConversationTabBadge();
   setStatus("Unpinned");
+}
+
+async function toggleReaction(id: string, emoji: ReactionEmoji): Promise<void> {
+  const response = await fetch(endpoint("/reaction"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ finding_id: id, emoji }),
+  }).catch(() => undefined);
+  if (!response?.ok) {
+    const data = await response?.json().catch(() => undefined);
+    setStatus(data?.error ?? "Failed to toggle reaction", true);
+    return;
+  }
+  const payload = (await response.json().catch(() => undefined)) as
+    | { ok: true; reactions?: Reaction[] }
+    | undefined;
+  if (!payload?.ok) return;
+  const existing = state.existing.find((item) => item.id === id);
+  if (existing) {
+    existing.reactions = payload.reactions ?? [];
+  } else {
+    const fresh = state.fresh.find((item) => item.id === id);
+    if (fresh) fresh.reactions = payload.reactions ?? [];
+  }
+  renderConversationPane();
+  updateConversationTabBadge();
 }
 
 function showEditFindingModal(finding: {
