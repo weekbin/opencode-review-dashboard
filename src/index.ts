@@ -109,6 +109,13 @@ type DraftFinding = {
 type Draft = {
   notes: string;
   new_findings: DraftFinding[];
+  // R14 #24: server-side stamp of the last time the draft was saved by the
+  // client. The client may also send it on PUT (mirroring saved_at
+  // behavior); the server uses the max of its own clock and the client's
+  // stamp to keep the value monotonic across clock skew. Backwards-compat:
+  // missing on legacy state.json files (R12 or earlier) → renders as 0 →
+  // indicator hidden, no regression.
+  lastSavedAt?: number;
 };
 
 type CommentInput = {
@@ -196,6 +203,10 @@ type Launch = {
 type Submit = {
   notes?: string;
   new_findings?: DraftFinding[];
+  // R14 #24: client-supplied timestamp of the last save (mirrors
+  // server-stamped lastSavedAt; see Draft type). Optional for
+  // backwards-compat with pre-R14 callers.
+  lastSavedAt?: number;
 };
 
 type Done = {
@@ -1814,16 +1825,26 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                 const input = (await request.json().catch(() => ({}))) as Submit;
                 const notes = typeof input.notes === "string" ? input.notes : "";
                 const new_findings = Array.isArray(input.new_findings) ? input.new_findings : [];
+                // R14 #24: accept optional lastSavedAt from the client and
+                // store it in state.draft.lastSavedAt. Use max(client, server)
+                // so clock skew can never make the indicator go backwards.
+                const clientLastSavedAt =
+                  typeof input.lastSavedAt === "number" && Number.isFinite(input.lastSavedAt)
+                    ? input.lastSavedAt
+                    : 0;
+                const now = Date.now();
+                const lastSavedAt = Math.max(clientLastSavedAt, now, base.draft?.lastSavedAt ?? 0);
                 const next: State = {
                   ...base,
                   draft: {
                     notes,
                     new_findings,
+                    lastSavedAt,
                   },
-                  updated_at: Date.now(),
+                  updated_at: now,
                 };
                 await saveState(state_file, next);
-                return new Response(JSON.stringify({ ok: true }), {
+                return new Response(JSON.stringify({ ok: true, lastSavedAt }), {
                   headers: { "content-type": "application/json" },
                 });
               }

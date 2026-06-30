@@ -139,6 +139,37 @@
         margin-left: 4px;
       }
 
+      /* R14 #24: persistent "Saved Xs ago" auto-save indicator in the header */
+      .save-indicator {
+        font-size: 12px;
+        color: light-dark(#1a7f37, #3fb950);
+        margin-left: 12px;
+        padding: 2px 8px;
+        border-radius: 10px;
+        background: light-dark(rgba(26, 127, 55, 0.08), rgba(63, 185, 80, 0.12));
+        white-space: nowrap;
+        opacity: 0.9;
+        transition: opacity 0.2s ease;
+      }
+      .save-indicator[data-state="idle"] {
+        color: light-dark(#57606a, #8b949e);
+        background: light-dark(rgba(87, 96, 106, 0.08), rgba(139, 148, 158, 0.12));
+      }
+      .save-indicator.pulse-on-save {
+        animation: save-indicator-pulse 0.6s ease-out;
+      }
+      @keyframes save-indicator-pulse {
+        0% {
+          transform: scale(1);
+        }
+        40% {
+          transform: scale(1.08);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
       [data-source="working"].sidebar-item {
         background: light-dark(#f5f5f5, #1f1f1f);
         color: light-dark(#888, #888);
@@ -2297,6 +2328,14 @@
         <h1>Review Dashboard</h1>
         <span class="scope" id="scope"></span>
         <span class="diff-base" id="diff-base"></span>
+        <span
+          class="save-indicator"
+          id="save-indicator"
+          data-state="idle"
+          title="Auto-save status"
+          aria-live="polite"
+          >All changes saved</span
+        >
       </div>
       <div class="header-right">
         <div class="layout-toggle" id="layout-toggle">

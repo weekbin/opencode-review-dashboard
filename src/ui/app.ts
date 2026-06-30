@@ -63,6 +63,10 @@ type Finding = {
 type Draft = {
   notes: string;
   new_findings: Finding[];
+  // R14 #24: server-stamped last save time. Optional — legacy state.json
+  // files (R12 or earlier) won't have it; the indicator treats missing
+  // as 0 = "All changes saved" (idle).
+  lastSavedAt?: number;
 };
 
 type FileEntry = {
@@ -1111,6 +1115,12 @@ const state = {
   // R14 #25: previously-discussed round filter. In-memory only (NOT
   // localStorage — round filter is session-scoped; reload reverts to "all").
   previouslyFilterByRound: "all" as "all" | number,
+  // R14 #24: timestamp of the last successful draft save (server-stamped
+  // max of client + server clock; see saveDraft). 0 = no save yet this
+  // session → indicator hidden. The server's state.draft.lastSavedAt
+  // mirrors this on the next GET; the in-memory value is the source of
+  // truth for the indicator during the current session.
+  draftLastSavedAt: 0 as number,
   priorNotes: [] as Array<{ round: number; notes: string }>,
   priorNotesLoaded: false,
   drawerOpen: false,
@@ -1568,6 +1578,58 @@ function endpoint(suffix: string) {
 function setStatus(text: string, error = false) {
   statusRoot.textContent = text;
   statusRoot.classList.toggle("error", error);
+}
+
+// ── R14 #24: persistent "Saved Xs ago" auto-save indicator ──
+// Replaces the intrusive "Draft saved at HH:MM:SS" toast. Ticks every 5s
+// via setInterval; after 60s of no new saves the indicator falls back
+// to "All changes saved" (signals the work is durably persisted).
+const SAVE_INDICATOR_HIDE_AFTER_MS = 60_000;
+const SAVE_INDICATOR_TICK_MS = 5_000;
+
+function formatRelativeSeconds(ms: number): string {
+  if (ms < 1_500) return "just now";
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  return `${h}h ago`;
+}
+
+function updateSaveIndicator() {
+  const el = document.querySelector<HTMLSpanElement>("#save-indicator");
+  if (!el) return;
+  const stamp = state.draftLastSavedAt;
+  if (!stamp) {
+    el.textContent = "All changes saved";
+    el.dataset.state = "idle";
+    return;
+  }
+  const elapsed = Date.now() - stamp;
+  if (elapsed >= SAVE_INDICATOR_HIDE_AFTER_MS) {
+    el.textContent = "All changes saved";
+    el.dataset.state = "idle";
+    return;
+  }
+  el.textContent = `Saved ${formatRelativeSeconds(elapsed)}`;
+  el.dataset.state = "fresh";
+  // Subtle 1-frame pulse on fresh save to draw the eye.
+  el.classList.remove("pulse-on-save");
+  // Force reflow so the animation restarts on rapid consecutive saves.
+  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+  void el.offsetWidth;
+  el.classList.add("pulse-on-save");
+}
+
+let saveIndicatorInterval: number | null = null;
+function startAutoSaveIndicator() {
+  if (saveIndicatorInterval !== null) return;
+  saveIndicatorInterval = window.setInterval(() => {
+    updateSaveIndicator();
+  }, SAVE_INDICATOR_TICK_MS);
+  // Render once immediately so the initial state is correct.
+  updateSaveIndicator();
 }
 
 function showReopenReasonModal(_findingId: string): Promise<string | null> {
@@ -4442,6 +4504,9 @@ function draftPayload() {
       comment: item.comment,
       kind: item.kind ?? "line",
     })),
+    // R14 #24: client stamp of the last save. Server uses max(client, server)
+    // to keep state.draft.lastSavedAt monotonic across clock skew.
+    lastSavedAt: Date.now(),
   };
 }
 
@@ -4460,7 +4525,21 @@ async function saveDraft() {
     return;
   }
 
-  setStatus(`Draft saved at ${new Date().toLocaleTimeString()}`);
+  // R14 #24: replace the intrusive "Draft saved at HH:MM:SS" toast with a
+  // persistent "Saved Xs ago" indicator in the header. The indicator
+  // ticks every 5s (startAutoSaveIndicator) and resets to "All changes
+  // saved" after 60s of no saves. The server response includes the
+  // canonical lastSavedAt (max of client + server clocks) so we adopt
+  // that as the new baseline.
+  const body = (await response.json().catch(() => ({}))) as { lastSavedAt?: number };
+  const serverStamp =
+    typeof body.lastSavedAt === "number" && Number.isFinite(body.lastSavedAt)
+      ? body.lastSavedAt
+      : Date.now();
+  state.draftLastSavedAt = serverStamp;
+  // Clear any leftover failure-flash on the indicator.
+  setStatus("");
+  updateSaveIndicator();
 }
 
 function scheduleSave() {
@@ -4695,6 +4774,12 @@ async function init() {
   state.existing = Array.isArray(state.data.existing_findings) ? state.data.existing_findings : [];
   state.fresh = Array.isArray(state.data.draft?.new_findings) ? state.data.draft.new_findings : [];
   state.notes = typeof state.data.draft?.notes === "string" ? state.data.draft.notes : "";
+  // R14 #24: read the server-stamped lastSavedAt on initial load so the
+  // "Saved Xs ago" indicator is correct on page reload. Backwards-compat:
+  // missing on legacy state.json files → 0 → indicator shows "All changes
+  // saved" (the "idle" state).
+  state.draftLastSavedAt =
+    typeof state.data.draft?.lastSavedAt === "number" ? state.data.draft.lastSavedAt : 0;
   notesRoot.value = state.notes;
 
   const scope =
@@ -4729,13 +4814,21 @@ async function init() {
   renderSelection();
   syncAll();
   resolveHashOnLoad();
+  // R14 #24: kick off the 5s "Saved Xs ago" indicator ticker. The
+  // indicator starts in the "idle" / "All changes saved" state; the
+  // first saveDraft() call flips it to "fresh" and updates the
+  // timestamp.
+  startAutoSaveIndicator();
 }
 
 init();
 
-// R14 #23: unit-test export of pure helpers. Keeps them off the global
-// namespace while still allowing bun test src/ to drive them.
+// R14 #23 / R14 #24: unit-test export of pure helpers. Keeps them off the
+// global namespace while still allowing bun test src/ to drive them.
 export const __test = {
   sortConversationEntries,
   sortConversationEntries_severityRank: SEVERITY_RANK,
+  formatRelativeSeconds,
+  SAVE_INDICATOR_HIDE_AFTER_MS,
+  SAVE_INDICATOR_TICK_MS,
 };
