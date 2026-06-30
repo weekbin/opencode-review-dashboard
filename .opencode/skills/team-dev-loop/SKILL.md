@@ -1,11 +1,13 @@
 ---
 name: team-dev-loop
-description: "v5.3.4 cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+Push (NEW v5.3.3) — 17 phases total (Phase -0 Sync / Phase 0 PM Triage / 0.25 PM Researcher / 0.5 PM Manager / 0.75 Planner / 1 Architect / 2 Dev / 2.5 Pre-Commit Audit / 2.6 Lead Merge+Push / 3a-c Tester / 3.5 Doc Writer / 4 Decision + 4.5-4.9 lead-owned). Lead-direct execution model (v5.3.3): 16 of 17 phases lead-direct, ONLY Phase 2 Dev uses subagent (for code generation). v5.3.4: zh-CN lockstep enforcement (Phase 2 Dev parallel commit, not post-commit audit gate) + READ ONLY ONCE in subagent prompts (no re-reading R-1 retro) + post-completion verification as mid-task check-in special case + README user-manual style mandate (no implementation jargon in main README, put in sub-docs). Subagent scope: 5-20 min budget + decompose >20 min tasks. Default NO user pick (Planner autonomous); user MAY pre-pick A-E or 1-6 (R12 Gap #1). PM researcher advisories are advisory-only (R12 Gap #14: lead must verify independently). Subagent NEVER does git ops (merge/push/issue close) — lead's responsibility. Mid-task check-in every 5/10/15/20 min OR post-completion verification (v5.3.4). ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
+description: "v5.3.4+ cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+Push (NEW v5.3.3) — 17 phases total (Phase -0 Sync / Phase 0 PM Triage / 0.25 PM Researcher / 0.5 PM Manager / 0.75 Planner / 1 Architect / 2 Dev / 2.5 Pre-Commit Audit / 2.6 Lead Merge+Push / 3a-c Tester / 3.5 Doc Writer / 4 Decision + 4.5-4.9 lead-owned). Lead-direct execution model (v5.3.3): 16 of 17 phases lead-direct, ONLY Phase 2 Dev uses subagent (for code generation). v5.3.4: zh-CN lockstep enforcement + READ ONLY ONCE in subagent prompts + post-completion verification + README user-manual style mandate. v5.3.4+: SG.12 R+ screenshot capture workflow (every UI feature ships with ≥1 screenshot in docs/screenshots/, embedded in README + README.zh-CN). Subagent scope: 5-20 min budget + decompose >20 min tasks. Default NO user pick (Planner autonomous); user MAY pre-pick A-E or 1-6 (R12 Gap #1). PM researcher advisories are advisory-only (R12 Gap #14: lead must verify independently). Subagent NEVER does git ops (merge/push/issue close) — lead's responsibility. Mid-task check-in every 5/10/15/20 min OR post-completion verification. ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
 ---
 
 # /team-dev-loop Command (v5)
 
-> **Last Updated**: 2026-06-30 (v5.3.4: R15 retro patches — 5 NEW gap fixes: v5.3.4 R+ Quick reference cheat sheet (NEW top section, 16/17 phases lead-direct at a glance) + zh-CN lockstep enforcement (Phase 2 Dev parallel commit, not post-commit audit gate) + post-completion verification as mid-task check-in special case (R15 retro SG.7) + READ ONLY ONCE in subagent prompts (R15 retro SG.9 subagent over-reads prevention) + README user-manual style mandate (R+ retro SG.11: README is a user manual, not an engineering doc, no implementation jargon). Built on v5.3.3 (commit `c3a6aea` — Lead-direct execution model + 4 NEW root-cause patches) + v5.3.2 (commit `42ba5aa` — 5 patches) + v5.3 (commit `657a064` — 14 patches). v5.3.4 total: 30 retroactive skill patches cumulative across R12-R15 retros.)
+> **Last Updated**: 2026-06-30 (v5.3.4+: R+ retro follow-up patches — 1 NEW gap fix: SG.12 R+ screenshot capture workflow (operationalizes SG.10 with concrete commands + critical patterns + failure modes to avoid + 6-step cheat sheet). Built on v5.3.4 (commit `43a44ba` — README user-manual SG.11) + v5.3.4 first commit (`ca01e97` — 4 R15 retro patches: SG.6 SG.7 SG.8 SG.9) + v5.3.3 (`c3a6aea`) + v5.3.2 (`42ba5aa`) + v5.3 (`657a064`). v5.3.4+ total: 31 retroactive skill patches cumulative across R12-R15 retros + R+ retro follow-up.)
+> **Status**: R16+ will run on v5.3.4+. R13-R15 ran on v5.3 + v5.3.2 + v5.3.3. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
+> **Migration from v2**: see `## Migration v2 → v5` section below.
 > **Status**: R16+ will run on v5.3.4. R13-R15 ran on v5.3 + v5.3.2 + v5.3.3. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
 > **Migration from v2**: see `## Migration v2 → v5` section below.
 
@@ -353,6 +355,80 @@ nohup playwright-cli open "http://127.0.0.1:8890/review/test?token=test" &
 **Failure mode to avoid**: R+ retro + SG.5 quota-override lets Phase 3c Playwright be SKIPPED. This is OK for unit-test verification but NOT OK for product storytelling. SG.10 splits the difference: walkthrough is REQUIRED for visual evidence, but lead-direct + playwright-cli makes it fast (~5-10 min per round).
 
 **R+ retro verdict**: SG.10 codifies "screenshots are MANDATORY, not optional". v5.3.4 R+ rounds must have ≥ 1 screenshot per feature. SG.5 quota-override no longer exempts visual evidence.
+
+## R+ screenshot capture workflow (NEW v5.3.4+ — R+ retro SG.12 operationalizes SG.10)
+
+**Status**: APPLIED in v5.3.4+. Operationalizes SG.10 by codifying the exact commands to capture screenshots + the lockstep with README updates.
+
+**Why operationalize**: R+ SG.10 says "every feature must have ≥ 1 screenshot". Without operational details, lead-direct has to figure out: which port, which mock-server file, how to start/stop, where to save files, how to embed into README + zh-CN. SG.12 codifies the 6-step workflow that worked for R+ retro follow-up (captures dashboard-overview.png + 5 R12-R15 feature screenshots).
+
+**Workflow** (lead-direct, ~5-10 min per round):
+
+```bash
+# Step 1: cleanup stuck processes
+pkill -9 -f "mock-server.py" 2>/dev/null || true
+pkill -9 -f "playwright-cli" 2>/dev/null || true
+pkill -9 -f "chrome" 2>/dev/null || true
+
+# Step 2: build dist (rebuild if Phase 2 Dev changed code)
+bun run build
+
+# Step 3: start mock-server on unique port (8890 to avoid conflict)
+# IMPORTANT: use `setsid + nohup` for proper detachment
+nohup setsid python3 scripts/test-review-ui/mock-server.py 8890 \
+  > /tmp/r{N}-mock.log 2>&1 < /dev/null & disown
+sleep 3
+curl -s -m 5 http://127.0.0.1:8890/health  # → "ok"
+
+# Step 4: pre-warm playwright-cli (use 'press' not 'press_key')
+playwright-cli open "http://127.0.0.1:8890/review/test?token=test"
+playwright-cli snapshot  # discover DOM refs
+
+# Step 5: walkthrough per feature
+# For R12 features (Pinned, Reactions, n-p nav): add a finding first
+#   by clicking a line number, then navigate to Conversation tab
+# For R13 features (Resolve modal, In-diff search): trigger from within UI
+# For R14 features (Sort dropdown, Filter, Auto-save): navigate + capture
+# For R15 features (Cmd+P, Submit confirm, Audit trail): click + capture
+
+playwright-cli screenshot --filename docs/screenshots/r{N}-{name}.png
+
+# Step 6: cleanup (mock-server dies with shell — no need to pkill; bash hangs)
+# Proceed to README + zh-CN updates
+```
+
+**Critical patterns**:
+- Use `nohup setsid command & disown` for background mock-server (proper detachment)
+- `playwright-cli press` (not `press_key` — the latter shows help)
+- For tab switching: `playwright-cli eval "() => document.querySelectorAll('[role=tab]')[N].click()"` (works when click ref hangs)
+- For keyboard events: `playwright-cli press 'Control+p'` (matches Playwright keyboard syntax)
+- Mock-server is dying with bash shell — no need to pkill (avoid pkill hangs)
+- Avoid bash `pkill` after mock-server is running — it hangs the shell
+
+**Failure modes to avoid**:
+- **Bash hang on pkill**: `pkill -9 -f "mock-server.py"` after mock-server is running hangs the shell. Don't pkill mock-server — let it die with the shell.
+- **Multiple stuck Chrome processes**: pre-warm with playwright-cli BEFORE running tests; for screenshot capture, just one page is sufficient
+- **Tab click retry loop**: if click on a tab ref retries indefinitely, use JS eval `document.querySelectorAll('[role=tab]')[N].click()` instead
+
+**Screenshot naming** (per SG.10): `docs/screenshots/r{N}-{sN}-{feature-name}.png` where N = round number, sN = scenario number. For R+ retro follow-up, naming is `r{N}-{capability-name}.png` (without sN since these are catch-up screenshots for missed rounds).
+
+**README updates** (per SG.11 + SG.6):
+- Add a "What it looks like" section near the top with 4-5 hero screenshots
+- Each screenshot: alt text in plain language + 1-line caption
+- BOTH README.md AND README.zh-CN.md updated (per SG.6 zh-CN lockstep enforcement)
+- Commit as `docs: add R{N} feature screenshots to README + README.zh-CN` (one atomic commit covering both files + all screenshots)
+
+**R+ retro verdict**: SG.12 codifies the operational details to capture screenshots efficiently. R+ retro SG.10 + SG.11 + SG.12 together: mandate ("screenshots required") + style ("user-manual") + operationalization ("here's exactly how to do it"). Net effect: future R+ rounds have visuals from day-1, no more 9-feature-no-screenshot backlog.
+
+**R+ retro 6 step workflow summary** (cheat sheet):
+1. Pre-cleanup: `pkill mock-server` if any (do this BEFORE starting mock-server, not after)
+2. Build: `bun run build`
+3. Mock-server: `nohup setsid python3 scripts/test-review-ui/mock-server.py 8890 & disown`
+4. Pre-warm: `playwright-cli open http://127.0.0.1:8890/review/test?token=test`
+5. Walkthrough: `playwright-cli screenshot --filename docs/screenshots/r{N}-{name}.png` per feature
+6. Mock-server: leave running (dies with shell) | README + zh-CN update + commit
+
+Total time: ~5-10 min per round for the screenshot loop. Acceptable R+ cost.
 
 ## Mid-task check-in mechanism (v5.3.3) + v5.3.4 post-completion verification (R+ retro SG.7)
 
