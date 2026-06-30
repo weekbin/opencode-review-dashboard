@@ -156,6 +156,8 @@
 - **Copy finding as Markdown** *(R16 新增)* —— 每个 finding 上的「Copy as MD」按钮把自包含的 Markdown 片段（轮次 tag、file:line permalink、评论、审计次数、反应）丢到剪贴板。直接粘到 PR 评论或聊天里
 - **IME 安全的搜索** *(R17 新增)* —— 所有五个搜索输入（Files tab、Conversation tab、Previously discussed、In-diff、Cmd+P 面板）在 IME 组合输入时都能正常工作。中文拼音、日语罗马字等都能正常上屏，不会丢按键或回退到 IME 中间态
 - **Cmd+/ 帮助覆盖层** *(R17 新增)* —— 按 `Cmd+/`（Mac）或 `Ctrl+/`（其他）打开两列快捷键网格，10 个最常用的快捷键都在里面。按 `?` 或 `Escape` 关闭
+- **搜索历史 debounce** *(R21 新增)* —— 在 in-diff 搜索框里输入时，不再让每一次中间按键都进最近搜索列表。300ms 静默期 debounce + Enter 即时提交。对齐 GitHub / VS Code 行为
+- **设置面板** *(R21 新增)* —— 点击头部 ⚙ 按钮打开集中偏好面板（主题 / 布局 / 搜索 / 语言 / 恢复默认）。工具栏控制作为快速开关保留；两条路径共享同一套 handler
 
 ### 解决 finding
 

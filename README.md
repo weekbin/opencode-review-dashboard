@@ -96,6 +96,14 @@ If you review pull requests or diffs on a regular basis, this saves you the back
 
 *Focus the in-diff search bar (`Ctrl+F` / `Cmd+F`) to see your last 5 searches as a dropdown. Click any recent search to re-run it. State persists across reloads.*
 
+### Smart search-history commit
+
+*Search history now debounces intermediate keystrokes (300ms quiet period) and only commits your final query on Enter — no more stale "f", "fn", "fun" entries cluttering the recent-searches dropdown. Mirrors GitHub's `Cmd+K` palette and VS Code's search history.*
+
+### Settings panel (centralized preferences)
+
+*Click the ⚙ button in the header to open a centralized settings panel with 4 sections: Appearance (theme: light/auto/dark), Layout (unified/split), Search (history max), and Language (English / Chinese). Toolbar toggles still work as quick shortcuts; the settings panel is the canonical view for full control. Includes a Reset-to-defaults button.*
+
 ### IME-safe search
 
 ![Search box with Chinese IME composition active](docs/screenshots/r17-ime-composition.png)
@@ -156,6 +164,8 @@ If you review pull requests or diffs on a regular basis, this saves you the back
 - **Copy finding as Markdown** *(added R16)* — "Copy as MD" button on each finding drops a self-contained Markdown snippet (round tag, file:line permalink, comment, audit count, reactions) onto your clipboard. Paste it straight into a PR comment or chat
 - **IME-safe search** *(added R17)* — all five search inputs (Files tab, Conversation tab, Previously discussed, In-diff, Cmd+P palette) work correctly while an Input Method Editor is composing characters. Chinese pinyin, Japanese romaji, etc. commit without losing keystrokes or snapping back to partial IME buffers
 - **Cmd+/ help overlay** *(added R17)* — press `Cmd+/` (Mac) or `Ctrl+/` (other) to open a 2-column shortcut grid with the 10 most common shortcuts. Press `?` or `Escape` to close
+- **Search history debounce** *(added R21)* — typing into the in-diff search bar no longer floods your recent-searches with every intermediate keystroke. 300ms quiet-period debounce + Enter-immediate commit. Mirrors GitHub / VS Code behavior
+- **Settings panel** *(added R21)* — click the ⚙ button in the header for a centralized preferences panel (theme / layout / search / language / reset-to-defaults). Toolbar controls stay as quick shortcuts; both paths share the same handlers
 
 ### Resolving findings
 
