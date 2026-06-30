@@ -2323,6 +2323,55 @@
       .diff-search-close:hover {
         background: light-dark(#e5e7eb, #1c2330);
       }
+
+      /* R20 #42: recent-searches dropdown. Positioned absolutely below
+         the .diff-search-bar so the input row keeps its horizontal
+         layout. The overlay itself is position: fixed (top-right); the
+         dropdown drops below + slightly wider to give room for the
+         query text. */
+      .diff-search-history[hidden] {
+        display: none;
+      }
+      .diff-search-history {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        margin-top: 4px;
+        background: light-dark(#ffffff, #161b22);
+        border: 1px solid light-dark(#d1d5db, #1f2937);
+        border-radius: 8px;
+        box-shadow: 0 6px 20px light-dark(rgba(0, 0, 0, 0.14), rgba(0, 0, 0, 0.55));
+        max-height: 220px;
+        overflow-y: auto;
+        padding: 4px 0;
+        z-index: 101;
+      }
+      .diff-search-history-title {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: light-dark(#6b7280, #9ca3af);
+        padding: 6px 12px;
+      }
+      .diff-search-history-item {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 6px 12px;
+        font-size: 13px;
+        background: transparent;
+        border: 0;
+        color: inherit;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .diff-search-history-item:hover,
+      .diff-search-history-item:focus {
+        background: light-dark(#e5e7eb, #1c2330);
+        outline: none;
+      }
       .diff-search-close {
         font-size: 16px;
         line-height: 1;

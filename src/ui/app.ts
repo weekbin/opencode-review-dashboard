@@ -18,6 +18,8 @@ import {
 } from "./i18n";
 // R20 #40: sidebar review progress (X / Y reviewed + visual bar).
 import { formatReviewProgress } from "./review-progress";
+// R20 #42: in-diff search history (recent searches dropdown).
+import { addRecentSearch, getRecentSearches } from "./search-history";
 
 type Category = "bug" | "style" | "perf" | "question" | "recommend";
 type Severity = "high" | "medium" | "low";
@@ -646,6 +648,11 @@ type DiffSearchState = {
   overlay: HTMLElement | null;
   input: HTMLInputElement | null;
   counter: HTMLElement | null;
+  // R20 #42: recent-searches dropdown element appended to `.diff-search-bar`.
+  history: HTMLElement | null;
+  // Set when the user clicks a recent-search item, so the blur handler
+  // doesn't immediately hide the dropdown out from under the click.
+  historyClickGuard: number;
 };
 
 const diffSearch: DiffSearchState = {
@@ -655,6 +662,8 @@ const diffSearch: DiffSearchState = {
   overlay: null,
   input: null,
   counter: null,
+  history: null,
+  historyClickGuard: 0,
 };
 
 function readSessionStored(key: string): string | null {
@@ -807,6 +816,10 @@ function closeDiffSearch(): void {
   diffSearch.overlay = null;
   diffSearch.input = null;
   diffSearch.counter = null;
+  // R20 #42: clear the recent-searches dropdown ref so a fresh open
+  // doesn't reuse a stale DOM node from the previous open.
+  diffSearch.history = null;
+  diffSearch.historyClickGuard = 0;
   clearDiffSearchHighlights();
   diffSearch.query = "";
   clearSessionStored(DIFF_SEARCH_KEY);
@@ -836,6 +849,14 @@ function openDiffSearch(initialQuery: string | null = null): void {
   const nextBtn = overlay.querySelector<HTMLButtonElement>("#diff-search-next");
   const closeBtn = overlay.querySelector<HTMLButtonElement>("#diff-search-close");
 
+  // R20 #42: recent-searches dropdown mounted inside .diff-search-bar.
+  const historyRoot = document.createElement("div");
+  historyRoot.className = "diff-search-history";
+  historyRoot.setAttribute("role", "listbox");
+  historyRoot.hidden = true;
+  overlay.appendChild(historyRoot);
+  diffSearch.history = historyRoot;
+
   const startQuery =
     initialQuery !== null ? initialQuery : (readSessionStored(DIFF_SEARCH_KEY) ?? "");
   if (diffSearch.input) {
@@ -857,13 +878,9 @@ function openDiffSearch(initialQuery: string | null = null): void {
     diffSearch.matchElements = findMatchesInDiff(q);
     diffSearch.currentIndex = diffSearch.matchElements.length > 0 ? 0 : -1;
     updateDiffSearchCounter();
-    if (diffSearch.currentIndex >= 0) {
-      const target = diffSearch.matchElements[0];
-      if (target) {
-        target.scrollIntoView({ behavior: "smooth", block: "center" });
-        flashDiffSearchMatch(target);
-      }
-    }
+    // R20 #42: every successful (non-empty) query goes into the
+    // recent-searches MRU list. Empty queries early-return above.
+    addRecentSearch(q);
   };
 
   if (diffSearch.input) {
@@ -891,6 +908,61 @@ function openDiffSearch(initialQuery: string | null = null): void {
   closeBtn?.addEventListener("click", closeDiffSearch);
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) closeDiffSearch();
+  });
+
+  // R20 #42: focus → show recent searches; blur → hide (with click guard).
+  const showRecentSearches = () => {
+    if (!diffSearch.history) return;
+    const recent = getRecentSearches().filter((entry) => entry !== (diffSearch.input?.value ?? ""));
+    if (recent.length === 0) {
+      diffSearch.history.hidden = true;
+      return;
+    }
+    diffSearch.history.innerHTML = "";
+    // Title row (localized via t() — dropdown is dynamic so no data-i18n).
+    const title = document.createElement("div");
+    title.className = "diff-search-history-title";
+    title.textContent = t("search.recent.title");
+    diffSearch.history.appendChild(title);
+
+    for (const entry of recent) {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "diff-search-history-item";
+      item.setAttribute("role", "option");
+      item.dataset.query = entry;
+      item.textContent = entry;
+      diffSearch.history.appendChild(item);
+    }
+    diffSearch.history.hidden = false;
+  };
+
+  const hideRecentSearchesSoon = () => {
+    // 120ms gives the user time to click an item before the dropdown
+    // tears down; the click handler clears the timeout via
+    // diffSearch.historyClickGuard.
+    const id = window.setTimeout(() => {
+      if (diffSearch.historyClickGuard !== id) return;
+      if (diffSearch.history) diffSearch.history.hidden = true;
+    }, 120);
+    diffSearch.historyClickGuard = id;
+  };
+
+  diffSearch.input?.addEventListener("focus", showRecentSearches);
+  diffSearch.input?.addEventListener("blur", hideRecentSearchesSoon);
+
+  // Delegate clicks on recent-search items. Use mousedown so the
+  // input's blur doesn't fire before our handler runs.
+  historyRoot.addEventListener("mousedown", (event) => {
+    const target = event.target as HTMLElement;
+    const btn = target.closest<HTMLElement>(".diff-search-history-item");
+    if (!btn) return;
+    event.preventDefault();
+    const query = btn.dataset.query ?? "";
+    if (!query || !diffSearch.input) return;
+    diffSearch.input.value = query;
+    runSearch();
+    diffSearch.input.focus();
   });
 
   if (startQuery) runSearch();

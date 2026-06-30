@@ -253,4 +253,17 @@ describe("AC1.2 — toggle re-renders static-HTML labels via registerUITranslato
     // app.ts binds a registerUITranslator for the key
     expect(src.includes('registerUITranslator("sidebar.filter.unread"')).toBe(true);
   });
+
+  // R20 #42: STRINGS_USAGE_PLAN regression for search.recent.title.
+  // The dropdown is dynamic (mounted on focus), so there is no static
+  // data-i18n element — the test only covers STRINGS table presence and
+  // a t() call wired in app.ts at the dropdown render site.
+  it("STRINGS['search.recent.title'] has both en + zh-CN translations and app.ts uses t() to render it", async () => {
+    const i18n = await readSource(I18N);
+    const src = await readSource(APP_TS);
+    expect(i18n.includes('"search.recent.title":')).toBe(true);
+    expect(i18n.includes('"Recent searches"')).toBe(true);
+    expect(i18n.includes('"最近搜索"')).toBe(true);
+    expect(src.includes('t("search.recent.title")')).toBe(true);
+  });
 });
