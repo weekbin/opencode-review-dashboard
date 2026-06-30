@@ -2356,21 +2356,45 @@
         padding: 6px 12px;
       }
       .diff-search-history-item {
-        display: block;
+        display: flex;
+        align-items: center;
         width: 100%;
         text-align: left;
-        padding: 6px 12px;
+        padding: 0;
         font-size: 13px;
         background: transparent;
         border: 0;
         color: inherit;
         cursor: pointer;
         font-family: inherit;
+        gap: 4px;
       }
       .diff-search-history-item:hover,
       .diff-search-history-item:focus {
         background: light-dark(#e5e7eb, #1c2330);
         outline: none;
+      }
+      .diff-search-history-text {
+        flex: 1;
+        padding: 6px 0 6px 12px;
+        text-align: left;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .diff-search-history-delete {
+        flex-shrink: 0;
+        padding: 6px 8px;
+        font-size: 14px;
+        line-height: 1;
+        color: light-dark(#6b7280, #6b7280);
+        background: transparent;
+        border: 0;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .diff-search-history-delete:hover {
+        color: light-dark(#ef4444, #f87171);
       }
       .diff-search-close {
         font-size: 16px;
