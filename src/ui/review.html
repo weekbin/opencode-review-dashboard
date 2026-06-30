@@ -330,6 +330,25 @@
         color: light-dark(#333, #ccc);
       }
 
+      /* R19 #33: language toggle — single button group, matches theme-toggle look. */
+      .language-toggle button {
+        background: transparent;
+        color: inherit;
+        border: 1px solid light-dark(#d0d0d0, #444);
+        border-radius: 6px;
+        padding: 4px 10px;
+        font: inherit;
+        font-size: 13px;
+        cursor: pointer;
+        margin-left: 6px;
+      }
+      .language-toggle button:hover {
+        background: light-dark(#f3f3f3, #2a2a2a);
+      }
+      .language-toggle button:focus-visible {
+        outline: 2px solid var(--pierre-accent, #2563eb);
+      }
+
       .theme-toggle button[aria-pressed="true"] {
         background: light-dark(#ffffff, #3a3a3a);
         color: light-dark(#111, #eee);
@@ -2648,6 +2667,7 @@
           <button data-theme="auto" aria-pressed="false">Auto</button>
           <button data-theme="dark" aria-pressed="true">Dark</button>
         </div>
+        <div class="language-toggle" id="language-toggle"></div>
         <button class="drawer-toggle" id="drawer-toggle" type="button">
           Review <span class="count" id="finding-count">0</span>
         </button>

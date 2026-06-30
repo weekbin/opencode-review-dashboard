@@ -7,6 +7,8 @@ import { sortConversationEntries, type SortFindingsBy } from "../sort-utils";
 import { installModalA11y } from "./modal-a11y";
 // R19 #37: toast notifications (3s auto-dismiss + ARIA live region).
 import { showToast } from "./toast";
+// R19 #33: language toggle (i18n helper).
+import { applyLanguage, onLanguageChange, peekLanguage, setLanguage, t } from "./i18n";
 
 type Category = "bug" | "style" | "perf" | "question" | "recommend";
 type Severity = "high" | "medium" | "low";
@@ -1364,6 +1366,37 @@ themeToggle.addEventListener("click", (event) => {
   if (!btn) return;
   setTheme(btn.dataset.theme as ThemeMode);
 });
+
+// R19 #33: language toggle — one toolbar button flips en ↔ zh-CN.
+applyLanguage();
+const languageToggle = document.querySelector("#language-toggle");
+function applyLanguageToggle(): void {
+  if (!(languageToggle instanceof HTMLElement)) return;
+  const lang = peekLanguage();
+  const btn = languageToggle.querySelector<HTMLButtonElement>("button");
+  if (btn) {
+    btn.textContent = t("toolbar.lang.toggle");
+    btn.setAttribute("aria-label", t("toolbar.lang.ariaLabel"));
+    btn.dataset.lang = lang;
+  }
+}
+function buildLanguageToggle(): void {
+  if (!(languageToggle instanceof HTMLElement)) return;
+  languageToggle.innerHTML = "";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "language-toggle-btn";
+  btn.id = "language-toggle-btn";
+  languageToggle.appendChild(btn);
+  applyLanguageToggle();
+}
+buildLanguageToggle();
+languageToggle?.addEventListener("click", () => {
+  const next = peekLanguage() === "zh-CN" ? "en" : "zh-CN";
+  setLanguage(next);
+  applyLanguageToggle();
+});
+onLanguageChange(() => applyLanguageToggle());
 
 // ── Layout toggle ──
 function applyLayout() {
