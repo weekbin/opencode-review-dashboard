@@ -216,6 +216,9 @@ describe("AC9 — State + Finding type shapes are unchanged", () => {
       "  manually_edited?: boolean;",
       "  edited_at?: number;",
       "  comments?: FindingComment[];",
+      "  pinned?: FindingPin;",
+      "  manually_pinned?: boolean;",
+      "  reactions?: Reaction[];",
       "};",
     ].join("\n");
 

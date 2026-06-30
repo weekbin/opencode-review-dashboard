@@ -1915,6 +1915,129 @@
         opacity: 0.7;
         cursor: default;
       }
+      .finding-star {
+        font-size: 16px !important;
+        line-height: 1;
+        padding: 4px 8px !important;
+        background: transparent;
+        border: 1px solid light-dark(#d1d5db, #374151);
+        border-radius: 6px;
+        cursor: pointer;
+        color: light-dark(#9ca3af, #6b7280);
+        transition:
+          color 0.12s ease-out,
+          background-color 0.12s ease-out;
+      }
+      .finding-star:hover {
+        color: light-dark(#f59e0b, #fbbf24);
+        background: light-dark(#fffbeb, #1f1500);
+      }
+      .finding-star.is-pinned {
+        color: light-dark(#f59e0b, #fbbf24);
+        background: light-dark(#fef3c7, #3d2c00);
+        border-color: light-dark(#f59e0b, #b45309);
+      }
+      .reaction-picker {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 6px 0;
+        border-top: 1px dashed light-dark(#e5e7eb, #1f2937);
+        margin-top: 6px;
+      }
+      .reaction-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 8px;
+        font-size: 14px;
+        background: light-dark(#f9fafb, #0f1419);
+        border: 1px solid light-dark(#e5e7eb, #1f2937);
+        border-radius: 999px;
+        cursor: pointer;
+        user-select: none;
+        transition: background-color 0.12s ease-out;
+      }
+      .reaction-pill:hover {
+        background: light-dark(#f3f4f6, #1c2330);
+      }
+      .reaction-pill.is-active {
+        background: light-dark(#dbeafe, #0c2c5b);
+        border-color: light-dark(#93c5fd, #1d4ed8);
+      }
+      .reaction-pill .reaction-count {
+        font-size: 11px;
+        color: light-dark(#6b7280, #9ca3af);
+      }
+      .reaction-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 6px;
+      }
+      .reaction-display {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        padding: 2px 7px;
+        font-size: 12px;
+        background: light-dark(#f3f4f6, #1c2330);
+        border: 1px solid light-dark(#e5e7eb, #1f2937);
+        border-radius: 999px;
+      }
+      .reaction-display .reaction-display-count {
+        font-size: 11px;
+        color: light-dark(#6b7280, #9ca3af);
+      }
+      .conversation-filter[data-filter="pinned"],
+      .conversation-filter[data-filter="reacted"] {
+        position: relative;
+      }
+      .tab-meta-badges {
+        display: inline-flex;
+        gap: 4px;
+        margin-left: 4px;
+      }
+      .tab-badge {
+        font-size: 11px;
+        line-height: 1;
+        padding: 2px 6px;
+        border-radius: 999px;
+        background: light-dark(#fef3c7, #3d2c00);
+        color: light-dark(#92400e, #fde68a);
+        font-weight: 600;
+      }
+      .tab-badge-pinned {
+        background: light-dark(#fef3c7, #3d2c00);
+        color: light-dark(#92400e, #fde68a);
+      }
+      .tab-badge-reacted {
+        background: light-dark(#dbeafe, #0c2c5b);
+        color: light-dark(#1e40af, #bfdbfe);
+      }
+      .nav-hint {
+        position: fixed;
+        bottom: 12px;
+        right: 16px;
+        padding: 4px 10px;
+        font-size: 11px;
+        color: light-dark(#6b7280, #9ca3af);
+        background: light-dark(#f9fafb, #161b22);
+        border: 1px solid light-dark(#e5e7eb, #1f2937);
+        border-radius: 999px;
+        z-index: 50;
+        pointer-events: none;
+        opacity: 0.85;
+      }
+      .nav-hint kbd {
+        display: inline-block;
+        padding: 0 4px;
+        font-family: ui-monospace, monospace;
+        font-size: 10px;
+        background: light-dark(#e5e7eb, #0f1419);
+        border: 1px solid light-dark(#d1d5db, #374151);
+        border-radius: 3px;
+      }
 
       /* ── Notes surface (always-visible, collapsible) ── */
       .notes-surface {
@@ -2091,6 +2214,12 @@
             </button>
             <button data-filter="all" aria-pressed="false" title="Show all including resolved">
               All
+            </button>
+            <button data-filter="pinned" aria-pressed="false" title="Show only pinned findings">
+              ★ Pinned <span class="filter-count" data-count-for="pinned">0</span>
+            </button>
+            <button data-filter="reacted" aria-pressed="false" title="Show only reacted findings">
+              😀 Reacted <span class="filter-count" data-count-for="reacted">0</span>
             </button>
           </div>
         </div>
