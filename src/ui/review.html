@@ -554,6 +554,35 @@
         outline: 2px solid light-dark(#0969da, #58a6ff);
         outline-offset: 1px;
       }
+      /* R14 #25: previously-discussed round filter dropdown */
+      .filter-previously-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-left: 12px;
+        font-size: 12px;
+        color: light-dark(#555, #aaa);
+        text-transform: none;
+        letter-spacing: 0;
+        cursor: pointer;
+      }
+      .filter-previously-by-round {
+        font-size: 12px;
+        font-family: inherit;
+        padding: 4px 6px;
+        border: 1px solid light-dark(#d0d7de, #30363d);
+        border-radius: 4px;
+        background: light-dark(#fff, #1a1f24);
+        color: inherit;
+        cursor: pointer;
+      }
+      .filter-previously-by-round:hover {
+        border-color: light-dark(#888, #58a6ff);
+      }
+      .filter-previously-by-round:focus-visible {
+        outline: 2px solid light-dark(#0969da, #58a6ff);
+        outline-offset: 1px;
+      }
       /* R8 #1: in-tab search input rendered at the top of each pane */
       .search-input {
         width: 100%;
@@ -2417,6 +2446,16 @@
       <div class="pane pane-previously" data-pane="previously" hidden>
         <div class="pane-toolbar">
           <div class="pane-title">Prior rounds — what you told the agent + how it replied</div>
+          <label class="filter-previously-label" for="filter-previously-by-round">
+            Round
+            <select
+              id="filter-previously-by-round"
+              class="filter-previously-by-round"
+              title="Filter previously-discussed by round"
+            >
+              <option value="all">All rounds</option>
+            </select>
+          </label>
         </div>
         <div class="previously-list" id="previously-list"></div>
       </div>

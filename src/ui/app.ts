@@ -1108,6 +1108,9 @@ const state = {
     ["newest", "oldest", "severity", "file"],
     "newest",
   ),
+  // R14 #25: previously-discussed round filter. In-memory only (NOT
+  // localStorage — round filter is session-scoped; reload reverts to "all").
+  previouslyFilterByRound: "all" as "all" | number,
   priorNotes: [] as Array<{ round: number; notes: string }>,
   priorNotesLoaded: false,
   drawerOpen: false,
@@ -1339,6 +1342,34 @@ if (sortFindingsSel) {
   sortFindingsSel.addEventListener("change", () => {
     const v = sortFindingsSel.value as SortFindingsBy;
     setSortFindingsBy(v);
+  });
+}
+
+// ── R14 #25: filter previously-discussed by round ──
+// In-memory state, NOT localStorage. Round filter is session-scoped
+// because which rounds exist depends on the current review session;
+// persisting across sessions would leave a stale "Round 3" filter with
+// zero matches on a new session that has 0 rounds.
+function setPreviouslyFilterByRound(round: "all" | number) {
+  if (state.previouslyFilterByRound === round) return;
+  state.previouslyFilterByRound = round;
+  if (state.activeTab === "previously") {
+    // Re-render the active pane; previously-list is rebuilt from
+    // state.existing on every render so the dropdown repopulates too.
+    renderPreviouslyPane();
+  }
+}
+
+const previouslyRoundSel = document.querySelector<HTMLSelectElement>("#filter-previously-by-round");
+if (previouslyRoundSel) {
+  previouslyRoundSel.addEventListener("change", () => {
+    const v = previouslyRoundSel.value;
+    if (v === "all") {
+      setPreviouslyFilterByRound("all");
+    } else {
+      const n = parseInt(v, 10);
+      if (Number.isFinite(n) && n > 0) setPreviouslyFilterByRound(n);
+    }
   });
 }
 
@@ -3581,21 +3612,69 @@ function renderPreviouslyDiscussedPanel(root: HTMLElement) {
 
   const priorNotes = state.priorNotes.filter((item) => item.round < currentRound);
   const groupedRaw = buildPriorRoundEntries(priorNotes, priorEntries);
+
+  // R14 #25: populate the round filter dropdown from the unique round
+  // numbers currently in scope. Done before the search filter so the
+  // dropdown always lists every prior round (even if a round has no
+  // search matches — surfacing it lets the user re-check by clearing
+  // the search). Dropdown is rebuilt on every render (cheap; < 10 items).
+  const sel = document.querySelector<HTMLSelectElement>("#filter-previously-by-round");
+  if (sel) {
+    const roundNumbers = [...new Set(groupedRaw.map((r) => r.round))].sort((a, b) => a - b);
+    const currentFilter = state.previouslyFilterByRound;
+    // If the persisted filter is "round N" but N no longer exists, fall back
+    // to "all" for this render (without mutating state — user choice is
+    // preserved in case round N reappears).
+    const effectiveFilter =
+      currentFilter === "all" || roundNumbers.includes(currentFilter) ? currentFilter : "all";
+    // Repopulate options: "all" + one <option> per round (descending: newest first).
+    sel.innerHTML = "";
+    const allOpt = document.createElement("option");
+    allOpt.value = "all";
+    allOpt.textContent = "All rounds";
+    sel.appendChild(allOpt);
+    for (const n of roundNumbers) {
+      const opt = document.createElement("option");
+      opt.value = String(n);
+      opt.textContent = `Round ${n}`;
+      sel.appendChild(opt);
+    }
+    sel.value = effectiveFilter === "all" ? "all" : String(effectiveFilter);
+  }
+
   // R8 #1: search filter — keep a round only if its notes OR any finding
   // (comment text + comment thread replies) match the query. AC8-1.2.
-  const grouped = filterByQuery(
+  const searched = filterByQuery(
     groupedRaw,
     currentSearchQuery,
     (r) =>
       `${r.notes} ${r.findings.map((f) => `${f.comment} ${(f.comments ?? []).map((c) => c.text).join(" ")}`).join(" ")}`,
   );
 
+  // R14 #25: round filter is additive to the search filter. The dropdown
+  // may have just fallen back to "all" above; use the same effective value
+  // so the visible filter state matches the rendered list.
+  const effectiveFilter = sel
+    ? sel.value === "all"
+      ? "all"
+      : (() => {
+          const n = parseInt(sel.value, 10);
+          return Number.isFinite(n) && n > 0 ? n : "all";
+        })()
+    : state.previouslyFilterByRound;
+  const grouped =
+    effectiveFilter === "all" ? searched : searched.filter((r) => r.round === effectiveFilter);
+
   if (grouped.length === 0) {
     const empty = document.createElement("div");
     empty.className = "previously-empty";
-    empty.textContent = currentSearchQuery.trim()
-      ? `No prior rounds match "${currentSearchQuery.trim()}".`
-      : "No prior discussion yet. Submit a round to start the history.";
+    if (currentSearchQuery.trim()) {
+      empty.textContent = `No prior rounds match "${currentSearchQuery.trim()}".`;
+    } else if (effectiveFilter !== "all") {
+      empty.textContent = `No findings in round ${effectiveFilter}.`;
+    } else {
+      empty.textContent = "No prior discussion yet. Submit a round to start the history.";
+    }
     root.appendChild(empty);
     return;
   }
