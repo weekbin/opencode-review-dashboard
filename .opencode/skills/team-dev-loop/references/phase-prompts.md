@@ -290,6 +290,34 @@ The plan MUST call out which ACs are multi-round and what unit test design exerc
 
 If trivial (single file, <30 lines, no architectural decision) — write a 1-paragraph plan directly. No need for the full 7-section structure.
 
+**STRINGS_USAGE_PLAN for i18n features** (NEW R19 retro SG.R19.3, MANDATORY when scope includes language toggle / translation / i18n refactor): Plan MUST include an explicit `## STRINGS_USAGE_PLAN` section that lists every hardcoded user-visible string that needs `t('key')` wrapping, with:
+- `file:line` evidence for the hardcoded string in current code
+- The `STRINGS` table key it maps to (`"toolbar.layout.unified"`, etc.)
+- The locale the key exists in (both `en` AND `zh-CN` — verify before declaring complete)
+
+R19 evidence: Dev subagent shipped 30+ STRINGS keys in `i18n.ts` but only wrapped 2 strings with `t()` calls in `app.ts`. AC1.2 PARTIAL until Phase 3c Playwright walkthrough caught it. The "30-50 strings" estimate in plan.md was insufficient — Dev needs an explicit checklist. Without STRINGS_USAGE_PLAN, subagent will under-deliver integration.
+
+**Example STRINGS_USAGE_PLAN section** (extract from R19 plan, after it was patched):
+```
+## STRINGS_USAGE_PLAN (for i18n integration)
+
+| Hardcoded string | File:line | t() key | Locales |
+|---|---|---|---|
+| "Unified" | review.html:2646 | toolbar.layout.unified | en + zh-CN |
+| "Split" | review.html:2653 | toolbar.layout.split | en + zh-CN |
+| "Light"/"Auto"/"Dark" | review.html:2666-2668 | toolbar.theme.{light,auto,dark} | en + zh-CN |
+| "Ignore ws" | review.html:2663 | toolbar.ignoreWs | en + zh-CN |
+| "Review" | review.html:2672 | toolbar.review | en + zh-CN |
+| "Export" | review.html:2675 | toolbar.export | en + zh-CN |
+| "Submit Review" | review.html:2683 | toolbar.submit | en + zh-CN |
+| "Files changed" / "Commits" / "Conversation" / "Previously discussed" | review.html:2690, 2694, 2703, 2712 | sidebar.{files,commits,conversation,previously} | en + zh-CN |
+| "Tree" / "Flat" | review.html:2724-2725 | sidebar.{tree,flat} | en + zh-CN |
+| "All changes saved" | review.html:2636 | save.idle | en + zh-CN |
+| "Skip to main content" | review.html:2623 | skipLink | en + zh-CN |
+```
+
+Without this section in plan.md, subagent can claim AC PASS by shipping infrastructure (i18n.ts) without integrating it (no `t()` wrappers in app.ts / review.html). STRINGS_USAGE_PLAN forces the integration scope to be explicit.
+
 Return value to lead: `{ plan_path: ".omo/round-N/plan.md", ac_count: <N>, estimated_files: <N> }`.
 ```
 
@@ -303,6 +331,17 @@ TASK: Execute this plan.
 PLAN: `.omo/round-N/plan.md`
 ROUND: <round number>
 WORKTREE: per the SKILL.md "worktree path" note. Default: `mkdir -p $HOME/.worktrees && git worktree add $HOME/.worktrees/team-dev-loop-round-<N> -b team-dev-loop-round-<N>-<short-slug>`. The `$HOME` env var works on macOS, Linux, WSL — fixes the Round 3 `/Users/yangweibin/...` portability bug. **Commit strategy** (also per SKILL.md): use worktree for `feature` / `architecture` profiles, commit direct to `main` for `bugfix` profile (small fixes don't need isolation).
+
+**MANDATORY WORKDIR VERIFICATION** (NEW R19 retro SG.R19.4): Before any `git add` / `git commit`, lead-direct verifies you are in the worktree, NOT in main:
+
+```bash
+cd "$HOME/.worktrees/team-dev-loop-round-<N>" || { echo "WORKTREE_MISSING"; exit 1; }
+pwd
+git rev-parse --abbrev-ref HEAD  # must show team-dev-loop-round-N-*
+git status --short  # must be empty (clean worktree)
+```
+
+R19 evidence: Dev subagent accidentally committed initial Commit 1 to MAIN instead of the worktree due to workdir mis-pinning, requiring `git reset --hard HEAD~1` on main + redo. This workdir-verification step prevents that class of error.
 
 CONTEXT:
 <full content of .omo/round-N/brief.md>

@@ -105,3 +105,17 @@ Lead writes brief note in `.omo/round-N/decision.md` ## Phase 2.5 Audit section:
 - **R8 TDZ defense**: Lead runs the check before declaring round PASS (closes the gap where Dev self-check is unreliable)
 
 This is the v5 response to Metis audit M-070 (cross-cutting: emergency-abort for closure).
+
+## 6. Post-merge rebuild (NEW R18 retro SG.R19.1 — macOS-safe build location)
+
+**Why** (R18 retro): Phase 2.5 audit builds dist/ for verification. The build target matters: if Dev subagent built in the worktree, the worktree's `dist/` is fresh, but `main` worktree's `dist/` (where the mock-server serves from in Phase 3c Playwright) is stale until re-built. R19 walked into this exact trap — Phase 3c mock-server served a 7-day-old `dist/ui/app.js` (Jun 25 timestamp), causing all R19 features to appear "missing" in the walkthrough until lead rebuilt in main.
+
+**Rule** (mandatory, SG.R19.1):
+
+```bash
+# After `git merge --no-ff` (Phase 2.6) AND BEFORE Phase 3c Playwright walkthrough:
+cd <main worktree>          # NOT the dev worktree
+bun run build                # rebuild dist in main so mock-server serves fresh artifacts
+```
+
+If audit built in worktree AND Phase 3c Playwright is enabled: rebuild in main between merge and walkthrough. Lead-direct inline step, no subagent.

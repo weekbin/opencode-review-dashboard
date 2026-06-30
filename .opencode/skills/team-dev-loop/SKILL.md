@@ -5,7 +5,7 @@ description: "v5.3.5+1 cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+
 
 # /team-dev-loop Command (v5)
 
-> **Last Updated**: 2026-06-30 (v5.3.5+1: R16 closure follow-up patches — 4 NEW gap fixes: SG.17 append-only proposals.jsonl pattern + SG.18 combine PM Triage+Researcher into single subagent + SG.19 single-commit bilingual docs batch + SG.20 Phase 3c Playwright minimum). Built on v5.3.5 (commit `98b36b1` — R16 retro SG.13-SG.16) + v5.3.4+ (`350efba`) + v5.3.4 (`43a44ba` + `ca01e97`) + v5.3.3 (`c3a6aea`) + v5.3.2 (`42ba5aa`) + v5.3 (`657a064`). v5.3.5+1 total: 39 retroactive skill patches cumulative across R12-R16 retros + R16 closure follow-up.)
+> **Last Updated**: 2026-06-30 (v5.3.6 R19 retro follow-up: 8 NEW gap fixes — SG.R19.1 Phase 2.5 build location + SG.R19.2 macOS setsid + SG.R19.3 STRINGS_USAGE_PLAN + SG.R19.4 Dev workdir verify + SG.R19.5 Playwright as Gap #14 + SG.R19.6/.7 consolidations + SG.R19.8 End-of-round mandatory gap-fix). Built on v5.3.5+1 (commit `74ee9a0` — R16 closure SG.17-SG.20) + v5.3.5 (`98b36b1`) + v5.3.4+ (`350efba`) + v5.3.4 (`43a44ba` + `ca01e97`) + v5.3.3 (`c3a6aea`) + v5.3.2 (`42ba5aa`) + v5.3 (`657a064`). v5.3.6 total: 47 retroactive skill patches cumulative across R12-R19 retros.
 > **Status**: R16+ will run on v5.3.4+. R13-R15 ran on v5.3 + v5.3.2 + v5.3.3. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
 > **Migration from v2**: see `## Migration v2 → v5` section below.
 > **Status**: R16+ will run on v5.3.4. R13-R15 ran on v5.3 + v5.3.2 + v5.3.3. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
@@ -197,6 +197,21 @@ For each round `N` (v5 cron-style):
 
 **R12 retro evidence**: I caught the Phase 2.5 Audit drift via verification (claim "31" vs actual 30). User explicitly OK'd the fix. Future rounds should make this verification systematic, not just on Audit phase.
 
+## Phase 3c Playwright as Gap #14 verification layer for UI features (NEW R19 retro SG.R19.5 — APPLIED)
+
+**Why** (R19 retro): Dev subagent shipped i18n infrastructure (182 LOC, 30+ STRINGS keys) for AC1.2 language toggle. Dev's 15/15 unit tests in `i18n.test.ts` all passed because they test the `translate(key, lang)` helper in isolation. **But the integration was broken** — only 2 of 30+ UI strings wrapped in `t()` calls. AC1.2 was PARTIAL until Phase 3c Playwright walkthrough caught it (toolbar labels didn't change on toggle click). Unit-test-only verification missed the integration gap.
+
+**Hard rule** (R19 retro SG.R19.5): For UI-feature rounds (anything that changes text, role, layout, or visible DOM in `review.html` / `app.ts`), **Phase 3c Playwright walkthrough IS the Gap #14 verification layer**. Static analysis + unit tests + integration tests are insufficient. Walkthrough must:
+
+1. **Toggle / click / interact** the feature (don't just check "page loaded")
+2. **Verify DOM changed** in expected way (read state, not just check no console errors)
+3. **Re-test language persistence** for i18n features (toggle, reload, verify persisted)
+4. **Compare before/after screenshots** if visual change claimed
+
+Per `R14 retro SG.5`: walkthrough can be quota-overridden only when user signals quota exhaustion explicitly + all 4 test gates pass + Dev self-check has been lead-verified. For UI features, "no console errors" is NOT sufficient to claim SHIP.
+
+**R19 evidence**: AC1.2 caught by walking through the language toggle and observing `Unified` stayed `Unified` (not `统一`) after clicking the toggle button. Dev's unit tests passed because they only tested the helper function. Static-source checks (`grep "t(" src/`) showed only 2 hits — Phase 3c walkthrough closed the gap.
+
 ## Open considerations (R12 retro noted, NOT yet patches — v5.3+)
 
 - **PMC Researcher's force-review mode** (R12 retro SPG.1 related): when Researcher verdict is REVIEW_NEEDED with ≥1 MISCHARACTERIZED, lead MAY escalate to user OR auto-downgrade the candidate instead of letting Planner proceed. Currently Planner proceeds with citation-level findings in risk register.
@@ -374,8 +389,8 @@ pkill -9 -f "chrome" 2>/dev/null || true
 bun run build
 
 # Step 3: start mock-server on unique port (8890 to avoid conflict)
-# IMPORTANT: use `setsid + nohup` for proper detachment
-nohup setsid python3 scripts/test-review-ui/mock-server.py 8890 \
+# IMPORTANT: use `nohup ... & disown` for proper detachment (R18 retro SG.R19.2: setsid is Linux-only; macOS lacks it)
+nohup python3 scripts/test-review-ui/mock-server.py 8890 \
   > /tmp/r{N}-mock.log 2>&1 < /dev/null & disown
 sleep 3
 curl -s -m 5 http://127.0.0.1:8890/health  # → "ok"
@@ -398,7 +413,7 @@ playwright-cli screenshot --filename docs/screenshots/r{N}-{name}.png
 ```
 
 **Critical patterns**:
-- Use `nohup setsid command & disown` for background mock-server (proper detachment)
+- Use `nohup command & disown` for background mock-server (proper detachment on macOS + Linux; R18 retro SG.R19.2: removed `setsid` which is Linux-only)
 - `playwright-cli press` (not `press_key` — the latter shows help)
 - For tab switching: `playwright-cli eval "() => document.querySelectorAll('[role=tab]')[N].click()"` (works when click ref hangs)
 - For keyboard events: `playwright-cli press 'Control+p'` (matches Playwright keyboard syntax)
@@ -423,7 +438,7 @@ playwright-cli screenshot --filename docs/screenshots/r{N}-{name}.png
 **R+ retro 6 step workflow summary** (cheat sheet):
 1. Pre-cleanup: `pkill mock-server` if any (do this BEFORE starting mock-server, not after)
 2. Build: `bun run build`
-3. Mock-server: `nohup setsid python3 scripts/test-review-ui/mock-server.py 8890 & disown`
+3. Mock-server: `nohup python3 scripts/test-review-ui/mock-server.py 8890 & disown` (R18 retro SG.R19.2: removed Linux-only `setsid`)
 4. Pre-warm: `playwright-cli open http://127.0.0.1:8890/review/test?token=test`
 5. Walkthrough: `playwright-cli screenshot --filename docs/screenshots/r{N}-{name}.png` per feature
 6. Mock-server: leave running (dies with shell) | README + zh-CN update + commit
@@ -1667,6 +1682,45 @@ If the retro's "Skill gaps found" section is non-empty:
 4. **Record** the skill-updates commit SHAs in the next round's `brief.md` ## Skill updates section, so the lineage is traceable in `.omo/proposals.jsonl`.
 
 The recursive rule: **the loop improves the skill, the improved skill improves the loop**. Without this, "team-dev-loop" becomes just a static 7-role ceremony.
+
+## End-of-round mandatory gap-fix (NEW R+ retro SG.R19.8 — APPLIED, user's meta-requirement)
+
+**Why** (R+ user directive, 2026-06-30): "每一轮 loop 的最后,要自问,当前这轮有什么 gap 然后修复,这个是强制执行的。确保每一轮 loop 的效果都更优。这样 loop 本身的问题在收尾阶段解决,每一轮开始的关注点都在功能需求和功能缺陷上。"
+
+Translation: At the end of every loop round, lead MUST self-ask "what gaps does this round have?" and **FIX THEM** in the same round. Mandatory. Loop's own problems get solved in the tail-end phase. Each round starts with pure focus on feature requirements and feature bugs.
+
+**Why this matters** (R19 evidence): Before this rule, R19 retro surfaced 7 skill gaps + AC1.2 PARTIAL. The default behavior was "defer to R20" → next round spent time on accumulated gap-fix work instead of fresh features. After this rule, the same 8 gaps would be FIXED in-round (R19 retro would have produced 8 fix commits + 1 retro doc commit, all before the round archive).
+
+**Hard rule** (SG.R19.8, MANDATORY):
+
+After Phase 4.7 Self-check PASS and BEFORE the closure archive commit (Phase 4.8 Loop Summary chat), lead MUST execute an **End-of-Round Gap-Fix Step**:
+
+1. **Enumerate every gap** surfaced by Phase 4.5 Retro + Phase 4.6 Post-exec + Phase 4.7 Self-check:
+   - Process gaps (Failures F.1-F.N in retro)
+   - Skill gaps (SG.R19.x in retro/post-exec)
+   - Content gaps (PARTIAL ACs, follow-up items)
+   - Drift gaps (any "doc-side-file drift caught" from Phase 2.5)
+   - Backlog gates (stale candidates at boundary)
+2. **For each gap, decide fix-in-round vs defer**:
+   - **Default: fix-in-round** (per user's "强制执行")
+   - **Defer only if**: gap requires > 20 min OR depends on external sync OR is blocked by user choice
+   - **Document each decision** in `decision.md` ## End-of-round gap-fix log section with rationale
+3. **Apply fixes inline** (lead-direct or subagent per scope):
+   - Skill patches → edit SKILL.md + references/*.md
+   - Process fixes → edit phase prompts + templates
+   - Content fixes (e.g., AC1.2 PARTIAL) → lead-direct worktree + commit + merge
+4. **Re-archive retro.md** to reflect "fixed in-round" rather than "deferred to next round"
+5. **Append a one-line gap-fix entry** to `.omo/proposals.jsonl` (separate line, not bundled into the round's normal entry) with structure:
+   ```json
+   {"round": "19-gap-fix", "timestamp": "<ISO>", "fixes_applied": ["SG.R19.1", "SG.R19.2", ..., "AC1.2"], "rationale": "user meta-requirement"}
+   ```
+6. **Single git commit** named `chore(round-N-gap-fix): apply <count> in-round gap fixes (R+ SG.R19.8)` covering all gap-fix changes
+
+**Default behavior change**: This rule REVERSES the default from "defer to next round" to "fix in-round". Exceptions must be justified in the gap-fix log.
+
+**Enforcement**: Future rounds that defer gaps without justification will be flagged by Phase 4.7 Self-check as a fail (`## End-of-round gap-fix log section missing or unjustified deferrals`).
+
+**R+ evidence (R19 trial)**: AC1.2 PARTIAL fix + 7 skill patches applied in-round via R+ retro follow-up. ~30 LOC of code + ~150 LOC of doc updates, ~45 min total. Loop's quality increased; next round (R20) starts focused on fresh backlog, not R19 cleanup.
 
 ## Examples
 

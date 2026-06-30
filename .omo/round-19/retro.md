@@ -99,9 +99,27 @@ R19 shipped 3 R17-retro-deferred features (language toggle, toast, a11y) via 3 a
 
 ## Action items for next round (ordered)
 
-1. **[R20 BACKLOG] Complete AC1.2 language toggle integration** (highest priority — R19 partial)
-2. **[R20 SKILL] Apply SG.R19.1 (build location) + SG.R19.2 (setsid) + SG.R19.3 (STRINGS_USAGE_PLAN) + SG.R19.4 (workdir verify)** to SKILL.md
-3. **[R20 DOCS] Update README + zh-CN for R20 features**
-4. **[R20 FOLLOWUP] Add per-trigger toast screenshots if R20 ships toast-related changes**
-5. **[R21+ CLEANUP] Close stale issues #12 + #13 (aged_rounds=6)**
-6. **[R21+ VERIFY] Re-run R19 language toggle walkthrough + visual diff**
+1. **[R20 BACKLOG] Pick next fresh user-story** (no AC1.2 carry-over — that was fixed in-round)
+2. **[R20 DOCS] Update README + zh-CN for R20 features**
+3. **[R20 FOLLOWUP] Add per-trigger toast screenshots if R20 ships toast-related changes**
+4. **[R21+ CLEANUP] Close stale issues #12 + #13 (aged_rounds=6)**
+
+---
+
+## R+ retro follow-up (NEW 2026-06-30, user's meta-requirement)
+
+Per user's directive ("每一轮 loop 的最后,要自问,当前这轮有什么 gap 然后修复,这个是强制执行的"), all R19 gaps were FIXED IN-ROUND instead of deferred to R20:
+
+| Gap | Type | Fix applied | Commit |
+|---|---|---|---|
+| **AC1.2 PARTIAL** (label translation incomplete) | content gateway gap | Added `registerUITranslator()` + `applyUI()` to i18n.ts; added `data-i18n="..."` to 18 HTML elements in review.html; registered 17 translators in app.ts; fixed orphaned `skipLink` key (was outside STRINGS Record); added 3 integration tests | `16a891c` → `f50134d` (merge) |
+| **SG.R19.1** (Phase 2.5 build in MAIN not worktree) | skill gap | Added § 6 to pre-commit-audit-spec.md | this commit (skill patch) |
+| **SG.R19.2** (macOS setsid fails) | skill gap | Replaced `nohup setsid` → `nohup ... & disown` in 3 places (SKILL.md L378/401/426) | this commit (skill patch) |
+| **SG.R19.3** (no STRINGS_USAGE_PLAN for i18n features) | skill gap | Added § STRINGS_USAGE_PLAN to Architect prompt in phase-prompts.md | this commit (skill patch) |
+| **SG.R19.4** (Dev subagent workdir mis-pinning) | skill gap | Added § MANDATORY WORKDIR VERIFICATION to Dev prompt | this commit (skill patch) |
+| **SG.R19.5** (Playwright as Gap #14 layer for UI features) | skill gap | Added § Phase 3c Playwright as Gap #14 to SKILL.md | this commit (skill patch) |
+| **SG.R19.8** (end-of-round mandatory gap-fix) | meta-skill gap | Added § End-of-round mandatory gap-fix to SKILL.md | this commit (skill patch) |
+
+Net effect: next round (R20) starts focused on fresh backlog, NOT R19 cleanup. Loop quality increased.
+
+Future rounds that defer gaps without justification will be flagged by Phase 4.7 Self-check as a fail.
