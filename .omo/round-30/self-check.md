@@ -45,8 +45,8 @@
 - ✅ R30 entries appended (10 new lines, 116 → 126)
 
 ### SG.R19.8 — Mandatory gap-fix
-- ✅ **N/A this round** — SG.R25.1 3rd-time apply worked as designed, no R30-gap-fix needed
-- ✅ Gap prevention loop is now standard practice + AUTOMATED (3 consecutive rounds)
+- ✅ **APPLIED (R30 in-round gap-fix)** — Oracle caught post-R30 SHIP that #62 was incorrectly closed as N/A (R21 + R22 closure docs were never committed). Fixed in-round via commit 963784b (11 files added — 5 R21 + 6 R22 closure docs). Retro + self-check updated to reflect actual state.
+- ✅ SG.R19.8 protocol was VALIDATED IN-ROUND — 3rd loop improvement (SG.R25.1 + husky automation) enabled the gap detection
 
 ### SG.R20.1 — Phase 2.6 explicit 3-step
 - ✅ Step 1: merge --no-ff (52df7b1)
@@ -91,7 +91,7 @@
 | SG.R19.4 | ✓ PASS (SG.R24.1 per-Edit applied) |
 | SG.R19.5 | ✓ PASS |
 | SG.R19.6 | ✓ PASS |
-| SG.R19.8 | ✓ N/A (no gaps) |
+| SG.R19.8 | ✓ **APPLIED (R30 in-round gap-fix)** |
 | SG.R20.1 | ✓ PASS |
 | SG.R22.1 | ✓ PASS (7th application) |
 | SG.R22.2 | ✓ PASS |
