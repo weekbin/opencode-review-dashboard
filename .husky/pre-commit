@@ -1,0 +1,45 @@
+#!/bin/bash
+# Pre-commit SG.R22.1 verify gate (SG.R25.1 automation)
+# Extends R28 first-time apply + R29 second-time apply
+# This hook AUTOMATES the manual verification steps
+
+set -e
+
+echo "Running pre-commit checks..."
+
+# 1. Typecheck (R27 #55 + R29 #59)
+echo "1. Running typecheck..."
+bash scripts/typecheck.sh
+
+# 2. SG.R22.1 bilingual lockstep (pre-commit grep -c)
+# Only check if README files are in staged changes (prevents false positives on pre-existing mismatches)
+echo "2. Running SG.R22.1 bilingual lockstep check..."
+staged_readme_files=$(git diff --cached --name-only | grep -E '^README(\.zh-CN)?\.md$' || true)
+if [ -n "$staged_readme_files" ]; then
+  if [ -f README.md ] && [ -f README.zh-CN.md ]; then
+    en_sections=$(grep -c '^### ' README.md)
+    zh_sections=$(grep -c '^### ' README.zh-CN.md)
+    if [ "$en_sections" != "$zh_sections" ]; then
+      echo "BILINGUAL LOCKSTEP MISMATCH: en=$en_sections zh=$zh_sections"
+      echo "Some sections exist in one file but not the other."
+      echo "See R25 retro for fix pattern: docs(r25-zh-fix): add missing zh-CN visual sections"
+      exit 1
+    fi
+    echo "  SG.R22.1 bilingual lockstep: OK ($en_sections sections in each file)"
+  fi
+else
+  echo "  SG.R22.1 bilingual lockstep: SKIPPED (no README files staged)"
+fi
+
+# 3. Git status clean check (no uncommitted artifacts)
+echo "3. Running git status clean check..."
+if ! git diff --quiet; then
+  echo "Working tree has uncommitted changes"
+  exit 1
+fi
+if [ -n "$(git ls-files --others --exclude-standard)" ]; then
+  echo "Working tree has untracked files"
+  exit 1
+fi
+
+echo "All pre-commit checks passed!"
