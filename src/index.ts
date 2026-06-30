@@ -63,6 +63,13 @@ function isFindingResolutionKind(input: unknown): input is FindingResolutionKind
   return typeof input === "string" && RESOLUTION_KIND_WHITELIST.has(input as FindingResolutionKind);
 }
 
+type FindingAuditRow = {
+  before: Pick<Finding, "category" | "severity" | "comment">;
+  after: Pick<Finding, "category" | "severity" | "comment">;
+  at: number;
+  by: string;
+};
+
 type Finding = {
   id: string;
   round: number;
@@ -92,6 +99,7 @@ type Finding = {
   resolved_at?: number;
   resolution_kind?: FindingResolutionKind;
   resolution_reason?: string;
+  audit_log?: FindingAuditRow[];
 };
 
 type DraftFinding = {
@@ -1553,6 +1561,12 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
             '   - Treat `resolution_kind: "wontfix"` / `"out_of_scope"` as a hard skip: do NOT apply a fix, do NOT re-open, and do NOT `add_review_comment` proposing an action. The user has explicitly de-scoped the finding.',
             '   - Treat `resolution_kind: "false_positive"` as: do NOT re-open, but if a similar-looking issue appears in a new location, prefer to call `add_review_comment` linking back to the original false-positive (e.g. `related to F-007 (false positive on 2026-06-30): <brief rationale>`) rather than filing a fresh finding.',
             '   - Treat `resolution_kind: "duplicate"` as: do NOT re-open. If you encounter the same root cause in a new location, reference the original finding id (in `resolution_reason` if provided) when you comment on the new occurrence.',
+            "1e. **Audit-trail findings (R15 honor directive)**:",
+            "   If `state.json`'s `findings[]` contains any entry with `audit_log` (an array of `{ before, after, at, by }` rows, R15 #28), each prior version of the finding is preserved when it was edited.",
+            "   Honor directive:",
+            "   - The most recent `audit_log` entry is the user's current intent. Use the `after` state as your source of truth for category, severity, and comment.",
+            "   - Do NOT re-derive these fields from your prior fix attempts — the user's edits are authoritative.",
+            "   - The `comments[]` thread may also contain `Edited by user` entries; these are cosmetic summaries. The `audit_log` is the structural record.",
             "2. **Round Summary (must print AFTER reading history, before any tool calls or edits)**:",
             "   Once you have read state.json, ALWAYS print a short human-readable summary in this exact shape:",
             "   ```",
@@ -2129,6 +2143,11 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                     headers: { "content-type": "application/json" },
                   });
                 }
+                const before: Pick<Finding, "category" | "severity" | "comment"> = {
+                  category: target.category,
+                  severity: target.severity,
+                  comment: target.comment,
+                };
                 const changes: string[] = [];
                 if (hasCategory && input.category !== target.category) {
                   changes.push(`category ${target.category}→${input.category}`);
@@ -2141,6 +2160,20 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                 if (hasComment && input.comment !== target.comment) {
                   changes.push("comment updated");
                   target.comment = input.comment as string;
+                }
+                if (changes.length > 0) {
+                  target.audit_log = target.audit_log ?? [];
+                  target.audit_log.push({
+                    before,
+                    after: {
+                      category: target.category,
+                      severity: target.severity,
+                      comment: target.comment,
+                    },
+                    at: Date.now(),
+                    by: "user",
+                  });
+                  if (target.audit_log.length > 10) target.audit_log = target.audit_log.slice(-10);
                 }
                 target.manually_edited = true;
                 target.edited_at = Date.now();

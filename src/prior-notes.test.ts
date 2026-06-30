@@ -224,6 +224,7 @@ describe("AC9 — State + Finding type shapes are unchanged", () => {
       "  resolved_at?: number;",
       "  resolution_kind?: FindingResolutionKind;",
       "  resolution_reason?: string;",
+      "  audit_log?: FindingAuditRow[];",
       "};",
     ].join("\n");
 
