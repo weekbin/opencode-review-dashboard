@@ -19,7 +19,7 @@ import {
 // R20 #40: sidebar review progress (X / Y reviewed + visual bar).
 import { formatReviewProgress } from "./review-progress";
 // R20 #42: in-diff search history (recent searches dropdown).
-import { addRecentSearch, getRecentSearches } from "./search-history";
+import { addRecentSearch, commitRecentSearch, commitRecentSearchImmediate, cancelPendingCommit, getRecentSearches } from "./search-history";
 
 type Category = "bug" | "style" | "perf" | "question" | "recommend";
 type Severity = "high" | "medium" | "low";
@@ -878,10 +878,14 @@ function openDiffSearch(initialQuery: string | null = null): void {
     diffSearch.matchElements = findMatchesInDiff(q);
     diffSearch.currentIndex = diffSearch.matchElements.length > 0 ? 0 : -1;
     updateDiffSearchCounter();
-    // R20 #42: every successful (non-empty) query goes into the
-    // recent-searches MRU list. Empty queries early-return above.
-    addRecentSearch(q);
+    // R21 #43: debounced commit — 300ms quiet window; Enter path uses
+    // commitRecentSearchImmediate() instead (see keydown handler below).
+    commitRecentSearch(q);
   };
+
+  window.addEventListener("beforeunload", () => {
+    cancelPendingCommit();
+  });
 
   if (diffSearch.input) {
     installImeSafeInputListener(diffSearch.input, () => runSearch());
@@ -894,6 +898,9 @@ function openDiffSearch(initialQuery: string | null = null): void {
     } else if (e.key === "Enter") {
       e.preventDefault();
       if (diffSearch.matchElements.length === 0) return;
+      // R21 #43: cancel any pending debounce and commit immediately.
+      cancelPendingCommit();
+      commitRecentSearchImmediate(diffSearch.query ?? "");
       jumpToDiffSearchMatch(diffSearch.currentIndex + (e.shiftKey ? -1 : 1));
     }
   });
