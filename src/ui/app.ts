@@ -139,12 +139,19 @@ type View = {
 type ThemeMode = "light" | "dark" | "auto";
 type DiffLayout = "unified" | "split";
 type SidebarMode = "tree" | "flat";
+// R14 #23: sort findings in the Conversation panel. 4 options; default "newest"
+// (round DESC, created_at ASC) matches the pre-R14 chronological behavior.
+type SortFindingsBy = "newest" | "oldest" | "severity" | "file";
 const SIDEBAR_KEY = "diff-review:sidebar-mode";
 const SIDEBAR_WIDTH_KEY = "diff-review:sidebar-width";
 const THEME_KEY = "diff-review:theme-mode";
 const LAYOUT_KEY = "diff-review:diff-layout";
 const CONV_FILTER_KEY = "diff-review:conversation-filter";
 const ACTIVE_TAB_KEY = "diff-review:active-tab";
+// R14 #23: localStorage key for the Conversation-panel sort dropdown.
+// localStorage (not sessionStorage) so the choice survives a page reload,
+// matching the conversationFilter pattern.
+const SORT_FINDINGS_KEY = "diff-review:sort-findings-by";
 
 function readStored<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   try {
@@ -426,6 +433,49 @@ function getSortedFindings(): SortedFinding[] {
     );
   }
   return [...filtered].sort((a, b) => {
+    if (a.round !== b.round) return b.round - a.round;
+    return a.created_at - b.created_at;
+  });
+}
+
+// R14 #23: pure client-side sort reducer for the Conversation panel.
+// 4 modes: "newest" (default, preserves pre-R14 chronological order),
+// "oldest" (reverse of newest), "severity" (high→low, then newest tie-break),
+// "file" (file path A–Z case-insensitive, then line, then newest tie-break).
+// Exported via __test for unit tests; safe to call with an empty array.
+const SEVERITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
+
+function sortConversationEntries<T extends ConversationEntry>(
+  entries: T[],
+  by: SortFindingsBy,
+): T[] {
+  if (by === "newest") {
+    return [...entries].sort((a, b) => {
+      if (a.round !== b.round) return b.round - a.round;
+      return a.created_at - b.created_at;
+    });
+  }
+  if (by === "oldest") {
+    return [...entries].sort((a, b) => {
+      if (a.round !== b.round) return a.round - b.round;
+      return a.created_at - b.created_at;
+    });
+  }
+  if (by === "severity") {
+    return [...entries].sort((a, b) => {
+      const sa = SEVERITY_RANK[a.severity] ?? 99;
+      const sb = SEVERITY_RANK[b.severity] ?? 99;
+      if (sa !== sb) return sa - sb;
+      if (a.round !== b.round) return b.round - a.round;
+      return a.created_at - b.created_at;
+    });
+  }
+  // "file" — case-insensitive A–Z by file path, then start_line, then round DESC.
+  return [...entries].sort((a, b) => {
+    const fa = a.file.toLowerCase();
+    const fb = b.file.toLowerCase();
+    if (fa !== fb) return fa.localeCompare(fb);
+    if (a.start_line !== b.start_line) return a.start_line - b.start_line;
     if (a.round !== b.round) return b.round - a.round;
     return a.created_at - b.created_at;
   });
@@ -1051,6 +1101,13 @@ const state = {
     ["open", "resolved", "all", "pinned", "reacted"],
     "open",
   ),
+  // R14 #23: sort the Conversation panel — 4 modes; default = "newest"
+  // (round DESC, created_at ASC) preserves the pre-R14 chronological order.
+  sortFindingsBy: readStored<SortFindingsBy>(
+    SORT_FINDINGS_KEY,
+    ["newest", "oldest", "severity", "file"],
+    "newest",
+  ),
   priorNotes: [] as Array<{ round: number; notes: string }>,
   priorNotesLoaded: false,
   drawerOpen: false,
@@ -1252,6 +1309,36 @@ if (conversationFilter) {
       | "reacted"
       | undefined;
     if (filter) setConversationFilter(filter);
+  });
+}
+
+// ── R14 #23: sort findings in the Conversation panel ──
+// Sticky per-session via localStorage. The sort is a pure client-side
+// reducer over state.existing + state.fresh — no network call, mirrors
+// filterByQuery semantics (compose, don't reset search).
+function setSortFindingsBy(sort: SortFindingsBy) {
+  if (state.sortFindingsBy === sort) return;
+  state.sortFindingsBy = sort;
+  writeStored(SORT_FINDINGS_KEY, sort);
+  applySortFindingsBy();
+  if (state.activeTab === "conversation") {
+    // Re-render only the active pane; cheaper than renderActivePane().
+    renderConversationPane();
+  }
+}
+
+function applySortFindingsBy() {
+  const sel = document.querySelector<HTMLSelectElement>("#sort-findings");
+  if (sel && sel.value !== state.sortFindingsBy) sel.value = state.sortFindingsBy;
+}
+
+const sortFindingsSel = document.querySelector<HTMLSelectElement>("#sort-findings");
+if (sortFindingsSel) {
+  // Apply the persisted default BEFORE the user can interact.
+  sortFindingsSel.value = state.sortFindingsBy;
+  sortFindingsSel.addEventListener("change", () => {
+    const v = sortFindingsSel.value as SortFindingsBy;
+    setSortFindingsBy(v);
   });
 }
 
@@ -2958,10 +3045,10 @@ function renderConversationPanel(root: HTMLElement) {
     return;
   }
 
-  const sorted = [...searched].sort((a, b) => {
-    if (a.round !== b.round) return b.round - a.round;
-    return a.created_at - b.created_at;
-  });
+  // R14 #23: pure client-side sort reducer. No network call, composes with
+  // the existing filterByQuery. Default "newest" = round DESC, created_at ASC
+  // (preserves pre-R14 chronological behavior).
+  const sorted = sortConversationEntries(searched, state.sortFindingsBy);
 
   for (const entry of sorted) {
     const item = document.createElement("div");
@@ -4566,3 +4653,10 @@ async function init() {
 }
 
 init();
+
+// R14 #23: unit-test export of pure helpers. Keeps them off the global
+// namespace while still allowing bun test src/ to drive them.
+export const __test = {
+  sortConversationEntries,
+  sortConversationEntries_severityRank: SEVERITY_RANK,
+};

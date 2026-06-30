@@ -525,6 +525,35 @@
         text-transform: none;
         letter-spacing: 0;
       }
+      /* R14 #23: sort-findings dropdown in the Conversation panel toolbar */
+      .sort-findings-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-left: 12px;
+        font-size: 12px;
+        color: light-dark(#555, #aaa);
+        text-transform: none;
+        letter-spacing: 0;
+        cursor: pointer;
+      }
+      .sort-findings {
+        font-size: 12px;
+        font-family: inherit;
+        padding: 4px 6px;
+        border: 1px solid light-dark(#d0d7de, #30363d);
+        border-radius: 4px;
+        background: light-dark(#fff, #1a1f24);
+        color: inherit;
+        cursor: pointer;
+      }
+      .sort-findings:hover {
+        border-color: light-dark(#888, #58a6ff);
+      }
+      .sort-findings:focus-visible {
+        outline: 2px solid light-dark(#0969da, #58a6ff);
+        outline-offset: 1px;
+      }
       /* R8 #1: in-tab search input rendered at the top of each pane */
       .search-input {
         width: 100%;
@@ -2369,6 +2398,19 @@
               😀 Reacted <span class="filter-count" data-count-for="reacted">0</span>
             </button>
           </div>
+          <label class="sort-findings-label" for="sort-findings">
+            ★ Sort
+            <select
+              id="sort-findings"
+              class="sort-findings"
+              title="Sort findings in this Conversation panel"
+            >
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="severity">Severity (high → low)</option>
+              <option value="file">File path (A–Z)</option>
+            </select>
+          </label>
         </div>
         <div class="conversation-list" id="conversation-list"></div>
       </div>
