@@ -369,7 +369,8 @@
         display: none;
       }
       .pane-commits,
-      .pane-conversation {
+      .pane-conversation,
+      .pane-previously {
         flex-direction: column;
         padding: 32px 0;
       }
@@ -737,6 +738,194 @@
       .filter-previously-by-round:focus-visible {
         outline: 2px solid light-dark(#0969da, #58a6ff);
         outline-offset: 1px;
+      }
+      /* ── R36 #69: Previously discussed tab layout (aligns with commits/conversation style) ── */
+      .pane-previously .pane-toolbar {
+        justify-content: space-between;
+      }
+      .pane-title {
+        font-size: 13px;
+        font-weight: 500;
+        color: light-dark(#555, #aaa);
+        flex: 1;
+        min-width: 0;
+        margin-right: 12px;
+      }
+      .previously-list {
+        max-width: 720px;
+        width: 100%;
+        margin: 0 auto;
+        padding: 0 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      @media (min-width: 1200px) {
+        .previously-list {
+          max-width: none;
+          padding: 0 240px;
+        }
+      }
+      .previously-panel-hint {
+        margin: 0;
+        padding: 12px 16px;
+        font-size: 13px;
+        line-height: 1.5;
+        color: light-dark(#444, #aaa);
+        background: light-dark(#eef4fc, #182030);
+        border: 1px solid light-dark(#d4e3f5, #2a3a55);
+        border-radius: var(--radius);
+      }
+      .previously-empty {
+        padding: 40px 20px;
+        text-align: center;
+        color: light-dark(#888, #888);
+        font-size: 14px;
+      }
+      .previously-round {
+        border: 1px solid light-dark(#e0e0e0, #222);
+        border-radius: var(--radius);
+        background: light-dark(#fff, #111);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .previously-round-header {
+        padding: 14px 18px;
+        background: light-dark(#fafafa, #161616);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .previously-round-badge {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 3px 10px;
+        border-radius: 3px;
+        background: light-dark(#1d5a96, #95c1e8);
+        color: #fff;
+        flex-shrink: 0;
+      }
+      .previously-round-counts {
+        font-size: 13px;
+        color: light-dark(#666, #888);
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .previously-notes {
+        padding: 14px 18px;
+        border-top: 1px solid light-dark(#f0f0f0, #1e1e1e);
+        background: light-dark(#fff, #111);
+      }
+      .previously-notes-label {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        font-weight: 600;
+        color: light-dark(#666, #888);
+        margin-bottom: 6px;
+      }
+      .previously-notes-text {
+        font-size: 14px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        color: light-dark(#333, #ccc);
+      }
+      .previously-notes-empty {
+        color: light-dark(#888, #888);
+        font-style: italic;
+        font-size: 13px;
+        padding: 12px 18px;
+        border-top: 1px solid light-dark(#f0f0f0, #1e1e1e);
+        background: light-dark(#fff, #111);
+      }
+      .previously-findings-header {
+        padding: 12px 18px 8px;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        font-weight: 600;
+        color: light-dark(#666, #888);
+        border-top: 1px solid light-dark(#f0f0f0, #1e1e1e);
+        background: light-dark(#fff, #111);
+      }
+      .previously-finding {
+        margin: 0 18px 12px;
+        padding: 12px 14px;
+        font-size: 14px;
+        border: 1px solid light-dark(#e0e0e0, #222);
+        border-left: 3px solid light-dark(#4a90e2, #4a90e2);
+        border-radius: var(--radius);
+        background: light-dark(#fff, #111);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .previously-finding[data-status="resolved"] {
+        border-left-color: light-dark(#2ea043, #2ea043);
+        opacity: 0.55;
+      }
+      .previously-finding[data-status="closed_auto"] {
+        border-left-color: light-dark(#d29922, #d29922);
+      }
+      .previously-finding-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+      }
+      .previously-finding-file {
+        font-family:
+          ui-monospace, "SF Mono", Monaco, "Cascadia Mono", "Roboto Mono", Consolas, monospace;
+        font-size: 14px;
+        color: light-dark(#1d5a96, #95c1e8);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-weight: 500;
+        flex: 1;
+        min-width: 0;
+      }
+      .previously-finding-body {
+        line-height: 1.6;
+        word-wrap: break-word;
+        white-space: pre-wrap;
+        color: light-dark(#333, #ccc);
+      }
+      .previously-thread {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding-top: 10px;
+        border-top: 1px solid light-dark(#f0f0f0, #1e1e1e);
+      }
+      .previously-comment {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 10px 12px;
+        border-radius: var(--radius);
+        background: light-dark(#f7f8fa, #1a1a1a);
+        border: 1px solid light-dark(#e8e8e8, #2a2a2a);
+      }
+      .previously-comment-meta {
+        font-size: 12px;
+        color: light-dark(#666, #999);
+        font-weight: 600;
+      }
+      .previously-comment-text {
+        font-size: 14px;
+        line-height: 1.5;
+        word-wrap: break-word;
+        white-space: pre-wrap;
+        color: light-dark(#333, #ccc);
       }
       /* R8 #1: in-tab search input rendered at the top of each pane */
       .search-input {
