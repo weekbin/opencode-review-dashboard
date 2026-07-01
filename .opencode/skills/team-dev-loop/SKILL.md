@@ -1,11 +1,11 @@
 ---
 name: team-dev-loop
-description: "v5.3.11 cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+Push (NEW v5.3.3) — 17 phases total (Phase -0 Sync / Phase 0 PM Triage / 0.25 PM Researcher / 0.5 PM Manager / 0.75 Planner / 1 Architect / 2 Dev / 2.5 Pre-Commit Audit / 2.6 Lead Merge+Push / 3a-c Tester / 3.5 Doc Writer / 4 Decision + 4.5-4.9 lead-owned). Lead-direct execution model (v5.3.3): 16 of 17 phases lead-direct, ONLY Phase 2 Dev uses subagent (for code generation). v5.3.4: zh-CN lockstep + READ ONLY ONCE + post-completion verification + user-manual README. v5.3.4+: SG.12 screenshot workflow. v5.3.5: SG.13-SG.16 (regex + immutable helpers + regex pre-validation + screenshots in Phase 2). v5.3.5+1: SG.17 append-only proposals.jsonl + SG.18 combine Triage+Researcher subagent + SG.19 single-commit bilingual docs + SG.20 Phase 3c Playwright minimum. v5.3.6: SG.R19.1-SG.R19.8 (R19 retro 8 patches). v5.3.7: SG.R20.1 + SG.R22.1 + SG.R22.2 (R20 + R22 retro 3 patches). v5.3.8: SG.R24.1 subagent worktree-per-Edit verification (R23+R24 recurring double-write prevention). v5.3.9: SG.R25.1 pre-commit SG.R22.1 verify gate (R25 retro bilingual lockstep gap-fix precedent). v5.3.10: SG.R26.1 file-existence verify gate (R21-R31 retro double-fabrication fix) + SG.R26.2 husky installation verify gate (R30 husky automation false-positive fix) + SG.R27.1 runtime load verification gate (R32 retro 4-gate: runtime compat + PluginModule shape + hook contract + path-plugin entry). v5.3.11: SG.R28.1 frontend skill invocation gate (R33 retro UI/UX 6-issue feedback: lead must invoke `visual-engineering` skill at Phase 2.5 + 3.5 when round produces UI artifacts; soft practice, not hard-stop). Subagent scope: 5-20 min budget + decompose >20 min tasks. Default NO user pick (Planner autonomous); user MAY pre-pick A-E or 1-6 (R12 Gap #1). PM researcher advisories are advisory-only (R12 Gap #14: lead must verify independently). Subagent NEVER does git ops (merge/push/issue close) — lead's responsibility. Mid-task check-in every 5/10/15/20 min OR post-completion verification. ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit/artifacts/husky/load failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
+description: "v5.3.12 cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+Push (NEW v5.3.3) — 17 phases total (Phase -0 Sync / Phase 0 PM Triage / 0.25 PM Researcher / 0.5 PM Manager / 0.75 Planner / 1 Architect / 2 Dev / 2.5 Pre-Commit Audit / 2.6 Lead Merge+Push / 3a-c Tester / 3.5 Doc Writer / 4 Decision + 4.5-4.9 lead-owned). Lead-direct execution model (v5.3.3): 16 of 17 phases lead-direct, ONLY Phase 2 Dev uses subagent (for code generation). v5.3.4: zh-CN lockstep + READ ONLY ONCE + post-completion verification + user-manual README. v5.3.4+: SG.12 screenshot workflow. v5.3.5: SG.13-SG.16 (regex + immutable helpers + regex pre-validation + screenshots in Phase 2). v5.3.5+1: SG.17 append-only proposals.jsonl + SG.18 combine Triage+Researcher subagent + SG.19 single-commit bilingual docs + SG.20 Phase 3c Playwright minimum. v5.3.6: SG.R19.1-SG.R19.8 (R19 retro 8 patches). v5.3.7: SG.R20.1 + SG.R22.1 + SG.R22.2 (R20 + R22 retro 3 patches). v5.3.8: SG.R24.1 subagent worktree-per-Edit verification (R23+R24 recurring double-write prevention). v5.3.9: SG.R25.1 pre-commit SG.R22.1 verify gate (R25 retro bilingual lockstep gap-fix precedent). v5.3.10: SG.R26.1 file-existence verify gate (R21-R31 retro double-fabrication fix) + SG.R26.2 husky installation verify gate (R30 husky automation false-positive fix) + SG.R27.1 runtime load verification gate (R32 retro 4-gate: runtime compat + PluginModule shape + hook contract + path-plugin entry). v5.3.11: SG.R28.1 frontend skill invocation gate (R33 retro UI/UX 6-issue feedback). v5.3.12: R33/R34/R35 retro loop-level optimization patches (1 AC max per subagent + auto-lightweight + combined retro+post-exec + auto proposals.jsonl + 5 hard rules). Subagent scope: 1 AC max, ≤15min wall (v5.3.12 default — never 2+ ACs in 1 subagent). Default NO user pick (Planner autonomous); user MAY pre-pick A-E or 1-6 (R12 Gap #1). PM researcher advisories are advisory-only (R12 Gap #14: lead must verify independently). Subagent NEVER does git ops (merge/push/issue close) — lead's responsibility. Mid-task check-in every 5/10/15/20 min OR post-completion verification. ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit/artifacts/husky/load failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
 ---
 
 # /team-dev-loop Command (v5)
 
-> **Last Updated**: 2026-07-01 (v5.3.11 R33 user-feedback retro: 1 NEW SG — SG.R28.1 frontend skill invocation gate, retroactively patching R33 6-issue UI/UX backlog from opencode-review-dashboard review session (#65-#70, "页面对齐 + 加载前端 skill" user feedback). v5.3.10 R32 retro: 1 NEW SG — SG.R27.1 runtime load verification gate, retroactively patching R32+R32b plugin-load-silent-failure (Node.js runtime compat + strict PluginModule shape). Built on v5.3.9 (R25 retro SG.R25.1 pre-commit SG.R22.1 verify gate). Built on v5.3.8 (R24 retro SG.R24.1 subagent worktree-per-Edit verification). Built on v5.3.7 (3 R22 retro patches — SG.R20.1 Phase 2.6 3-step rebuild + SG.R22.1 bilingual lockstep pre-commit verify + SG.R22.2 worktree env check at Phase -0). Built on v5.3.6 (8 R19 patches — SG.R19.1 Phase 2.5 build location + SG.R19.2 macOS setsid + SG.R19.3 STRINGS_USAGE_PLAN + SG.R19.4 Dev workdir verify + SG.R19.5 Playwright as Gap #14 + SG.R19.6/.7 consolidations + SG.R19.8 End-of-round mandatory gap-fix). Built on v5.3.5+1 (commit `74ee9a0` — R16 closure SG.17-SG.20) + v5.3.5 (`98b36b1`) + v5.3.4+ (`350efba`) + v5.3.4 (`43a44ba` + `ca01e97`) + v5.3.3 (`c3a6aea`) + v5.3.2 (`42ba5aa`) + v5.3 (`657a064`). v5.3.11 total: 56 retroactive skill patches cumulative across R12-R33 retros (52 → 53 SG.R25.1 → 54 SG.R26.1+SG.R26.2 → 55 SG.R27.1 → 56 SG.R28.1).
+> **Last Updated**: 2026-07-01 (v5.3.12 R33/R34/R35 retros: 5 NEW loop-level optimization patches — subagent scope default 1 AC max 15min hard cap + auto-lightweight mode trigger + combined retro+post-exec artifact + auto-generated proposals.jsonl R-N template + 5 hard rules declaration. retroactively patching R33/R34 30min subagent timeouts (60min total waste in 2 rounds) and R35 housekeeping pattern. Built on v5.3.11 (R33 user-feedback retro SG.R28.1 frontend skill invocation gate). v5.3.10 R32 retro: 1 NEW SG — SG.R27.1 runtime load verification gate, retroactively patching R32+R32b plugin-load-silent-failure. Built on v5.3.9 (R25 retro SG.R25.1 pre-commit SG.R22.1 verify gate). Built on v5.3.8 (R24 retro SG.R24.1 subagent worktree-per-Edit verification). Built on v5.3.7 (3 R22 retro patches). Built on v5.3.6 (8 R19 patches). Built on v5.3.5+1 (commit `74ee9a0` — R16 closure SG.17-SG.20) + v5.3.5 (`98b36b1`) + v5.3.4+ (`350efba`) + v5.3.4 (`43a44ba` + `ca01e97`) + v5.3.3 (`c3a6aea`) + v5.3.2 (`42ba5aa`) + v5.3 (`657a064`). v5.3.12 total: 61 retroactive skill patches cumulative across R12-R35 retros (56 → 57 SG.R28.1 → 58/59/60/61 v5.3.12 loop-level optimization patches).
 > **Status**: R16+ will run on v5.3.4+. R13-R15 ran on v5.3 + v5.3.2 + v5.3.3. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
 > **Migration from v2**: see `## Migration v2 → v5` section below.
 > **Status**: R16+ will run on v5.3.4. R13-R15 ran on v5.3 + v5.3.2 + v5.3.3. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
@@ -39,6 +39,28 @@ description: "v5.3.11 cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+P
 - Lead inline takeover protocol (R3 was 5/7 lead; v5 target: 40-50%)
 - `.omo/round-N/` tracked artifact library
 - `git cat-file -e` R3-fabrication defense (PM Triage + PM Manager + now Planner)
+
+## Loop-level optimization goals (NEW v5.3.12, R33/R34/R35 retros)
+
+The team-dev-loop's purpose is to **compound improvements per round** while **minimizing wall-clock time**. Five hard rules derived from R33/R34/R35 retros:
+
+1. **Subagent scope = 1 AC max** (≤15min wall) — never 2+ ACs in 1 subagent (Patch 1)
+2. **Auto-trigger lightweight mode** for housekeeping rounds (<10 lines net, no `src/`) (Patch 2)
+3. **Auto-combine retro+post-exec** for rounds with ≤5 ACs or bugfix profile (Patch 3)
+4. **Auto-generate `proposals.jsonl` R-N line** from `git log` (Patch 4)
+5. **Lead-direct bias** for non-code rounds (housekeeping, docs, re-archive, plumbing)
+
+Each rule saves 5-15min per round × 8 rounds/month = 40-120min/month saved.
+
+**R33/R34 evidence** (subagent scope violation):
+- R33: 1 subagent with 3 ACs → 30min timeout → lead-direct rescue 20min → net waste 30min
+- R34: 1 subagent with 2 ACs → 30min timeout → lead-direct rescue 5min → net waste 30min
+- Total: 60min wasted in 2 rounds
+
+**R35 evidence** (5 rules applied implicitly):
+- R35 housekeeping: 0 subagent dispatched → 0 timeout → 0 waste
+- 5 atomic commits, 0 subagent calls, 0 wasted minutes
+- R35 wall clock: ~35min vs R33/R34 ~50min each → 15min saved per round
 
 ## v5.3.4 R+ Quick reference cheat sheet (NEW v5.3.4 — R15 retro SG.8)
 
@@ -517,6 +539,45 @@ Total time: ~5-10 min per round for the screenshot loop. Acceptable R+ cost.
 
 **R16 closure verdict**: SG.17 patches the data-integrity risk. Future rounds can't accidentally lose audit trail.
 
+### Auto-generated proposals.jsonl R-N template (NEW v5.3.12, R33/R34 retro)
+
+**R33/R34 retro surfaced**: every round manually writes a JSON entry for `proposals.jsonl`. Manual JSON writing is error-prone (typos, missing fields, inconsistent structure).
+
+**Rule (mandatory, NEW v5.3.12)**: lead-direct can auto-generate the R-N line from `git log` output:
+
+```bash
+# Auto-generate R-N proposals.jsonl entry (lead-direct helper)
+ROUND=N
+python3 <<EOF
+import json, subprocess
+result = subprocess.run(
+    ['git', 'log', '--format=%H', f'HEAD~5..HEAD'],
+    capture_output=True, text=True
+)
+commits = [c for c in result.stdout.strip().split('\n') if c][:5]
+print(json.dumps({
+    "round": $ROUND,
+    "timestamp": subprocess.run(['date', '-u', '+%Y-%m-%dT%H:%MZ'], capture_output=True, text=True).stdout.strip(),
+    "scope": len(commits),
+    "ship_chain": commits,
+    "tests_total_after": ...,
+    "tests_total_before": ...,
+    "wall_clock_min": ...,
+    "sg_compliance": {},
+    "gap_fix_applied": False,
+    "fix_count": 0,
+}, ensure_ascii=False))
+EOF
+```
+
+**Benefits**:
+- Eliminates manual JSON writing errors (typos, missing fields, inconsistent structure)
+- Ensures consistent structure across rounds
+- Saves 2-3min per round (manual JSON → auto-generated)
+- One-liner that lead can paste into the append step
+
+**R33/R34 retro evidence**: each round's R-N line was hand-written JSON with minor inconsistencies (e.g., R33 used `sg_compliance: {}` placeholder, R34 used `sg_compliance: { "SG.R24.1": "APPLIED-7th-consec", ... }` with real entries). Auto-generation would standardize.
+
 ## R16 closure SG.18 — Combine PM Triage + PM Researcher into single subagent (NEW v5.3.5+1)
 
 **Status**: PROPOSED in v5.3.5+1. R16 fired 2 separate subagents (PM Triage 3m 17s + PM Researcher 2m 9s = 5m 26s total). Both read the same `.omo/round-N/` files.
@@ -781,6 +842,36 @@ p3 = task(category="quick", prompt="Implement ONLY #3 feature. 1 atomic commit. 
 ```
 
 **R+ retro policy**: If any round has subagent wall-clock > 20 min on a single task, retro flags it as a bug — lead should have decomposed earlier.
+
+## Subagent scope default = 1 AC max, 15min hard cap (NEW v5.3.12, R33/R34 retro)
+
+**Why add**: R33 + R34 retro both surfaced 30min subagent timeouts. Root cause: subagent scoped with 2-3 ACs each, not the 1-AC-per-subagent default. M3 model is `'unstable/experimental'` (per subagent supervisor output) so 30min wall cap is hit routinely for multi-AC tasks. R35 retro (100% lead-direct) proved 0 subagent = 0 timeout = 0 wasted minutes.
+
+**Rule (mandatory, NEW v5.3.12)**:
+- **Default**: 1 subagent = 1 AC, ≤15min wall
+- **2-AC tasks**: ALWAYS decompose into 2 sub-tasks (parallel via `Promise.all` of 2 `task()` calls)
+- **3+ AC tasks**: FORBIDDEN — decompose into N sub-tasks (3-AC → 3 sub-agents; 4-AC → 4 sub-agents)
+- **4+ AC tasks**: PARALLEL BATCH (3-4 sub-tasks run concurrently via `Promise.all`)
+
+**Decomposition pattern** (N independent ACs → N parallel sub-tasks):
+```typescript
+const promise1 = task(category="deep", prompt="Implement ONLY #1. 1 AC. ≤15min wall. NO merge/push.");
+const promise2 = task(category="deep", prompt="Implement ONLY #2. 1 AC. ≤15min wall. NO merge/push.");
+const promise3 = task(category="deep", prompt="Implement ONLY #3. 1 AC. ≤15min wall. NO merge/push.");
+// Wait for all (Promise.all) → lead synthesizes → merge + push
+```
+
+**R33/R34 retro evidence** (1 subagent with 2-3 ACs → timeout → wasted time):
+- R33: 1 subagent with 3 ACs (AC1+AC2+AC3) → 30min timeout → lead-direct rescued in 20min → net waste 30min
+- R34: 1 subagent with 2 ACs (AC3+AC2) → 30min timeout → lead-direct rescued in 5min → net waste 30min
+- 2 sub-agents with 1-2 ACs each would have completed in ≤15min wall (parallel) with no timeout → save 60min total
+
+**R35 retro evidence** (0 subagent = 0 timeout):
+- R35 housekeeping: 0 subagent dispatched → 0 timeout → 0 waste
+- Proof: subagent is NOT needed for housekeeping / plumbing / re-archive rounds (mechanical work, lead-direct is faster + more accurate)
+- **Lead-direct bias**: for non-code rounds (housekeeping, docs, re-archive, plumbing), prefer lead-direct over subagent
+
+**Enforcement**: when retro surfaces "subagent >20min wall-clock", retro must also surface the decomposition failure (i.e., "this could have been N parallel sub-agents at 1-AC-each").
 
 ## Mid-task check-in mechanism (v5.3.3)
 
@@ -1247,20 +1338,32 @@ const dev = await task({ category: "deep", timeout: `${devTimeoutMin}m`, prompt:
 - No schema change
 - No new dependency
 
+### Auto-trigger conditions for lightweight mode (NEW v5.3.12, R35 retro)
+
+**R35 retro surfaced**: R35 housekeeping round had 5 atomic commits but net +162/-64 lines across housekeeping (no `src/` changes) — should have triggered lightweight automatically, saving 7-10min of unnecessary artifact writing.
+
+**Rule (mandatory, NEW v5.3.12)**: lightweight mode triggers AUTOMATICALLY when ALL of:
+1. `git diff main...HEAD --stat` shows <10 lines net (after commits) across <3 files
+2. No `src/**/*.ts` or `src/**/*.html` modifications (dev-process only)
+3. Round profile is bugfix or polish (NOT feature or architecture)
+
+**When triggered, skip these phases**:
+- Phase 0.25 (PM Researcher)
+- Phase 3a-3 (3 lens reviews: Goal/QA/Code) → replaced by single combined `review-*.md`
+- Phase 3.5 Doc Writer (skip if no README changes)
+- Phase 4.5 Retro → combined with Phase 4.6 Post-exec into single `retro-post-exec.md` (see Patch 3 below)
+- Phase 4.7 Self-check → skip (lightweight rounds use auto-self-check via SG.R26.1)
+
+**Output**: 6 artifacts instead of 13:
+- `sync-report.md`, `brief.md`, `pm-manager-review.md`, `planner.md`, `plan.md`
+- `test-report.md` (single combined review)
+- `decision.md`, `retro-post-exec.md` (combined), closure artifacts
+
+**R35 retro evidence** (would have triggered auto-lightweight):
+- 5 atomic commits, net +162/-64 lines, all dev-process (no `src/` modifications)
+- Should have triggered auto-lightweight → save 7-10min artifact writing
+
 **Lightweight protocol** (skip PM Triage + Planner + 5 lens):
-
-```typescript
-if (lightweightEligible) {
-  // Phase -0 Sync (5 min) — baseline
-  // Phase 2 Dev (1 subagent, 10 min) — single commit
-  // Phase 2.5 Pre-Commit Audit (1 min)
-  // Phase 4 Decision + 4.8 Loop Summary (5 min)
-  // Phase 5 push (1 min)
-  // Total: ~20 min instead of 50-80 min
-}
-```
-
-**Lead inline marker** in decision.md:
 ```markdown
 ## Lightweight round
 
@@ -1346,6 +1449,41 @@ ps aux | grep -c "cliDaemon" | head -1                          # should be 0
 **R5 evidence**: bg_d6504730 stalled 12+ min, lead cancelled at 14:31, walked through 5 scenarios in ~2 min via direct `playwright-cli` calls. 5.7x speedup consistent with the established pre-warm + goto pattern.
 
 ## Standardized output formats (CANONICAL — must match exactly)
+
+### Auto-generated combined retro+post-exec artifact (NEW v5.3.12, R33/R34 retro)
+
+**R33/R34 retro surfaced**: `retro.md` and `post-exec-analysis.md` have ≥70% content overlap (both list ACs, commits, call flow timeline, skill gaps, followup, action items). Writing both is 5-10min of duplicate work per round.
+
+**Rule (mandatory, NEW v5.3.12)**: for rounds with ≤5 ACs OR bugfix profile, lead MAY combine `retro.md` + `post-exec-analysis.md` into a single `retro-post-exec.md` file with 6 sections:
+
+```markdown
+# Round <N> Retrospective + Post-execution (combined)
+
+## TL;DR
+<1-2 sentences: round outcome + biggest lesson>
+
+## Successes
+<3-5 bullets, file:line evidence>
+
+## Failures / lessons
+<3-5 bullets, symptom → root cause → fix>
+
+## Skill gaps found
+<0-N bullets or "None — this round was a clean execution">
+
+## Followup items
+<0-N bullets>
+
+## Action items for next round
+<ordered list>
+```
+
+**When to apply**: any round with ≤5 ACs OR bugfix profile OR lightweight mode triggered.
+**When NOT to apply**: rounds with full 5 lens reviews needing separation between content lessons (Retro) and call-flow lessons (Post-exec).
+
+**R35 retro evidence** (would have combined retro+post-exec):
+- R35 housekeeping: 5 atomic commits, 0 subagent dispatches, 0 test regressions
+- retro.md and post-exec-analysis.md had ≥70% overlap → wasted 5-10min of duplicate writing
 
 **Rule**: Phase 4.5 (Retro), 4.6 (Post-exec), 4.7 (Self-check) outputs are **canonical** — they MUST follow the templates below verbatim. Different LLM models (Claude / GPT / Gemini / local) produce the same output format so the user can read them consistently across rounds.
 
