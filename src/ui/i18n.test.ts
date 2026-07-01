@@ -179,7 +179,7 @@ describe("AC1.2 — toggle re-renders static-HTML labels via registerUITranslato
       "app.title",
       "toolbar.layout.unified",
       "toolbar.layout.split",
-      "toolbar.ignoreWs",
+      "toolbar.ignoreWs.label",
       "toolbar.theme.light",
       "toolbar.theme.auto",
       "toolbar.theme.dark",
@@ -360,5 +360,45 @@ describe("AC1.2 — toggle re-renders static-HTML labels via registerUITranslato
     expect(i18n.includes('"conversation.selected":')).toBe(true);
     expect(i18n.includes('"Selected"')).toBe(true);
     expect(i18n.includes('"已选"')).toBe(true);
+  });
+
+  // R33 #71: ignore-ws discoverability — label/description/ariaLabel split.
+  it("STRINGS['toolbar.ignoreWs.label'] has both en + zh-CN translations", async () => {
+    const i18n = await readSource(I18N);
+    expect(i18n.includes('"toolbar.ignoreWs.label":')).toBe(true);
+    expect(i18n.includes('"Hide whitespace"')).toBe(true);
+    expect(i18n.includes('"隐藏空白"')).toBe(true);
+  });
+
+  it("STRINGS['toolbar.ignoreWs.description'] has both en + zh-CN translations", async () => {
+    const i18n = await readSource(I18N);
+    expect(i18n.includes('"toolbar.ignoreWs.description":')).toBe(true);
+    expect(i18n.includes('"Collapse consecutive whitespace + trim trailing (useful for reformatting diffs)"')).toBe(true);
+    expect(i18n.includes('"折叠连续空白 + 去除行尾空格 (对重排版 diff 有用)"')).toBe(true);
+  });
+
+  it("STRINGS['toolbar.ignoreWs.ariaLabel'] has both en + zh-CN translations", async () => {
+    const i18n = await readSource(I18N);
+    expect(i18n.includes('"toolbar.ignoreWs.ariaLabel":')).toBe(true);
+    expect(i18n.includes('"Toggle whitespace diff hiding"')).toBe(true);
+    expect(i18n.includes('"切换空白差异隐藏"')).toBe(true);
+  });
+
+  // R33 #71: review.html annotates button with i18n attribute names.
+  it("review.html annotates #ignore-whitespace with the 3 new i18n attributes", async () => {
+    const html = await readSource(HTML);
+    expect(html.includes('id="ignore-whitespace"')).toBe(true);
+    expect(html.includes('data-i18n="toolbar.ignoreWs.label"')).toBe(true);
+    expect(html.includes('data-i18n-title="toolbar.ignoreWs.description"')).toBe(true);
+    expect(html.includes('data-i18n-aria-label="toolbar.ignoreWs.ariaLabel"')).toBe(true);
+  });
+
+  // R33 #71: app.ts calls t() for all 3 new keys in applyIgnoreWhitespace.
+  it("app.ts translates ignoreWhitespaceToggle label/description/ariaLabel via t()", async () => {
+    const src = await readSource(APP_TS);
+    expect(src.includes('t("toolbar.ignoreWs.label")')).toBe(true);
+    expect(src.includes('t("toolbar.ignoreWs.description")')).toBe(true);
+    expect(src.includes('t("toolbar.ignoreWs.ariaLabel")')).toBe(true);
+    expect(src.includes('ignoreWhitespaceToggle.setAttribute("data-active"')).toBe(true);
   });
 });

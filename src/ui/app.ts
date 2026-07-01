@@ -1593,7 +1593,7 @@ onLanguageChange(() => renderReviewProgress());
 registerUITranslator("skipLink", () => t("skipLink"));
 registerUITranslator("toolbar.layout.unified", () => t("toolbar.layout.unified"));
 registerUITranslator("toolbar.layout.split", () => t("toolbar.layout.split"));
-registerUITranslator("toolbar.ignoreWs", () => t("toolbar.ignoreWs"));
+registerUITranslator("toolbar.ignoreWs.label", () => t("toolbar.ignoreWs.label"));
 registerUITranslator("toolbar.theme.light", () => t("toolbar.theme.light"));
 registerUITranslator("toolbar.theme.auto", () => t("toolbar.theme.auto"));
 registerUITranslator("toolbar.theme.dark", () => t("toolbar.theme.dark"));
@@ -1651,8 +1651,13 @@ layoutToggle.addEventListener("click", (event) => {
 const ignoreWhitespaceToggle = document.querySelector("#ignore-whitespace") as HTMLButtonElement;
 
 function applyIgnoreWhitespace() {
-  ignoreWhitespaceToggle.setAttribute("aria-pressed", state.ignoreWhitespace ? "true" : "false");
-  ignoreWhitespaceToggle.textContent = state.ignoreWhitespace ? "✓ Ignore ws" : "Ignore ws";
+  const active = state.ignoreWhitespace;
+  ignoreWhitespaceToggle.setAttribute("aria-pressed", active ? "true" : "false");
+  ignoreWhitespaceToggle.setAttribute("data-active", active ? "true" : "false");
+  ignoreWhitespaceToggle.setAttribute("aria-label", t("toolbar.ignoreWs.ariaLabel"));
+  ignoreWhitespaceToggle.title = t("toolbar.ignoreWs.description");
+  const label = t("toolbar.ignoreWs.label");
+  ignoreWhitespaceToggle.textContent = active ? `✓ ${label}` : label;
 }
 
 function setIgnoreWhitespace(next: boolean) {
@@ -5498,6 +5503,7 @@ function addFinding() {
     state.fresh.push({
       id: `draft_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
       file: state.pendingFileFinding,
+      status: "open",
       side: "additions",
       start_line: 0,
       end_line: 0,
@@ -5523,6 +5529,7 @@ function addFinding() {
   state.fresh.push({
     id: `draft_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
     file: state.selection.file,
+    status: "open",
     side: state.selection.side,
     start_line: state.selection.start_line,
     end_line: state.selection.end_line,

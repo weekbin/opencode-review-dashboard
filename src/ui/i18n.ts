@@ -31,6 +31,15 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "toolbar.layout.unified": { en: "Unified", "zh-CN": "统一" },
   "toolbar.layout.split": { en: "Split", "zh-CN": "分屏" },
   "toolbar.ignoreWs": { en: "Ignore ws", "zh-CN": "忽略空白" },
+  "toolbar.ignoreWs.label": { en: "Hide whitespace", "zh-CN": "隐藏空白" },
+  "toolbar.ignoreWs.description": {
+    en: "Collapse consecutive whitespace + trim trailing (useful for reformatting diffs)",
+    "zh-CN": "折叠连续空白 + 去除行尾空格 (对重排版 diff 有用)",
+  },
+  "toolbar.ignoreWs.ariaLabel": {
+    en: "Toggle whitespace diff hiding",
+    "zh-CN": "切换空白差异隐藏",
+  },
   "toolbar.theme.light": { en: "Light", "zh-CN": "浅色" },
   "toolbar.theme.auto": { en: "Auto", "zh-CN": "自动" },
   "toolbar.theme.dark": { en: "Dark", "zh-CN": "深色" },

@@ -300,9 +300,11 @@
         color: light-dark(#333, #ccc);
       }
 
-      .ignore-whitespace-btn[aria-pressed="true"] {
+      .ignore-whitespace-btn[aria-pressed="true"],
+      .ignore-whitespace-btn[data-active="true"] {
         background: light-dark(#ffffff, #1d4ed8);
         color: light-dark(#111, #fff);
+        border-color: light-dark(#1d4ed8, #60a5fa);
         box-shadow: 0 1px 2px light-dark(rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.3));
       }
 
@@ -2073,6 +2075,7 @@
       body.submitted > *:not(.post-submit) {
         opacity: 0.3;
         pointer-events: none;
+        visibility: hidden;
       }
       .post-submit {
         position: fixed;
@@ -2080,7 +2083,8 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        z-index: 1000;
+        z-index: 3000;
+        background: rgba(0, 0, 0, 0.5);
       }
       .post-submit-card {
         background: light-dark(#ffffff, #1f1f1f);
@@ -2857,8 +2861,9 @@
           id="ignore-whitespace"
           class="ignore-whitespace-btn"
           aria-pressed="false"
-          title="Hide whitespace changes (collapse consecutive whitespace + trim trailing)"
-          data-i18n="toolbar.ignoreWs"
+          data-i18n="toolbar.ignoreWs.label"
+          data-i18n-title="toolbar.ignoreWs.description"
+          data-i18n-aria-label="toolbar.ignoreWs.ariaLabel"
         >
           Ignore ws
         </button>
