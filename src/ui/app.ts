@@ -5498,6 +5498,7 @@ function addFinding() {
     state.fresh.push({
       id: `draft_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
       file: state.pendingFileFinding,
+      status: "open",
       side: "additions",
       start_line: 0,
       end_line: 0,
@@ -5523,6 +5524,7 @@ function addFinding() {
   state.fresh.push({
     id: `draft_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
     file: state.selection.file,
+    status: "open",
     side: state.selection.side,
     start_line: state.selection.start_line,
     end_line: state.selection.end_line,
