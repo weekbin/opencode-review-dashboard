@@ -1,5 +1,4 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "id": "diff-review-dashboard",
   "plugin": ["file:."]
 }
