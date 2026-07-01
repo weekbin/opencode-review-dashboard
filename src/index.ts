@@ -2533,4 +2533,6 @@ export const __test = {
   detectLanguage,
 };
 
-export default DiffReviewPlugin;
+// OpenCode 1.17.12 loader checks module.default.server (PluginModule
+// shape); 1.17.11 was lenient. Wrapping in { server } keeps both working.
+export default { server: DiffReviewPlugin };
