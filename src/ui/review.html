@@ -650,10 +650,10 @@
         max-width: 720px;
         width: 100%;
         margin: 0 auto;
-        padding: 0 20px;
+        padding: 0 12px;
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 6px;
       }
       @media (min-width: 1200px) {
         .conversation-list {
@@ -760,7 +760,7 @@
         color: light-dark(#999, #666);
       }
       .conversation-item {
-        padding: 18px 20px;
+        padding: 12px 14px;
         font-size: 14px;
         border: 1px solid light-dark(#e0e0e0, #222);
         border-left: 3px solid light-dark(#4a90e2, #4a90e2);
@@ -768,7 +768,7 @@
         background: light-dark(#fff, #111);
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 8px;
       }
       .conversation-item[data-status="resolved"] {
         border-left-color: light-dark(#2ea043, #2ea043);
@@ -1820,6 +1820,70 @@
         flex-wrap: wrap;
       }
 
+      /* R34 AC3: select-all checkbox row at top of conversation list */
+      .conversation-select-all {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        font-size: 13px;
+        color: light-dark(#555, #aaa);
+        border: 1px dashed light-dark(#d0d0d0, #333);
+        border-radius: var(--radius);
+        background: light-dark(#fafafa, #161616);
+      }
+      .conversation-select-all input[type="checkbox"] {
+        cursor: pointer;
+        margin: 0;
+      }
+      .conversation-select-all[data-active] {
+        border-color: light-dark(#4a90e2, #6da3d4);
+        background: light-dark(#eef4fc, #0f1c2e);
+        color: light-dark(#1a4a8a, #8ec5ff);
+      }
+
+      /* R34 AC3: prominent type/severity badges in the conversation head.
+         Distinct from .badge (used in subhead) — these are larger and
+         always visible so file-level vs line-level + severity are
+         scannable at a glance. */
+      .conversation-meta-badges {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+      }
+      .meta-badge {
+        padding: 2px 8px;
+        border-radius: 3px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        border: 1px solid light-dark(#d8d8d8, #3a3a3a);
+        background: light-dark(#f5f5f5, #1f1f1f);
+        color: light-dark(#444, #aaa);
+      }
+      .meta-badge.severity-high {
+        color: light-dark(#cf222e, #f85149);
+        border-color: light-dark(#ffc8c8, rgba(248, 81, 73, 0.3));
+        background: light-dark(#ffebe9, rgba(248, 81, 73, 0.1));
+      }
+      .meta-badge.severity-medium {
+        color: light-dark(#9a6700, #d29922);
+        border-color: light-dark(#ffe090, rgba(210, 153, 34, 0.3));
+        background: light-dark(#fff8c5, rgba(210, 153, 34, 0.1));
+      }
+      .meta-badge.severity-low {
+        color: light-dark(#1a7f37, #3fb950);
+        border-color: light-dark(#b0ecc0, rgba(63, 185, 80, 0.3));
+        background: light-dark(#dafbe1, rgba(63, 185, 80, 0.1));
+      }
+      .meta-badge.kind-file {
+        color: light-dark(#1d5a96, #95c1e8);
+        border-color: light-dark(#b8d4f0, rgba(149, 193, 232, 0.3));
+        background: light-dark(#e8f1fb, rgba(149, 193, 232, 0.08));
+      }
+
       .badge {
         padding: 1px 6px;
         border-radius: 4px;
@@ -1966,6 +2030,9 @@
         align-items: center;
         justify-content: center;
         z-index: 2000;
+      }
+      .modal-overlay[hidden] {
+        display: none;
       }
       .modal-dialog {
         background: light-dark(#ffffff, #1f1f1f);
@@ -2727,18 +2794,33 @@
         color: light-dark(#555, #aaa);
       }
       .settings-field {
-        display: flex;
+        display: grid;
+        grid-template-columns: 140px 1fr;
         align-items: center;
         gap: 12px;
       }
       .settings-field label {
-        flex: 0 0 120px;
         margin-bottom: 0;
         font-weight: 500;
       }
       .settings-field select {
-        flex: 1;
-        max-width: 200px;
+        width: 100%;
+        max-width: 240px;
+        padding: 4px 8px;
+        font-size: 13px;
+        font-family: inherit;
+        background: light-dark(#fafafa, #1f1f1f);
+        color: light-dark(#111, #eee);
+        border: 1px solid light-dark(#d0d0d0, #3a3a3a);
+        border-radius: 4px;
+      }
+      .settings-field-toggle {
+        grid-template-columns: auto 1fr;
+        gap: 8px;
+      }
+      .settings-field-toggle input[type="checkbox"] {
+        margin: 0;
+        cursor: pointer;
       }
       .settings-footer {
         display: flex;
@@ -3103,8 +3185,20 @@
       >
         <div class="settings-modal-header">
           <h3 id="settings-title" data-i18n="settings.title">Settings</h3>
-          <button type="button" class="modal-close-btn" id="settings-close" aria-label="Close settings">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <button
+            type="button"
+            class="modal-close-btn"
+            id="settings-close"
+            aria-label="Close settings"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+            >
               <path d="M4 4l8 8M12 4l-8 8" />
             </svg>
           </button>
@@ -3122,8 +3216,14 @@
               </select>
             </div>
             <div class="settings-field settings-field-toggle">
-              <input type="checkbox" id="settings-virtualization-toggle" data-i18n-title="settings.virtualization.description">
-              <label for="settings-virtualization-toggle" data-i18n="settings.virtualization.label">Diff virtualization</label>
+              <input
+                type="checkbox"
+                id="settings-virtualization-toggle"
+                data-i18n-title="settings.virtualization.description"
+              />
+              <label for="settings-virtualization-toggle" data-i18n="settings.virtualization.label"
+                >Diff virtualization</label
+              >
             </div>
           </section>
 
@@ -3167,9 +3267,7 @@
           <button type="button" class="btn" id="settings-reset" data-i18n="settings.reset">
             Reset to defaults
           </button>
-          <button type="button" class="btn btn-primary" id="settings-ok">
-            Close
-          </button>
+          <button type="button" class="btn btn-primary" id="settings-ok">Close</button>
         </div>
       </div>
     </div>
