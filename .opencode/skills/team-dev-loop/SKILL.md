@@ -1151,7 +1151,7 @@ Order is fixed (v5): **Phase -0 Sync → Phase 0 PM Triage v5 → Phase 0.25 PM 
 | Phase 2.5 Pre-Commit Audit FAIL (SHA missing OR claim unverified) | `.omo/round-N/audit-blocked.md` | Round N ends; closure commit BLOCKED |
 | **Phase 4 closure artifact shortage** (SG.R26.1) — `ls -1 .omo/round-N/ \| wc -l` < profile-gated threshold | `.omo/round-N/artifact-shortage.md` | Round N ends; re-run missing phase or mark skipped in `decision.md ## Skipped phases` |
 | **Phase -0 husky not wired** (SG.R26.2) — `.husky/pre-commit` exists but `node_modules/husky` or `.git/hooks/pre-commit` missing AND `bun install --frozen-lockfile` fails | `.omo/round-N/husky-blocked.md` | Round N ends; manually run `bun install` (or fix husky config) then retry |
-| **Phase 4 runtime load failure** (SG.R27.1) — `scripts/verify-plugin-load.mjs` (or equivalent) exits non-zero: (1) import throws, OR (2) `module.default.server` not a function, OR (3) `hooks.config()` registers no commands | `.omo/round-N/load-blocked.md` | Round N ends; fix the runtime compat / export shape / hook contract, rebuild, re-run the verification, then retry |
+| **Phase 4 runtime load failure** (SG.R27.1) — `scripts/verify-plugin-load.mjs` (or equivalent) exits non-zero: (1) import throws, OR (2) `module.default.id` empty / `module.default.server` not a function, OR (3) `hooks.config()` registers no commands, OR (4) `<plugin>/opencode.json#id` missing | `.omo/round-N/load-blocked.md` | Round N ends; fix the runtime compat / export shape / hook contract / path-plugin metadata, rebuild, re-run the verification, then retry |
 
 **Rollback protocol** (NEW v5): Lead can run `git revert <round-sha>` from chat (manual operator action). Document the revert in next round's `decision.md` ## Rollback section.
 
@@ -1983,21 +1983,27 @@ fi
 
 ## Runtime load verification gate (NEW R32 retro SG.R27.1 — APPLIED, R32 + R32b plugin-load-silent-failure fix)
 
-**Why** (R32 + R32b user audit 2026-07-01): R32 (commit `852b5a6`, runtime-compat layer + 9× `Bun.*` → compat helper substitution) was supposed to fix the "Plugin export is not a function" error that OpenCode 1.17.12 threw on plugin load. The Node.js test passed (`node -e "import(...)" → default is function`). But the user's live OpenCode 1.17.12 still failed. R32b (commit `bb2cd9c`) finally caught the SECOND break point: OpenCode 1.17.12's plugin loader strictly checks `module.default.server` per the SDK's `PluginModule` shape (`{ id?, server: Plugin, tui? }`), and 1.17.11's lenient `default = function` acceptance is gone in 1.17.12. Two separate silent breakages, neither caught by SG.R20.1 (which only verifies "build in MAIN") or SG.R26.1 (which verifies artifact COUNT, not artifact CORRECTNESS). The loop had no gate that asked: **"does the dist actually run in the target OpenCode binary's plugin loader?"**
+**Why** (R32 / R32b / R32c / R32d user audit 2026-07-01): OpenCode 1.17.12's strict plugin loader surfaced **four** independent break points in one day, each with the same generic "failed to load plugin" log line but a different internal codepath. R32 (commit `852b5a6`) patched runtime compat (Bun API at top-level → compat layer). R32b (commit `bb2cd9c`) patched module shape (`default = function` → `default = { server: function }`). R32c (commit `fdd05f0`) patched `<plugin>/opencode.json#id` (path-plugin metadata). R32d (commit `7c469f4`) patched `default.id` field on the module. **None** of these were caught by SG.R20.1 (verifies "build in MAIN") or SG.R26.1 (verifies artifact COUNT). The SDK's `PluginModule` type marks `id?` as optional, but the actual 1.17.12 strict loader treats it as required for `file://` path plugins. The loop had no gate that asked: **"does the dist + plugin metadata actually satisfy the target OpenCode binary's strict loader?"**
 
 **Rule** (mandatory, SG.R27.1 — hard gate BEFORE closure commit, end of every R+ loop iteration that produces a runtime-loadable artifact):
 
 After Phase 2.6 builds the dist in MAIN, BEFORE the Phase 4 closure commit, the lead MUST run a runtime-load verification script. If the project produces a plugin dist (`dist/plugin/index.mjs`), the canonical verification is `scripts/verify-plugin-load.mjs` (or equivalent). Projects with different artifact shapes (CLI tool, MCP server, etc.) should have a project-specific `scripts/verify-<artifact>.mjs`.
 
-The verification MUST check 3 gates:
+The verification MUST check 4 gates (covers R32 / R32b / R32c / R32d in a single run):
 
 ```bash
-# 1. Runtime compat — dist imports without throwing under the target runtime
-# 2. PluginModule shape — module.default.server is a function (if @opencode-ai/plugin SDK)
-# 3. Hook contract — module.default.server({...}) returns hooks whose config() registers commands
+# 1. Runtime compat       — dist imports without throwing under the target runtime
+# 2. PluginModule-shape   — module.default.id is a non-empty string AND
+#                            module.default.server is a function
+# 3. Hook contract        — module.default.server({...}) returns hooks whose
+#                            config() registers a non-empty output.command
+# 4. Path-plugin entry    — for `file://` plugins, <plugin>/opencode.json must
+#                            have an `id` field (non-empty string). npm-name
+#                            plugins get their id from the registry; path
+#                            plugins need an explicit on-disk `id`.
 ```
 
-Reference implementation: `scripts/verify-plugin-load.mjs` in this plugin repo. The script auto-detects the current runtime (Bun vs Node) and probes the OTHER runtime if available — so a single command catches single-runtime regressions.
+Reference implementation: `scripts/verify-plugin-load.mjs` in this plugin repo. The script auto-detects the current runtime (Bun vs Node) and probes the OTHER runtime if available — so a single command catches single-runtime regressions AND path-plugin metadata regressions.
 
 **Mandatory integration** at end of Phase 2.6/Phase 4 boundary:
 
@@ -2016,9 +2022,11 @@ if [ -f scripts/verify-plugin-load.mjs ]; then
 fi
 ```
 
-**What this catches** (by example, R32 + R32b):
+**What this catches** (by example, R32 series — 4 breakpoints in 1 day, all surfacing the same generic "failed to load plugin" log line):
 - R32: Bun-only API at top-level (`Bun.write.bind(Bun)`, `import.meta.dir`) → import throws under Node → `runtime-compat` gate FAIL
 - R32b: `export default = function` instead of `export default = { server: function }` → `module.default.server` is `undefined` → `PluginModule-shape` gate FAIL
+- R32c: `<plugin>/opencode.json` missing `"id"` field → loader throws "Path plugin ... must export id" → `path-plugin-entry` gate FAIL
+- R32d: `module.default.id` missing (SDK marks optional, 1.17.12 requires) → loader throws same "must export id" error → `PluginModule-shape` gate (id sub-check) FAIL
 - Generic: hooks that register no commands → `hook-contract` gate FAIL
 
 **Skip condition**: docs-only rounds (only README/SKILL.md changes, no dist/ modification) MAY skip SG.R27.1 — but `decision.md ## Skipped phases` MUST explicitly list it as skipped with rationale.
