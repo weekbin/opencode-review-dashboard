@@ -1,0 +1,24 @@
+
+---
+
+## Phase 4 Closure — Final Decision
+
+**Decision**: SHIP TO MAIN. R17 closed successfully.
+
+**Test summary**:
+- 383 unit tests pass / 0 fail (343 baseline + 40 new R17)
+- 34/34 e2e scenarios (33 baseline + 1 new IME)
+- 0 lint warnings / 0 lint errors
+- Typecheck clean
+- Format:check clean
+- Build exit 0 · 304 files / 10970 kB
+
+**Issues auto-closed by GitHub**: #32, #34, #36 (via commit message `close #N`)
+
+**Commits**:
+- 751309b feat(r17): notes-in-submit + IME fix + Cmd+/ help (close #32, close #34, close #36)
+- 2a9c05f Round 17: merge ... (close #32, close #34, close #36)
+
+**Push status**: main is at `2a9c05f` · origin/main = `2a9c05f` · 0 ahead / 0 behind
+
+**R12 brief status**: 7/7 COMPLETE (this round closes the last item — Cmd+/ help overlay)
