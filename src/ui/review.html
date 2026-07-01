@@ -141,6 +141,32 @@
         white-space: nowrap;
       }
 
+      /* R36 AC3 #72: copy-branch button next to the worktree scope display.
+         Uses the same compact style as the layout-toggle buttons. */
+      .copy-branch-btn {
+        all: unset;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        margin-left: 6px;
+        border-radius: 4px;
+        font-size: 12px;
+        color: light-dark(#666, #888);
+        background: light-dark(#f0f0f0, #3a3a3a);
+        border: 1px solid light-dark(#d8d8d8, #3a3a3a);
+        transition: all 120ms;
+      }
+      .copy-branch-btn:hover {
+        color: light-dark(#111, #eee);
+        background: light-dark(#e6e6e6, #4a4a4a);
+      }
+      .copy-branch-btn:disabled {
+        cursor: default;
+        opacity: 0.7;
+      }
+
       .diff-base {
         font-size: 14px;
         color: light-dark(#666, #999);
@@ -2909,6 +2935,15 @@
       <div class="header-left">
         <h1 data-i18n="app.title">Review Dashboard</h1>
         <span class="scope" id="scope"></span>
+        <button
+          type="button"
+          id="copy-branch"
+          class="copy-branch-btn"
+          data-i18n="toolbar.copyBranch.label"
+          title="Copy current branch name to clipboard"
+        >
+          Copy branch
+        </button>
         <span class="diff-base" id="diff-base"></span>
         <span
           class="save-indicator"

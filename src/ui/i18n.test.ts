@@ -405,4 +405,33 @@ describe("AC1.2 — toggle re-renders static-HTML labels via registerUITranslato
     expect(src.includes('t("toolbar.ignoreWs.ariaLabel")')).toBe(true);
     expect(src.includes('ignoreWhitespaceToggle.setAttribute("data-active"')).toBe(true);
   });
+
+  // R36 AC3 #72: copy-current-branch button in the header next to scope.
+  it("STRINGS['toolbar.copyBranch.label'] has both en + zh-CN translations", async () => {
+    const i18n = await readSource(I18N);
+    expect(i18n.includes('"toolbar.copyBranch.label":')).toBe(true);
+    expect(i18n.includes('"Copy branch"')).toBe(true);
+    expect(i18n.includes('"复制分支"')).toBe(true);
+  });
+
+  it("STRINGS['status.copiedBranch'] has both en + zh-CN with {name} template", async () => {
+    const i18n = await readSource(I18N);
+    expect(i18n.includes('"status.copiedBranch":')).toBe(true);
+    expect(i18n.includes("Copied branch: {name}")).toBe(true);
+    const zhMatch = i18n.match(/"status\.copiedBranch":\s*\{[\s\S]*?"zh-CN":\s*"([^"]+)"/);
+    expect(zhMatch).not.toBeNull();
+    const zh = zhMatch![1]!;
+    expect(zh).toContain("{name}");
+    expect(/\p{Script=Han}/u.test(zh)).toBe(true);
+  });
+
+  it("review.html annotates #copy-branch with data-i18n + app.ts wires registerUITranslator", async () => {
+    const html = await readSource(HTML);
+    const src = await readSource(APP_TS);
+    expect(html.includes('id="copy-branch"')).toBe(true);
+    expect(html.includes('data-i18n="toolbar.copyBranch.label"')).toBe(true);
+    expect(src.includes('registerUITranslator("toolbar.copyBranch.label"')).toBe(true);
+    expect(src.includes('navigator.clipboard.writeText')).toBe(true);
+    expect(src.includes('state.data?.auto_worktree_branch')).toBe(true);
+  });
 });
