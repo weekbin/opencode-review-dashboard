@@ -5,7 +5,7 @@ description: "v5.3.10 cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+P
 
 # /team-dev-loop Command (v5)
 
-> **Last Updated**: 2026-07-01 (v5.3.10 R31 retro: 2 NEW SGs — SG.R26.1 file-existence verify gate + SG.R26.2 husky installation verify gate, both retroactively patching R21-R31 self-reporting false positives). Built on v5.3.9 (R25 retro SG.R25.1 pre-commit SG.R22.1 verify gate). Built on v5.3.8 (R24 retro SG.R24.1 subagent worktree-per-Edit verification). Built on v5.3.7 (3 R22 retro patches — SG.R20.1 Phase 2.6 3-step rebuild + SG.R22.1 bilingual lockstep pre-commit verify + SG.R22.2 worktree env check at Phase -0). Built on v5.3.6 (8 R19 patches — SG.R19.1 Phase 2.5 build location + SG.R19.2 macOS setsid + SG.R19.3 STRINGS_USAGE_PLAN + SG.R19.4 Dev workdir verify + SG.R19.5 Playwright as Gap #14 + SG.R19.6/.7 consolidations + SG.R19.8 End-of-round mandatory gap-fix). Built on v5.3.5+1 (commit `74ee9a0` — R16 closure SG.17-SG.20) + v5.3.5 (`98b36b1`) + v5.3.4+ (`350efba`) + v5.3.4 (`43a44ba` + `ca01e97`) + v5.3.3 (`c3a6aea`) + v5.3.2 (`42ba5aa`) + v5.3 (`657a064`). v5.3.10 total: 54 retroactive skill patches cumulative across R12-R31 retros.
+> **Last Updated**: 2026-07-01 (v5.3.10 R32 retro: 1 NEW SG — SG.R27.1 runtime load verification gate, retroactively patching R32+R32b plugin-load-silent-failure (Node.js runtime compat + strict PluginModule shape). Built on v5.3.9 (R25 retro SG.R25.1 pre-commit SG.R22.1 verify gate). Built on v5.3.8 (R24 retro SG.R24.1 subagent worktree-per-Edit verification). Built on v5.3.7 (3 R22 retro patches — SG.R20.1 Phase 2.6 3-step rebuild + SG.R22.1 bilingual lockstep pre-commit verify + SG.R22.2 worktree env check at Phase -0). Built on v5.3.6 (8 R19 patches — SG.R19.1 Phase 2.5 build location + SG.R19.2 macOS setsid + SG.R19.3 STRINGS_USAGE_PLAN + SG.R19.4 Dev workdir verify + SG.R19.5 Playwright as Gap #14 + SG.R19.6/.7 consolidations + SG.R19.8 End-of-round mandatory gap-fix). Built on v5.3.5+1 (commit `74ee9a0` — R16 closure SG.17-SG.20) + v5.3.5 (`98b36b1`) + v5.3.4+ (`350efba`) + v5.3.4 (`43a44ba` + `ca01e97`) + v5.3.3 (`c3a6aea`) + v5.3.2 (`42ba5aa`) + v5.3 (`657a064`). v5.3.10 total: 55 retroactive skill patches cumulative across R12-R32 retros (52 → 53 SG.R25.1 → 54 SG.R26.1+SG.R26.2 → 55 SG.R27.1).
 > **Status**: R16+ will run on v5.3.4+. R13-R15 ran on v5.3 + v5.3.2 + v5.3.3. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
 > **Migration from v2**: see `## Migration v2 → v5` section below.
 > **Status**: R16+ will run on v5.3.4. R13-R15 ran on v5.3 + v5.3.2 + v5.3.3. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
@@ -1151,6 +1151,7 @@ Order is fixed (v5): **Phase -0 Sync → Phase 0 PM Triage v5 → Phase 0.25 PM 
 | Phase 2.5 Pre-Commit Audit FAIL (SHA missing OR claim unverified) | `.omo/round-N/audit-blocked.md` | Round N ends; closure commit BLOCKED |
 | **Phase 4 closure artifact shortage** (SG.R26.1) — `ls -1 .omo/round-N/ \| wc -l` < profile-gated threshold | `.omo/round-N/artifact-shortage.md` | Round N ends; re-run missing phase or mark skipped in `decision.md ## Skipped phases` |
 | **Phase -0 husky not wired** (SG.R26.2) — `.husky/pre-commit` exists but `node_modules/husky` or `.git/hooks/pre-commit` missing AND `bun install --frozen-lockfile` fails | `.omo/round-N/husky-blocked.md` | Round N ends; manually run `bun install` (or fix husky config) then retry |
+| **Phase 4 runtime load failure** (SG.R27.1) — `scripts/verify-plugin-load.mjs` (or equivalent) exits non-zero: (1) import throws, OR (2) `module.default.server` not a function, OR (3) `hooks.config()` registers no commands | `.omo/round-N/load-blocked.md` | Round N ends; fix the runtime compat / export shape / hook contract, rebuild, re-run the verification, then retry |
 
 **Rollback protocol** (NEW v5): Lead can run `git revert <round-sha>` from chat (manual operator action). Document the revert in next round's `decision.md` ## Rollback section.
 
@@ -1979,6 +1980,50 @@ fi
 **R30 + R31 retrofit policy**: R30 #61 husky commit does NOT actually wire the pre-commit gate in the current working tree. R30 + R31 "automation SUCCESS" claims are false positives — the husky hook never ran during the actual git commit. The fix is for R32+ to: (a) run `bun install` at Phase -0 Sync to wire husky; (b) the husky pre-commit gate then enforces SG.R25.1 grep -c lockstep automatically on every `git commit` (no lead action required).
 
 **Hard-stop marker**: `.omo/round-N/husky-blocked.md` (added to `## v5 hard-stop table` below).
+
+## Runtime load verification gate (NEW R32 retro SG.R27.1 — APPLIED, R32 + R32b plugin-load-silent-failure fix)
+
+**Why** (R32 + R32b user audit 2026-07-01): R32 (commit `852b5a6`, runtime-compat layer + 9× `Bun.*` → compat helper substitution) was supposed to fix the "Plugin export is not a function" error that OpenCode 1.17.12 threw on plugin load. The Node.js test passed (`node -e "import(...)" → default is function`). But the user's live OpenCode 1.17.12 still failed. R32b (commit `bb2cd9c`) finally caught the SECOND break point: OpenCode 1.17.12's plugin loader strictly checks `module.default.server` per the SDK's `PluginModule` shape (`{ id?, server: Plugin, tui? }`), and 1.17.11's lenient `default = function` acceptance is gone in 1.17.12. Two separate silent breakages, neither caught by SG.R20.1 (which only verifies "build in MAIN") or SG.R26.1 (which verifies artifact COUNT, not artifact CORRECTNESS). The loop had no gate that asked: **"does the dist actually run in the target OpenCode binary's plugin loader?"**
+
+**Rule** (mandatory, SG.R27.1 — hard gate BEFORE closure commit, end of every R+ loop iteration that produces a runtime-loadable artifact):
+
+After Phase 2.6 builds the dist in MAIN, BEFORE the Phase 4 closure commit, the lead MUST run a runtime-load verification script. If the project produces a plugin dist (`dist/plugin/index.mjs`), the canonical verification is `scripts/verify-plugin-load.mjs` (or equivalent). Projects with different artifact shapes (CLI tool, MCP server, etc.) should have a project-specific `scripts/verify-<artifact>.mjs`.
+
+The verification MUST check 3 gates:
+
+```bash
+# 1. Runtime compat — dist imports without throwing under the target runtime
+# 2. PluginModule shape — module.default.server is a function (if @opencode-ai/plugin SDK)
+# 3. Hook contract — module.default.server({...}) returns hooks whose config() registers commands
+```
+
+Reference implementation: `scripts/verify-plugin-load.mjs` in this plugin repo. The script auto-detects the current runtime (Bun vs Node) and probes the OTHER runtime if available — so a single command catches single-runtime regressions.
+
+**Mandatory integration** at end of Phase 2.6/Phase 4 boundary:
+
+```bash
+# At end of Phase 2.6 (after dist built in MAIN worktree) or Phase 4.0 (before closure commit)
+# 1. Confirm dist exists
+test -f dist/plugin/index.mjs || { echo "DIST MISSING: run bun run build"; exit 1; }
+
+# 2. Run the verification (Bun OR Node — script is runtime-agnostic)
+if [ -f scripts/verify-plugin-load.mjs ]; then
+  node scripts/verify-plugin-load.mjs || bun scripts/verify-plugin-load.mjs || {
+    echo "❌ verify-plugin-load FAILED"
+    echo "Write .omo/round-N/load-blocked.md + HARD STOP — DO NOT commit closure"
+    exit 1
+  }
+fi
+```
+
+**What this catches** (by example, R32 + R32b):
+- R32: Bun-only API at top-level (`Bun.write.bind(Bun)`, `import.meta.dir`) → import throws under Node → `runtime-compat` gate FAIL
+- R32b: `export default = function` instead of `export default = { server: function }` → `module.default.server` is `undefined` → `PluginModule-shape` gate FAIL
+- Generic: hooks that register no commands → `hook-contract` gate FAIL
+
+**Skip condition**: docs-only rounds (only README/SKILL.md changes, no dist/ modification) MAY skip SG.R27.1 — but `decision.md ## Skipped phases` MUST explicitly list it as skipped with rationale.
+
+**Hard-stop marker**: `.omo/round-N/load-blocked.md` (added to `## v5 hard-stop table` below).
 
 ## Examples
 
