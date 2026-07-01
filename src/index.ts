@@ -2124,10 +2124,10 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                 );
               }
               if (hasComment && (input.comment as string).length > 2000) {
-                return new Response(
-                  JSON.stringify({ error: "comment exceeds 2000 characters" }),
-                  { status: 400, headers: { "content-type": "application/json" } },
-                );
+                return new Response(JSON.stringify({ error: "comment exceeds 2000 characters" }), {
+                  status: 400,
+                  headers: { "content-type": "application/json" },
+                });
               }
               const target = base.findings.find((item) => item.id === findingId);
               if (!target) {
@@ -2467,7 +2467,7 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
           // to about:blank ~400ms after submit, so 1500ms is safely
           // past that. Earlier values produced ERR_CONNECTION_REFUSED
           // in the tab because the navigation raced the socket close.
-          setTimeout(() => server.stop(true), 1500);
+          setTimeout(() => server.stop(), 1500);
 
           if (!result.cancelled) {
             return format({
