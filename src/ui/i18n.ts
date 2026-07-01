@@ -136,7 +136,7 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   },
   "status.expandedAll": { en: "Expanded all files", "zh-CN": "已展开所有文件" },
   "status.collapsedAll": { en: "Collapsed all files", "zh-CN": "已折叠所有文件" },
-  skipLink: { en: "Skip to main content", "zh-CN": "跳到主要内容" },
+  "skipLink": { en: "Skip to main content", "zh-CN": "跳到主要内容" },
   "modal.submit.title": { en: "Submit review?", "zh-CN": "提交审查?" },
   "modal.submit.confirm": { en: "Submit", "zh-CN": "提交" },
   "modal.resolve.title": { en: "Resolve Finding", "zh-CN": "解决审查项" },
