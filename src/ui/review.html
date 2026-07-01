@@ -2031,6 +2031,9 @@
         justify-content: center;
         z-index: 2000;
       }
+      .modal-overlay[hidden] {
+        display: none;
+      }
       .modal-dialog {
         background: light-dark(#ffffff, #1f1f1f);
         border: 1px solid light-dark(#d8d8d8, #3a3a3a);
@@ -2791,18 +2794,33 @@
         color: light-dark(#555, #aaa);
       }
       .settings-field {
-        display: flex;
+        display: grid;
+        grid-template-columns: 140px 1fr;
         align-items: center;
         gap: 12px;
       }
       .settings-field label {
-        flex: 0 0 120px;
         margin-bottom: 0;
         font-weight: 500;
       }
       .settings-field select {
-        flex: 1;
-        max-width: 200px;
+        width: 100%;
+        max-width: 240px;
+        padding: 4px 8px;
+        font-size: 13px;
+        font-family: inherit;
+        background: light-dark(#fafafa, #1f1f1f);
+        color: light-dark(#111, #eee);
+        border: 1px solid light-dark(#d0d0d0, #3a3a3a);
+        border-radius: 4px;
+      }
+      .settings-field-toggle {
+        grid-template-columns: auto 1fr;
+        gap: 8px;
+      }
+      .settings-field-toggle input[type="checkbox"] {
+        margin: 0;
+        cursor: pointer;
       }
       .settings-footer {
         display: flex;
@@ -3167,8 +3185,20 @@
       >
         <div class="settings-modal-header">
           <h3 id="settings-title" data-i18n="settings.title">Settings</h3>
-          <button type="button" class="modal-close-btn" id="settings-close" aria-label="Close settings">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <button
+            type="button"
+            class="modal-close-btn"
+            id="settings-close"
+            aria-label="Close settings"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+            >
               <path d="M4 4l8 8M12 4l-8 8" />
             </svg>
           </button>
@@ -3186,8 +3216,14 @@
               </select>
             </div>
             <div class="settings-field settings-field-toggle">
-              <input type="checkbox" id="settings-virtualization-toggle" data-i18n-title="settings.virtualization.description">
-              <label for="settings-virtualization-toggle" data-i18n="settings.virtualization.label">Diff virtualization</label>
+              <input
+                type="checkbox"
+                id="settings-virtualization-toggle"
+                data-i18n-title="settings.virtualization.description"
+              />
+              <label for="settings-virtualization-toggle" data-i18n="settings.virtualization.label"
+                >Diff virtualization</label
+              >
             </div>
           </section>
 
@@ -3231,9 +3267,7 @@
           <button type="button" class="btn" id="settings-reset" data-i18n="settings.reset">
             Reset to defaults
           </button>
-          <button type="button" class="btn btn-primary" id="settings-ok">
-            Close
-          </button>
+          <button type="button" class="btn btn-primary" id="settings-ok">Close</button>
         </div>
       </div>
     </div>

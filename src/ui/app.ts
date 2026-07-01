@@ -21,7 +21,16 @@ import {
 // R20 #40: sidebar review progress (X / Y reviewed + visual bar).
 import { formatReviewProgress } from "./review-progress";
 // R20 #42: in-diff search history (recent searches dropdown).
-import { addRecentSearch, clearRecentSearches, commitRecentSearch, commitRecentSearchImmediate, cancelPendingCommit, getRecentSearches, MAX_RECENT, removeRecentSearches } from "./search-history";
+import {
+  addRecentSearch,
+  clearRecentSearches,
+  commitRecentSearch,
+  commitRecentSearchImmediate,
+  cancelPendingCommit,
+  getRecentSearches,
+  MAX_RECENT,
+  removeRecentSearches,
+} from "./search-history";
 
 type Category = "bug" | "style" | "perf" | "question" | "recommend";
 type Severity = "high" | "medium" | "low";
@@ -1625,7 +1634,9 @@ registerUITranslator("settings.layout.split", () => t("settings.layout.split"));
 registerUITranslator("settings.search.max", () => t("settings.search.max"));
 registerUITranslator("settings.reset", () => t("settings.reset"));
 registerUITranslator("settings.virtualization.label", () => t("settings.virtualization.label"));
-registerUITranslator("settings.virtualization.description", () => t("settings.virtualization.description"));
+registerUITranslator("settings.virtualization.description", () =>
+  t("settings.virtualization.description"),
+);
 
 // ── Layout toggle ──
 function applyLayout() {
@@ -1689,7 +1700,9 @@ const settingsSearchMaxSelect = document.querySelector("#settings-search-max") a
 const settingsResetBtn = document.querySelector("#settings-reset") as HTMLButtonElement;
 const settingsOkBtn = document.querySelector("#settings-ok") as HTMLButtonElement;
 const settingsCloseBtn = document.querySelector("#settings-close") as HTMLButtonElement;
-const settingsVirtualizationToggle = document.querySelector("#settings-virtualization-toggle") as HTMLInputElement;
+const settingsVirtualizationToggle = document.querySelector(
+  "#settings-virtualization-toggle",
+) as HTMLInputElement;
 
 let settingsDispose: (() => void) | null = null;
 
@@ -2819,7 +2832,9 @@ function createView(file: FileEntry, mount: HTMLElement) {
   const virtualizer = new DiffVirtualizer(mount, { enabled: isVirtualizationEnabled() });
   diffVirtualizers.set(file.path, virtualizer);
 
-  const oldContent = state.ignoreWhitespace ? stripWhitespace(file.before || "") : file.before || "";
+  const oldContent = state.ignoreWhitespace
+    ? stripWhitespace(file.before || "")
+    : file.before || "";
   const newContent = state.ignoreWhitespace ? stripWhitespace(file.after || "") : file.after || "";
   const metadata = parseDiffFromFile(
     { name: file.path, contents: oldContent },
@@ -2949,7 +2964,9 @@ function createDeletedFileView(file: FileEntry, mount: HTMLElement) {
   const virtualizer = new DiffVirtualizer(mount, { enabled: isVirtualizationEnabled() });
   diffVirtualizers.set(file.path, virtualizer);
 
-  const oldContent = state.ignoreWhitespace ? stripWhitespace(file.before || "") : file.before || "";
+  const oldContent = state.ignoreWhitespace
+    ? stripWhitespace(file.before || "")
+    : file.before || "";
   const metadata = parseDiffFromFile(
     { name: file.path, contents: oldContent },
     { name: file.path, contents: "\n\n" },
@@ -4000,9 +4017,7 @@ function renderConversationPanel(root: HTMLElement) {
     kindBadge.className = `meta-badge kind-${kind}`;
     kindBadge.textContent = kind;
     kindBadge.title =
-      kind === "file"
-        ? "Whole-file finding (no specific line range)"
-        : "Line-anchored finding";
+      kind === "file" ? "Whole-file finding (no specific line range)" : "Line-anchored finding";
     metaBadges.appendChild(kindBadge);
     if (entry.severity) {
       const sevBadge = document.createElement("span");
@@ -4782,7 +4797,11 @@ function setAllExpanded(expand: boolean) {
   setStatus(expand ? "Expanded all files" : "Collapsed all files");
 }
 
-function injectHunkCollapseButtons(mount: HTMLElement, filePath: string, virtualizer: DiffVirtualizer): void {
+function injectHunkCollapseButtons(
+  mount: HTMLElement,
+  filePath: string,
+  virtualizer: DiffVirtualizer,
+): void {
   const wrappers = mount.querySelectorAll<HTMLElement>("[data-hunk]");
   for (const wrapper of wrappers) {
     const hunkIndex = parseInt(wrapper.getAttribute("data-hunk") ?? "-1", 10);
@@ -4790,7 +4809,12 @@ function injectHunkCollapseButtons(mount: HTMLElement, filePath: string, virtual
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "diff-hunk-collapse-btn";
-    btn.setAttribute("aria-label", virtualizer.isCollapsed(filePath, hunkIndex) ? t("diff.hunk.expand") : t("diff.hunk.collapse"));
+    btn.setAttribute(
+      "aria-label",
+      virtualizer.isCollapsed(filePath, hunkIndex)
+        ? t("diff.hunk.expand")
+        : t("diff.hunk.collapse"),
+    );
     btn.textContent = virtualizer.isCollapsed(filePath, hunkIndex) ? "▶" : "▼";
     btn.addEventListener("click", () => {
       virtualizer.toggleHunk(filePath, hunkIndex);
@@ -5640,7 +5664,7 @@ async function submit() {
   }
 
   const body = await response.json().catch(() => ({}));
-  showToast(`Review submitted${body?.round ? ` — round ${body.round}` : ""}`);
+  showToast(t("review.submitted.title", { round: body?.round ? ` — round ${body.round}` : "" }));
   showPostSubmit(body?.round);
 }
 
@@ -5653,10 +5677,14 @@ function showPostSubmit(round: number | undefined) {
 
   const overlay = document.createElement("div");
   overlay.className = "post-submit";
+  const titleText = t("review.submitted.title", { round: round ? ` — round ${round}` : "" });
+  const messageText = t("review.submitted.message", {
+    shortcut: "<kbd>⌘W</kbd> / <kbd>Ctrl+W</kbd>",
+  });
   overlay.innerHTML = `
     <div class="post-submit-card">
-      <h2>Review submitted${round ? ` — round ${round}` : ""}</h2>
-      <p>The findings are now in the OpenCode session. The plugin cannot close this tab for you (browsers only allow scripts to close tabs the script itself opened), so please close it manually with <kbd>⌘W</kbd> / <kbd>Ctrl+W</kbd> or the tab's close button.</p>
+      <h2>${titleText}</h2>
+      <p>${messageText}</p>
     </div>
   `;
   document.body.appendChild(overlay);

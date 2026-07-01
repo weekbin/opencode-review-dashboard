@@ -110,6 +110,17 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "Review submitted",
     "zh-CN": "审查已提交",
   },
+  // R34 AC2: post-submit banner i18n (Round 4 user feedback — was
+  // hardcoded English in app.ts:5591 + app.ts:5606-5607).
+  "review.submitted.title": {
+    en: "Review submitted{round}",
+    "zh-CN": "审查已提交{round}",
+  },
+  "review.submitted.message": {
+    en: "The findings are now in the OpenCode session. The plugin cannot close this tab for you (browsers only allow scripts to close tabs the script itself opened), so please close it manually with {shortcut} or the tab's close button.",
+    "zh-CN":
+      "审查结果已发送到 OpenCode 会话。插件无法自动关闭此标签页（浏览器只允许脚本关闭自己打开的标签页），请用 {shortcut} 或标签页的关闭按钮手动关闭。",
+  },
   "status.submitFailed": {
     en: "Submit failed ({code})",
     "zh-CN": "提交失败 ({code})",
