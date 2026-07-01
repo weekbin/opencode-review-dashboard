@@ -1352,7 +1352,7 @@ Order is fixed (v5): **Phase -0 Sync → Phase 0 PM Triage v5 → Phase 0.25 PM 
 | 3c | Tester Playwright | `visual-engineering` | **lead by default; lead-parallel-after-3a with 3b + 3.5** (R4+R5 evidence: 2/2 subagent stalls — 7+ min and 12m+ min wasted. Lead takeover both times was 2-5 min. Subagent is unreliable in this environment for browser walkthroughs) | `playwright-report.md` | bugfix: **skip unless UI changed** / feature+architecture: run |
 | 3.5 | PM Doc Writer | `writing` | **lead by default; lead-parallel-after-3a with 3b + 3c** (lead writes 3b+3c+3.5 in same response block — all 3 are lead tasks now) | `doc-update-report.md` (side effect: README + screenshots) | bugfix: 1-para README / feature+architecture: full README + screenshot |
 | 4 | Decision | (no subagent) | **lead always** | `decision.md` | always run |
-| 4.5 | **Round-end retrospective** | (no subagent) | **lead always** | `.omo/round-N/retro.md` | **always run** (mandatory, R4 retro lesson — content-focused: what shipped, what worked, skill gaps) |
+| 4.5 | **Round-end retrospective & close-out** (v5.4 NEW) | (no subagent) | **lead always** | `.omo/round-N/retro.md` | **always run** (mandatory; v5.4: retro-find + close-out combined — list loop-internal items, commit fixes in current worktree, document in `Closed in this round` section, verify `Open loop-internal at retro time` is EMPTY; non-empty = BLOCKED) |
 | 4.6 | **Post-execution call-flow analysis** | (no subagent) | **lead always** | `.omo/round-N/post-exec-analysis.md` | **always run** (mandatory, R4 retro lesson — call-flow-focused: stalled subagents, lead takeovers, wasted time/tokens, NEW call-flow gaps not in retro) |
 | 4.7 | **Loop self-check** (HARD GATE) | (no subagent) | **lead always** | `.omo/round-N/self-check.md` | **always run** (mandatory, hard gate before closure commit — verifies per-phase artifacts + closure sequence gates; MUST be PASS) |
 | 4.8 | **Loop Summary Output** | (no subagent) | **lead always** | (chat response, NOT a file) | **always run** (mandatory, R7 retro Gap J — lead outputs 5-section summary as chat response BEFORE closure commit) |
@@ -1688,19 +1688,61 @@ When all 7 phases terminal (each `task()` either returned or was taken over):
    ```
 7. **No team_delete** (v2 has no team to delete)
 
-## Round-end retrospective (Phase 4.5 — MANDATORY every round)
+## Round-end retrospective & close-out (Phase 4.5 — MANDATORY every round, NO DEFERRAL — v5.4)
 
-The loop is not closed until the lead writes `.omo/round-N/retro.md` AND (if the retro surfaces skill gaps) commits a skill patch. This is what makes the loop **self-improving** rather than just self-repeating.
+Phase 4.5 has TWO halves:
 
-**When**: Always, after Phase 4 Decision, BEFORE the closure commit. Skipping the retro is a soft-block — the loop cannot end on `decision = ship-to-main` without it.
+1. **Retro-find (reflect)**: list loop-internal items discovered during the round.
+2. **Close-out (act)**: for EACH item, commit a fix in the current round's worktree BEFORE writing retro.md.
 
-**Why mandatory**:
-- Without it, the same loop frictions repeat across rounds. Round 1 spent 90+ min on the Bun.write mocking problem; Round 2 had the React wrong-command-C pitfall; Round 3 had the `ctx.client.app.log` harness limitation. Each was a one-round discovery with no in-band propagation.
-- The loop's purpose is to compound improvements, not just to ship features. Without retro, the skill becomes a snapshot of the Round 0 design and never improves.
+The loop is not closed until the lead writes `.omo/round-N/retro.md` AND closes ALL loop-internal items in the current worktree (no "Action items for next round", no deferral, no escape hatch). **Every round ends in a clean loop state.**
+
+**When**: Always, after Phase 4 Decision, BEFORE the closure commit. Skipping the retro OR leaving items unclosed is a hard-block — the loop cannot end on `decision = ship-to-main` without it.
+
+**Why mandatory (revised v5.4)**:
+- Without retro, the same loop frictions repeat across rounds. Round 1 spent 90+ min on the Bun.write mocking problem; Round 2 had the React wrong-command-C pitfall; Round 3 had the `ctx.client.app.log` harness limitation. Each was a one-round discovery with no in-band propagation.
+- Without close-out (v5.4 lesson, R32–R41 evidence): retro findings get DEFERRED to next round via the old "Action items for next round" section. R37–R41 shipped ZERO product features for 5 consecutive rounds because retro findings (housekeeping, skill patches, branch cleanup) kept queuing instead of closing. **v5.4 fix**: kill the deferral pattern entirely. If retro finds it, retro closes it.
+- The loop's purpose is to compound improvements AND ship features. Without close-out, it only compounds improvements and stops shipping.
+
+**Close-out contract (v5.4 — NO ESCAPE HATCH)**:
+
+Phase 4.5 close-out's only job is: **close every loop-internal item surfaced by retro-find, in the current worktree, before writing retro.md**.
+
+```
+while retro has unclosed loop-internal item:
+    close it (commit fix in current worktree)
+    record commit SHA in retro.md "Closed in this round" section
+until no unclosed items remain
+```
+
+- **NO** "can't fit in budget" branch.
+- **NO** "escalate to user" branch.
+- **NO** "defer to next round" branch.
+- **NO** "砍 scope" branch.
+- **Time is not a variable.**
+
+**If retro-find surfaces something genuinely too large** (e.g., 4-commit runtime compat refactor like R32): close it anyway — that's what R32 did. A round can be entirely close-out work if needed. SHIP verdict still applies; product backlog carries forward separately.
+
+**Phase 4 verdict interaction**: if any loop-internal item remains unclosed at retro time, **Phase 4 verdict = BLOCKED**. Round cannot SHIP. This is enforced by the Self-check (Phase 4.7) gate.
+
+**Loop-internal classification** (these MUST go through close-out, NEVER through deferral):
+
+- Skill patches (skill gaps found during round)
+- Housekeeping (stale branches, worktrees, scripts that should be removed/updated)
+- Doc drift (README/docs that contradict shipped code)
+- Missing artifacts (retro.md sections, post-exec.md sections, etc.)
+- Hook/script updates (pre-commit, verify scripts)
+- Skill doc updates (SKILL.md / phase-prompts.md / loop-decision.md content drift)
+
+**NOT loop-internal** (goes to product backlog, NEVER through close-out):
+
+- Feature work (user-visible product features)
+- Bug fixes (user-facing bugs)
+- UX improvements
 
 **Output `.omo/round-N/retro.md` (no blank sections, canonical template below)**:
 
-<!-- CANONICAL TEMPLATE — DO NOT MODIFY (Phase 4.5 Retro) -->
+<!-- CANONICAL TEMPLATE — DO NOT MODIFY (Phase 4.5 Retro v5.4) -->
 
 ```markdown
 # Round <N> Retrospective
@@ -1719,13 +1761,24 @@ The loop is not closed until the lead writes `.omo/round-N/retro.md` AND (if the
 For each gap:
 - **Symptom** (file:line of the issue)
 - **Existing-skill-text** that didn't catch it (file:line of skill)
-- **Proposed patch** (1-2 sentences describing the addition)
+- **Patch applied (commit SHA)** — v5.4 NEW: every gap MUST have a closed commit SHA. If patch not yet applied, this gap belongs in "Open loop-internal at retro time" with BLOCKED reason.
 
 ## Followup items
-<0-N bullets, each is a concrete carry-over task>
+<0-N bullets, each is a concrete PRODUCT carry-over task (feature/bugfix only, NEVER loop-internal)>
 
-## Action items for next round
-<ordered list, the FIRST item MUST be any pending skill patch>
+## Closed in this round (loop-internal) — v5.4 NEW
+<numbered list. Each item: description + commit SHA that closed it. If empty, write "None — clean execution, no loop-internal items surfaced.">
+Example:
+1. Skill patch SG.R29.10 (close-out step contract) — closed in commit abc1234
+2. Stale branch team-dev-loop-round-36-ac2 deleted — closed in commit def5678
+
+## Open loop-internal at retro time — v5.4 NEW
+<numbered list. MUST be EMPTY for Phase 4 SHIP verdict. If non-empty, Phase 4 = BLOCKED.>
+If empty, write "None — all loop-internal items closed in this round (per v5.4 no-deferral rule)."
+If non-empty, each entry must include:
+- **Item**: <description>
+- **Reason cannot close in this round**: <technical blocker, not "out of time">
+- **Closure plan**: <concrete next action — usually: re-run retro close-out, do NOT defer>
 ```
 
 ## Post-execution call-flow analysis (Phase 4.6 — MANDATORY every round, R4 loop meta-review lesson)
@@ -1744,7 +1797,7 @@ The retro (Phase 4.5) is content-focused: what did we ship, what worked, what fa
 
 **Output `.omo/round-N/post-exec-analysis.md` (no blank sections, canonical template below)**:
 
-<!-- CANONICAL TEMPLATE — DO NOT MODIFY (Phase 4.6 Post-exec) -->
+<!-- CANONICAL TEMPLATE — DO NOT MODIFY (Phase 4.6 Post-exec v5.4) -->
 
 ```markdown
 # Round <N> Post-execution Call-Flow Analysis
@@ -1776,13 +1829,21 @@ For each task that was lead-takeover, stalled, canceled, or failed-launch:
 For each gap:
 - **Symptom** (file:line of the task that stalled/took-over)
 - **Existing-skill-text** that didn't catch it (file:line of skill)
-- **Proposed patch** (1-2 sentences describing the addition)
+- **Patch applied (commit SHA)** — v5.4 NEW: every gap MUST have a closed commit SHA. If patch not yet applied, this gap belongs in "Open loop-internal at retro time" with BLOCKED reason.
 
 ## Followup items
-<0-N bullets, each is a concrete carry-over task>
+<0-N bullets, each is a concrete PRODUCT carry-over task (feature/bugfix only, NEVER loop-internal)>
 
-## Action items for next round
-<ordered list, the FIRST item MUST be any pending skill patch from the new skill gaps section>
+## Closed in this round (loop-internal) — v5.4 NEW
+<numbered list. Each item: description + commit SHA that closed it. If empty, write "None — clean execution, no loop-internal items surfaced.">
+
+## Open loop-internal at retro time — v5.4 NEW
+<numbered list. MUST be EMPTY for Phase 4 SHIP verdict. If non-empty, Phase 4 = BLOCKED.>
+If empty, write "None — all loop-internal items closed in this round (per v5.4 no-deferral rule)."
+If non-empty, each entry must include:
+- **Item**: <description>
+- **Reason cannot close in this round**: <technical blocker, not "out of time">
+- **Closure plan**: <concrete next action — usually: re-run retro close-out, do NOT defer>
 ```
 
 **Workflow distinction from Phase 4.5 retro**:
@@ -1831,8 +1892,8 @@ Both are mandatory. Both are lead-written. Both can surface skill patches. The t
 | 3c Tester Playwright | `.omo/round-N/playwright-report.md` OR lead-takeover note OR profile-skipped justification | UI changed OR feature+arch profile | PASS/N/A/FAIL | walkthrough + screenshot + verdict, OR lead-takeover note, OR explicit skip justification |
 | 3.5 PM Doc Writer | `.omo/round-N/doc-update-report.md` | yes | PASS/FAIL | sections added/modified, screenshots captured, walkthrough validated |
 | 4 Decision | `.omo/round-N/decision.md` | yes | PASS/FAIL | SHIP/CONTINUE/STOP verdict, AC trace, lead takeovers list, dev self-check, ## Sync section, ## Planner section, ## Pre-Commit Audit section |
-| 4.5 Retro | `.omo/round-N/retro.md` | yes (mandatory) | PASS/FAIL | all 6 sections present (TL;DR, Successes, Failures, Skill gaps, Followup, Action items), no blank sections |
-| 4.6 Post-exec | `.omo/round-N/post-exec-analysis.md` | yes (mandatory, R4 retro) | PASS/FAIL | all 6 sections present (TL;DR, Call-flow timeline, Task invocations summary, Per-task review, Wasted analysis, New skill gaps) |
+| 4.5 Retro & close-out | `.omo/round-N/retro.md` | yes (mandatory, NO DEFERRAL v5.4) | PASS/BLOCKED | all sections present (TL;DR, Successes, Failures, Skill gaps, Followup, **Closed in this round**, **Open loop-internal at retro time**); `Open loop-internal at retro time` MUST be empty for PASS — otherwise BLOCKED (Phase 4 verdict) |
+| 4.6 Post-exec | `.omo/round-N/post-exec-analysis.md` | yes (mandatory, R4 retro) | PASS/BLOCKED | all sections present (TL;DR, Call-flow timeline, Task invocations summary, Per-task review, Wasted analysis, New skill gaps, **Closed in this round**, **Open loop-internal at retro time**); `Open loop-internal at retro time` MUST be empty for PASS — otherwise BLOCKED (Phase 4 verdict) |
 
 ## Profile-gated checks (skip if profile says skip — these are N/A, not FAIL)
 
@@ -1883,8 +1944,9 @@ If FAIL: **the closure commit is BLOCKED**. Fix the missing artifact(s) (re-run 
 - [ ] Phase 3c playwright-report.md OR lead-takeover-tester-playwright.md OR profile-skipped justification
 - [ ] Phase 3.5 doc-update-report.md exists + sections + walkthrough validated
 - [ ] Phase 4 decision.md exists + SHIP/CONTINUE/STOP verdict + AC trace + lead takeovers + dev self-check + ## Sync section + ## Planner section + ## Pre-Commit Audit section
-- [ ] Phase 4.5 retro.md exists + all 6 sections, no blanks
-- [ ] Phase 4.6 post-exec-analysis.md exists + all 6 sections, no blanks
+- [ ] Phase 4.5 retro.md exists + all sections, no blanks + `Open loop-internal at retro time` is EMPTY (BLOCKED otherwise — v5.4 no-deferral rule)
+- [ ] Phase 4.6 post-exec-analysis.md exists + all sections, no blanks + `Open loop-internal at retro time` is EMPTY (BLOCKED otherwise — v5.4 no-deferral rule)
+- [ ] Phase 4.5 close-out sub-step actually committed fix(es) to current worktree (verify via `git log main..HEAD --oneline` in current worktree, every loop-internal item in retro.md "Closed in this round" section has a corresponding commit SHA)
 - [ ] `.omo/proposals.jsonl` R-N line appended (5 fields: round, timestamp, pm_source, brief_excerpt, final_outcome)
 - [ ] `git log --oneline -1` shows the round's closure commit (post-self-check)
 
@@ -1962,55 +2024,46 @@ If FAIL: **the closure commit is BLOCKED**. Fix the missing artifact(s) (re-run 
 
 **Apply to R8+**: Lead MUST output the Loop Summary chat response after Phase 4.7 PASS, before the closure commit. The summary should be visible to the user in their chat client. Lead should NOT be silent between self-check PASS and the commit.
 
-## Skill-update rule (when retro or post-exec surfaces skill gaps)
+## Skill-update rule (when retro or post-exec surfaces skill gaps) — v5.4 NO DEFERRAL
 
-If the retro's "Skill gaps found" section is non-empty:
+If the retro's "Skill gaps found" section is non-empty OR post-exec's "New skill gaps" section is non-empty:
 
-1. **Apply the patches first** — treat them as the highest-priority deliverable of the next round, ahead of any user-picked candidate. The patches are committed to `.opencode/skills/team-dev-loop/` (SKILL.md, references/loop-decision.md, references/phase-prompts.md, docs/team-dev-loop.md).
-2. **Verify** with the skill-review audit on the skill directory — must hit 100% PASS, 0 blockers, 0 majors before the user picks the next feature candidate. Run via the slash-command .
-3. **Commit and push** the skill patches separately from any product work, so the audit gate is visible in git history.
-4. **Record** the skill-updates commit SHAs in the next round's `brief.md` ## Skill updates section, so the lineage is traceable in `.omo/proposals.jsonl`.
+1. **Apply the patches in the current round's worktree** (v5.4 NEW) — close-out sub-step inside Phase 4.5 retro + Phase 4.6 post-exec. Do NOT defer to next round. The patches are committed to `.opencode/skills/team-dev-loop/` (SKILL.md, references/loop-decision.md, references/phase-prompts.md, docs/team-dev-loop.md).
+2. **Verify** in Phase 4.7 self-check: `Open loop-internal at retro time` section in BOTH retro.md AND post-exec-analysis.md MUST be empty. Non-empty = BLOCKED (Phase 4 verdict).
+3. **Commit and push** the skill patches together with the closure commit (no separate "next round" ceremony).
+4. **Record** the skill-updates commit SHAs in the current round's `retro.md` "Closed in this round" section, so the lineage is traceable.
 
-The recursive rule: **the loop improves the skill, the improved skill improves the loop**. Without this, "team-dev-loop" becomes just a static 7-role ceremony.
+**Why v5.4 reversed this rule**: previously skill patches were "the highest-priority deliverable of the next round, ahead of any user-picked candidate" — this created the deferral loop that R37–R41 evidence exposed (5 consecutive rounds shipping ZERO product features). v5.4 closes skill patches in the SAME round they surface.
 
-## End-of-round mandatory gap-fix (NEW R+ retro SG.R19.8 — APPLIED, user's meta-requirement)
+The recursive rule remains: **the loop improves the skill, the improved skill improves the loop**. But the timing is now same-round, not next-round.
 
-**Why** (R+ user directive, 2026-06-30): "每一轮 loop 的最后,要自问,当前这轮有什么 gap 然后修复,这个是强制执行的。确保每一轮 loop 的效果都更优。这样 loop 本身的问题在收尾阶段解决,每一轮开始的关注点都在功能需求和功能缺陷上。"
+## End-of-round gap-fix (SG.R19.8 — SUPERSEDED by v5.4 close-out)
+
+**Status (v5.4)**: SG.R19.8's intent is preserved, but its escape hatches are KILLED. v5.4 close-out (inside Phase 4.5 retro + Phase 4.6 post-exec) is now the canonical mechanism. This section is retained for historical context only.
+
+**Why v5.4 superseded SG.R19.8**: SG.R19.8 had three escape hatches that re-enabled deferral:
+
+1. "gap requires > 20 min" → allowed time-based deferral
+2. "depends on external sync" → allowed indefinite deferral
+3. "blocked by user choice" → allowed lead to push to user instead of closing
+
+R37–R41 evidence: these escape hatches were triggered repeatedly, producing 5 consecutive rounds with ZERO product features. v5.4 removes all three. Time is not a variable. External sync is not a blocker. User choice is not an escape hatch — only "this round is fully close-out work" is acceptable.
+
+**v5.4 canonical mechanism** (replaces SG.R19.8):
+
+- Phase 4.5 retro-find + close-out: list loop-internal items, commit fixes in current worktree, document in retro.md "Closed in this round" + verify "Open loop-internal at retro time" is EMPTY.
+- Phase 4.6 post-exec-find + close-out: same pattern for call-flow gaps.
+- Phase 4.7 self-check: BLOCKED if any "Open loop-internal at retro time" section is non-empty.
+
+**Historical context (SG.R19.8 retained for reference)**:
+
+Why this rule was created (R+ user directive, 2026-06-30): "每一轮 loop 的最后,要自问,当前这轮有什么 gap 然后修复,这个是强制执行的。确保每一轮 loop 的效果都更优。这样 loop 本身的问题在收尾阶段解决,每一轮开始的关注点都在功能需求和功能缺陷上。"
 
 Translation: At the end of every loop round, lead MUST self-ask "what gaps does this round have?" and **FIX THEM** in the same round. Mandatory. Loop's own problems get solved in the tail-end phase. Each round starts with pure focus on feature requirements and feature bugs.
 
-**Why this matters** (R19 evidence): Before this rule, R19 retro surfaced 7 skill gaps + AC1.2 PARTIAL. The default behavior was "defer to R20" → next round spent time on accumulated gap-fix work instead of fresh features. After this rule, the same 8 gaps would be FIXED in-round (R19 retro would have produced 8 fix commits + 1 retro doc commit, all before the round archive).
+R19 evidence (where this was first applied): 7 skill gaps + AC1.2 PARTIAL fixed in-round via R+ retro follow-up. ~30 LOC of code + ~150 LOC of doc updates, ~45 min total. The intent was correct. The escape hatches were the bug.
 
-**Hard rule** (SG.R19.8, MANDATORY):
-
-After Phase 4.7 Self-check PASS and BEFORE the closure archive commit (Phase 4.8 Loop Summary chat), lead MUST execute an **End-of-Round Gap-Fix Step**:
-
-1. **Enumerate every gap** surfaced by Phase 4.5 Retro + Phase 4.6 Post-exec + Phase 4.7 Self-check:
-   - Process gaps (Failures F.1-F.N in retro)
-   - Skill gaps (SG.R19.x in retro/post-exec)
-   - Content gaps (PARTIAL ACs, follow-up items)
-   - Drift gaps (any "doc-side-file drift caught" from Phase 2.5)
-   - Backlog gates (stale candidates at boundary)
-2. **For each gap, decide fix-in-round vs defer**:
-   - **Default: fix-in-round** (per user's "强制执行")
-   - **Defer only if**: gap requires > 20 min OR depends on external sync OR is blocked by user choice
-   - **Document each decision** in `decision.md` ## End-of-round gap-fix log section with rationale
-3. **Apply fixes inline** (lead-direct or subagent per scope):
-   - Skill patches → edit SKILL.md + references/*.md
-   - Process fixes → edit phase prompts + templates
-   - Content fixes (e.g., AC1.2 PARTIAL) → lead-direct worktree + commit + merge
-4. **Re-archive retro.md** to reflect "fixed in-round" rather than "deferred to next round"
-5. **Append a one-line gap-fix entry** to `.omo/proposals.jsonl` (separate line, not bundled into the round's normal entry) with structure:
-   ```json
-   {"round": "19-gap-fix", "timestamp": "<ISO>", "fixes_applied": ["SG.R19.1", "SG.R19.2", ..., "AC1.2"], "rationale": "user meta-requirement"}
-   ```
-6. **Single git commit** named `chore(round-N-gap-fix): apply <count> in-round gap fixes (R+ SG.R19.8)` covering all gap-fix changes
-
-**Default behavior change**: This rule REVERSES the default from "defer to next round" to "fix in-round". Exceptions must be justified in the gap-fix log.
-
-**Enforcement**: Future rounds that defer gaps without justification will be flagged by Phase 4.7 Self-check as a fail (`## End-of-round gap-fix log section missing or unjustified deferrals`).
-
-**R+ evidence (R19 trial)**: AC1.2 PARTIAL fix + 7 skill patches applied in-round via R+ retro follow-up. ~30 LOC of code + ~150 LOC of doc updates, ~45 min total. Loop's quality increased; next round (R20) starts focused on fresh backlog, not R19 cleanup.
+**Migration to v5.4**: when starting a new round, lead should follow v5.4 close-out (inside Phase 4.5/4.6) instead of running a separate "End-of-round gap-fix step" after self-check. The work is the same; only the timing and the elimination of escape hatches differ.
 
 ## Phase 2.6 explicit rebuild checklist (NEW R20 retro SG.R20.1 — APPLIED, deferred embed by R22 retro)
 
