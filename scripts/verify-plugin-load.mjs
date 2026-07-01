@@ -109,6 +109,35 @@ async function checkIn(runtimeHint) {
     return false;
   }
 
+  // Gate 4: path-plugin entry shape — for `file://` plugins, the
+  // `<plugin>/opencode.json` must carry an `id` field (R32c / R32d
+  // lessons). npm-name plugins get their id from the registry, but
+  // path plugins need an explicit `id` in the on-disk opencode.json
+  // for the 1.17.12 strict loader. If the plugin doesn't have a
+  // local opencode.json (e.g. it's a CLI tool, not a path plugin),
+  // this gate is skipped silently.
+  const opencodeJsonPath = path.join(PLUGIN_ROOT, "opencode.json");
+  if (existsSync(opencodeJsonPath)) {
+    try {
+      const txt = await readFile(opencodeJsonPath, "utf8");
+      const cfg = JSON.parse(txt);
+      const pathId = cfg?.id;
+      const idOk = typeof pathId === "string" && pathId.length > 0;
+      const sameAsModule = idOk && pathId === id;
+      log(
+        runtimeHint,
+        "path-plugin-entry",
+        idOk,
+        `opencode.json.id=${idOk ? JSON.stringify(pathId) : typeof pathId}` +
+          (idOk && id ? (sameAsModule ? " (matches default.id ✓)" : ` (default.id=${JSON.stringify(id)} mismatch)`) : ""),
+      );
+      if (!idOk) return false;
+    } catch (err) {
+      log(runtimeHint, "path-plugin-entry", false, `opencode.json parse failed: ${err.message}`);
+      return false;
+    }
+  }
+
   return commands.length > 0;
 }
 
