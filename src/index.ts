@@ -1752,644 +1752,660 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
 
           let opened = false;
 
-          const server = await serve({
-            port: 0,
-            fetch: async (request: Request) => {
-              const url = new URL(request.url);
-              const pathname = url.pathname;
+          // R33 #66: fix HTTP server to fixed port 8890 so localStorage origin
+          // is stable across OpenCode restarts. If 8890 is busy (EADDRINUSE),
+          // fall back once to OS-assigned port 0 with a loud warn — localStorage
+          // WILL NOT persist across restart in that fallback mode.
+          const fetchHandler = async (request: Request): Promise<Response> => {
+            const url = new URL(request.url);
+            const pathname = url.pathname;
 
-              if (pathname === "/health") {
-                return new Response("ok");
+            if (pathname === "/health") {
+              return new Response("ok");
+            }
+
+            if (request.method === "GET" && pathname.startsWith("/assets/")) {
+              if (!asset_root) return new Response("not found", { status: 404 });
+              const rel = pathname.slice("/assets/".length);
+              if (!rel || rel.includes("\u0000")) {
+                return new Response("bad request", { status: 400 });
               }
 
-              if (request.method === "GET" && pathname.startsWith("/assets/")) {
-                if (!asset_root) return new Response("not found", { status: 404 });
-                const rel = pathname.slice("/assets/".length);
-                if (!rel || rel.includes("\u0000")) {
-                  return new Response("bad request", { status: 400 });
-                }
+              const resolved = path.resolve(asset_root, rel);
+              const prefix = asset_root.endsWith(path.sep)
+                ? asset_root
+                : `${asset_root}${path.sep}`;
+              if (resolved !== asset_root && !resolved.startsWith(prefix)) {
+                return new Response("forbidden", { status: 403 });
+              }
 
-                const resolved = path.resolve(asset_root, rel);
-                const prefix = asset_root.endsWith(path.sep)
-                  ? asset_root
-                  : `${asset_root}${path.sep}`;
-                if (resolved !== asset_root && !resolved.startsWith(prefix)) {
-                  return new Response("forbidden", { status: 403 });
-                }
+              if (!(await fileExists(resolved))) {
+                return new Response("not found", { status: 404 });
+              }
 
-                if (!(await fileExists(resolved))) {
-                  return new Response("not found", { status: 404 });
-                }
+              const buf = await readFileText(resolved);
+              return new Response(buf, {
+                headers: {
+                  "content-type": mime(resolved, "application/octet-stream"),
+                  "cache-control": "no-store",
+                },
+              });
+            }
 
-                const buf = await readFileText(resolved);
-                return new Response(buf, {
-                  headers: {
-                    "content-type": mime(resolved, "application/octet-stream"),
-                    "cache-control": "no-store",
+            if (url.searchParams.get("token") !== token) {
+              return new Response("unauthorized", { status: 401 });
+            }
+
+            if (request.method === "GET" && pathname === `/review/${id}`) {
+              return new Response(html, {
+                headers: { "content-type": "text/html; charset=utf-8" },
+              });
+            }
+
+            if (request.method === "GET" && pathname === `/api/review/${id}`) {
+              return new Response(JSON.stringify(data), {
+                headers: { "content-type": "application/json" },
+              });
+            }
+
+            if (request.method === "GET" && pathname === `/api/review/${id}/prior-notes`) {
+              if (!validateSessionId(id)) {
+                return new Response(JSON.stringify({ error: "invalid session id" }), {
+                  status: 400,
+                  headers: { "content-type": "application/json" },
+                });
+              }
+              const sessionDir = path.dirname(state_file);
+              const result = await readPriorNotesFromSession(sessionDir);
+              if (!result.ok) {
+                return new Response(JSON.stringify({ error: result.error }), {
+                  status: result.status,
+                  headers: { "content-type": "application/json" },
+                });
+              }
+              return new Response(JSON.stringify({ rounds: result.rounds }), {
+                headers: { "content-type": "application/json" },
+              });
+            }
+
+            if (request.method === "PUT" && pathname === `/api/review/${id}/draft`) {
+              const input = (await request.json().catch(() => ({}))) as Submit;
+              const notes = typeof input.notes === "string" ? input.notes : "";
+              const new_findings = Array.isArray(input.new_findings) ? input.new_findings : [];
+              // R14 #24: accept optional lastSavedAt from the client and
+              // store it in state.draft.lastSavedAt. Use max(client, server)
+              // so clock skew can never make the indicator go backwards.
+              const clientLastSavedAt =
+                typeof input.lastSavedAt === "number" && Number.isFinite(input.lastSavedAt)
+                  ? input.lastSavedAt
+                  : 0;
+              const now = Date.now();
+              const lastSavedAt = Math.max(clientLastSavedAt, now, base.draft?.lastSavedAt ?? 0);
+              const next: State = {
+                ...base,
+                draft: {
+                  notes,
+                  new_findings,
+                  lastSavedAt,
+                },
+                updated_at: now,
+              };
+              await saveState(state_file, next);
+              return new Response(JSON.stringify({ ok: true, lastSavedAt }), {
+                headers: { "content-type": "application/json" },
+              });
+            }
+
+            if (request.method === "POST" && pathname === `/api/review/${id}/resolve`) {
+              const input = (await request.json().catch(() => ({}))) as {
+                finding_id?: string;
+                reason?: string;
+                resolution_kind?: string;
+                resolution_reason?: string;
+              };
+              const finding_id = input.finding_id;
+              if (!finding_id) {
+                return new Response(JSON.stringify({ error: "finding_id required" }), {
+                  status: 400,
+                  headers: { "content-type": "application/json" },
+                });
+              }
+              // R13 #21 — validate resolution_kind against the 4-value
+              // whitelist (400 on miss, mirrors EMOJI_WHITELIST pattern at
+              // :2161-2168). resolution_kind is optional (old `POST
+              // {finding_id}` with no resolution_kind still works → keeps
+              // backwards-compat with R9/R10/R11/R12 callers). Note: the
+              // existing `reason` field is R13 #20's "resolve reason"
+              // (mirrors the R9 reopen-reason shape). resolution_reason
+              // is the optional companion to resolution_kind.
+              if (
+                input.resolution_kind !== undefined &&
+                !isFindingResolutionKind(input.resolution_kind)
+              ) {
+                return new Response(
+                  JSON.stringify({
+                    error: `invalid resolution_kind: ${input.resolution_kind ?? ""} (allowed: ${[...RESOLUTION_KIND_WHITELIST].join(", ")})`,
+                  }),
+                  { status: 400, headers: { "content-type": "application/json" } },
+                );
+              }
+              const target = base.findings.find(
+                (item) => item.id === finding_id && item.status === "open",
+              );
+              if (!target) {
+                return new Response(
+                  JSON.stringify({ error: "finding not found or already resolved" }),
+                  {
+                    status: 404,
+                    headers: { "content-type": "application/json" },
                   },
-                });
+                );
               }
-
-              if (url.searchParams.get("token") !== token) {
-                return new Response("unauthorized", { status: 401 });
+              target.status = "resolved";
+              target.updated_at = Date.now();
+              target.closed_at = Date.now();
+              target.resolved_at = Date.now();
+              // R13 #20+#21 — stamp resolve metadata. Both fields are
+              // optional and only written when present, so the old
+              // `POST {finding_id}` payload still works without
+              // accidentally clobbering previously-stamped values.
+              if (typeof input.reason === "string" && input.reason.trim().length > 0) {
+                target.resolve_reason = input.reason.trim().slice(0, 200);
+                target.resolve_manually_resolved = true;
               }
-
-              if (request.method === "GET" && pathname === `/review/${id}`) {
-                return new Response(html, {
-                  headers: { "content-type": "text/html; charset=utf-8" },
-                });
-              }
-
-              if (request.method === "GET" && pathname === `/api/review/${id}`) {
-                return new Response(JSON.stringify(data), {
-                  headers: { "content-type": "application/json" },
-                });
-              }
-
-              if (request.method === "GET" && pathname === `/api/review/${id}/prior-notes`) {
-                if (!validateSessionId(id)) {
-                  return new Response(JSON.stringify({ error: "invalid session id" }), {
-                    status: 400,
-                    headers: { "content-type": "application/json" },
-                  });
-                }
-                const sessionDir = path.dirname(state_file);
-                const result = await readPriorNotesFromSession(sessionDir);
-                if (!result.ok) {
-                  return new Response(JSON.stringify({ error: result.error }), {
-                    status: result.status,
-                    headers: { "content-type": "application/json" },
-                  });
-                }
-                return new Response(JSON.stringify({ rounds: result.rounds }), {
-                  headers: { "content-type": "application/json" },
-                });
-              }
-
-              if (request.method === "PUT" && pathname === `/api/review/${id}/draft`) {
-                const input = (await request.json().catch(() => ({}))) as Submit;
-                const notes = typeof input.notes === "string" ? input.notes : "";
-                const new_findings = Array.isArray(input.new_findings) ? input.new_findings : [];
-                // R14 #24: accept optional lastSavedAt from the client and
-                // store it in state.draft.lastSavedAt. Use max(client, server)
-                // so clock skew can never make the indicator go backwards.
-                const clientLastSavedAt =
-                  typeof input.lastSavedAt === "number" && Number.isFinite(input.lastSavedAt)
-                    ? input.lastSavedAt
-                    : 0;
-                const now = Date.now();
-                const lastSavedAt = Math.max(clientLastSavedAt, now, base.draft?.lastSavedAt ?? 0);
-                const next: State = {
-                  ...base,
-                  draft: {
-                    notes,
-                    new_findings,
-                    lastSavedAt,
-                  },
-                  updated_at: now,
-                };
-                await saveState(state_file, next);
-                return new Response(JSON.stringify({ ok: true, lastSavedAt }), {
-                  headers: { "content-type": "application/json" },
-                });
-              }
-
-              if (request.method === "POST" && pathname === `/api/review/${id}/resolve`) {
-                const input = (await request.json().catch(() => ({}))) as {
-                  finding_id?: string;
-                  reason?: string;
-                  resolution_kind?: string;
-                  resolution_reason?: string;
-                };
-                const finding_id = input.finding_id;
-                if (!finding_id) {
-                  return new Response(JSON.stringify({ error: "finding_id required" }), {
-                    status: 400,
-                    headers: { "content-type": "application/json" },
-                  });
-                }
-                // R13 #21 — validate resolution_kind against the 4-value
-                // whitelist (400 on miss, mirrors EMOJI_WHITELIST pattern at
-                // :2161-2168). resolution_kind is optional (old `POST
-                // {finding_id}` with no resolution_kind still works → keeps
-                // backwards-compat with R9/R10/R11/R12 callers). Note: the
-                // existing `reason` field is R13 #20's "resolve reason"
-                // (mirrors the R9 reopen-reason shape). resolution_reason
-                // is the optional companion to resolution_kind.
+              if (input.resolution_kind) {
+                target.resolution_kind = input.resolution_kind;
                 if (
-                  input.resolution_kind !== undefined &&
-                  !isFindingResolutionKind(input.resolution_kind)
+                  typeof input.resolution_reason === "string" &&
+                  input.resolution_reason.trim().length > 0
                 ) {
+                  target.resolution_reason = input.resolution_reason.trim().slice(0, 200);
+                }
+              }
+              base.updated_at = Date.now();
+              await saveState(state_file, base);
+              const idx = data.existing_findings.findIndex((item) => item.id === finding_id);
+              if (idx !== -1) data.existing_findings[idx] = { ...target };
+              else data.existing_findings.push({ ...target });
+              return new Response(JSON.stringify({ ok: true }), {
+                headers: { "content-type": "application/json" },
+              });
+            }
+
+            if (request.method === "POST" && pathname === `/api/review/${id}/reopen`) {
+              const input = (await request.json().catch(() => ({}))) as {
+                finding_id?: string;
+                manually_reopened?: boolean;
+                reason?: string;
+              };
+              const finding_id = input.finding_id;
+              if (!finding_id) {
+                return new Response(JSON.stringify({ error: "finding_id required" }), {
+                  status: 400,
+                  headers: { "content-type": "application/json" },
+                });
+              }
+              const target = base.findings.find((item) => item.id === finding_id);
+              if (!target) {
+                return new Response(JSON.stringify({ error: "finding not found" }), {
+                  status: 404,
+                  headers: { "content-type": "application/json" },
+                });
+              }
+              // R9 #1: allow reopen on closed_auto when client sends
+              // manually_reopened === true (explicit user override of the
+              // auto-close). Otherwise keep the strict status guard so
+              // already-resolved findings still reopen via the same path.
+              const manualOverride =
+                input.manually_reopened === true && target.status === "closed_auto";
+              if (target.status !== "resolved" && !manualOverride) {
+                return new Response(
+                  JSON.stringify({ error: `cannot reopen (status: ${target.status})` }),
+                  {
+                    status: 400,
+                    headers: { "content-type": "application/json" },
+                  },
+                );
+              }
+              // Validate anchor: the code at the line numbers must still match.
+              if (target.kind === "file") {
+                const file = map.get(target.file);
+                if (!file) {
+                  return new Response(JSON.stringify({ error: "file removed from diff" }), {
+                    status: 409,
+                    headers: { "content-type": "application/json" },
+                  });
+                }
+                if (file.status === "deleted") {
+                  return new Response(JSON.stringify({ error: "file deleted, cannot reopen" }), {
+                    status: 409,
+                    headers: { "content-type": "application/json" },
+                  });
+                }
+              } else {
+                const file = map.get(target.file);
+                if (!file) {
+                  return new Response(JSON.stringify({ error: "file removed from diff" }), {
+                    status: 409,
+                    headers: { "content-type": "application/json" },
+                  });
+                }
+                const source = file.status === "deleted" ? file.before : file.after;
+                const lines = source.split("\n");
+                const snippet = target.anchor?.selected ?? "";
+                let stillMatches = false;
+                if (target.start_line >= 1 && target.start_line <= lines.length) {
+                  const actual = lines[target.start_line - 1] ?? "";
+                  stillMatches = snippet === "" || actual.includes(snippet);
+                }
+                if (!stillMatches) {
                   return new Response(
                     JSON.stringify({
-                      error: `invalid resolution_kind: ${input.resolution_kind ?? ""} (allowed: ${[...RESOLUTION_KIND_WHITELIST].join(", ")})`,
+                      error: "code at this location has changed, please create a new finding",
                     }),
-                    { status: 400, headers: { "content-type": "application/json" } },
+                    { status: 409, headers: { "content-type": "application/json" } },
                   );
                 }
-                const target = base.findings.find(
-                  (item) => item.id === finding_id && item.status === "open",
-                );
-                if (!target) {
-                  return new Response(
-                    JSON.stringify({ error: "finding not found or already resolved" }),
-                    {
-                      status: 404,
-                      headers: { "content-type": "application/json" },
-                    },
-                  );
-                }
-                target.status = "resolved";
-                target.updated_at = Date.now();
-                target.closed_at = Date.now();
-                target.resolved_at = Date.now();
-                // R13 #20+#21 — stamp resolve metadata. Both fields are
-                // optional and only written when present, so the old
-                // `POST {finding_id}` payload still works without
-                // accidentally clobbering previously-stamped values.
-                if (typeof input.reason === "string" && input.reason.trim().length > 0) {
-                  target.resolve_reason = input.reason.trim().slice(0, 200);
-                  target.resolve_manually_resolved = true;
-                }
-                if (input.resolution_kind) {
-                  target.resolution_kind = input.resolution_kind;
-                  if (
-                    typeof input.resolution_reason === "string" &&
-                    input.resolution_reason.trim().length > 0
-                  ) {
-                    target.resolution_reason = input.resolution_reason.trim().slice(0, 200);
-                  }
-                }
-                base.updated_at = Date.now();
-                await saveState(state_file, base);
-                const idx = data.existing_findings.findIndex((item) => item.id === finding_id);
-                if (idx !== -1) data.existing_findings[idx] = { ...target };
-                else data.existing_findings.push({ ...target });
-                return new Response(JSON.stringify({ ok: true }), {
-                  headers: { "content-type": "application/json" },
-                });
               }
-
-              if (request.method === "POST" && pathname === `/api/review/${id}/reopen`) {
-                const input = (await request.json().catch(() => ({}))) as {
-                  finding_id?: string;
-                  manually_reopened?: boolean;
-                  reason?: string;
-                };
-                const finding_id = input.finding_id;
-                if (!finding_id) {
-                  return new Response(JSON.stringify({ error: "finding_id required" }), {
-                    status: 400,
-                    headers: { "content-type": "application/json" },
-                  });
-                }
-                const target = base.findings.find((item) => item.id === finding_id);
-                if (!target) {
-                  return new Response(JSON.stringify({ error: "finding not found" }), {
-                    status: 404,
-                    headers: { "content-type": "application/json" },
-                  });
-                }
-                // R9 #1: allow reopen on closed_auto when client sends
-                // manually_reopened === true (explicit user override of the
-                // auto-close). Otherwise keep the strict status guard so
-                // already-resolved findings still reopen via the same path.
-                const manualOverride =
-                  input.manually_reopened === true && target.status === "closed_auto";
-                if (target.status !== "resolved" && !manualOverride) {
-                  return new Response(
-                    JSON.stringify({ error: `cannot reopen (status: ${target.status})` }),
-                    {
-                      status: 400,
-                      headers: { "content-type": "application/json" },
-                    },
-                  );
-                }
-                // Validate anchor: the code at the line numbers must still match.
-                if (target.kind === "file") {
-                  const file = map.get(target.file);
-                  if (!file) {
-                    return new Response(JSON.stringify({ error: "file removed from diff" }), {
-                      status: 409,
-                      headers: { "content-type": "application/json" },
-                    });
-                  }
-                  if (file.status === "deleted") {
-                    return new Response(JSON.stringify({ error: "file deleted, cannot reopen" }), {
-                      status: 409,
-                      headers: { "content-type": "application/json" },
-                    });
-                  }
-                } else {
-                  const file = map.get(target.file);
-                  if (!file) {
-                    return new Response(JSON.stringify({ error: "file removed from diff" }), {
-                      status: 409,
-                      headers: { "content-type": "application/json" },
-                    });
-                  }
-                  const source = file.status === "deleted" ? file.before : file.after;
-                  const lines = source.split("\n");
-                  const snippet = target.anchor?.selected ?? "";
-                  let stillMatches = false;
-                  if (target.start_line >= 1 && target.start_line <= lines.length) {
-                    const actual = lines[target.start_line - 1] ?? "";
-                    stillMatches = snippet === "" || actual.includes(snippet);
-                  }
-                  if (!stillMatches) {
-                    return new Response(
-                      JSON.stringify({
-                        error: "code at this location has changed, please create a new finding",
-                      }),
-                      { status: 409, headers: { "content-type": "application/json" } },
-                    );
-                  }
-                }
-                target.status = "open";
-                target.updated_at = Date.now();
-                target.closed_at = undefined;
-                // R9 #1: when the reopen came via the manual-override path,
-                // stamp the honor-flag + clear stale close_reason + record
-                // the system comment that explains why the user re-opened.
-                if (manualOverride) {
-                  target.manually_reopened = true;
-                  target.close_reason = undefined;
-                  const reason = typeof input.reason === "string" ? input.reason.trim() : "";
-                  const trimmedReason = reason.slice(0, 200);
-                  const commentText = trimmedReason
-                    ? `Manually reopened: ${trimmedReason}`
-                    : "Manually reopened";
-                  const comment: FindingComment = {
-                    id: `comment_${Date.now().toString(36)}_${crypto.randomUUID().slice(0, 6)}`,
-                    author: "user",
-                    text: commentText,
-                    created_at: Date.now(),
-                  };
-                  target.comments = target.comments ?? [];
-                  target.comments.push(comment);
-                }
-                base.updated_at = Date.now();
-                await saveState(state_file, base);
-                const idx = data.existing_findings.findIndex((item) => item.id === finding_id);
-                if (idx !== -1) {
-                  data.existing_findings[idx] = { ...target };
-                } else {
-                  data.existing_findings.push({ ...target });
-                }
-                return new Response(JSON.stringify({ ok: true }), {
-                  headers: { "content-type": "application/json" },
-                });
-              }
-
-              if (request.method === "POST" && pathname === `/api/review/${id}/comment`) {
-                const input = (await request.json().catch(() => ({}))) as CommentInput;
-                const finding_id = input.finding_id;
-                const text = typeof input.text === "string" ? input.text.trim() : "";
-                if (!finding_id) {
-                  return new Response(JSON.stringify({ error: "finding_id required" }), {
-                    status: 400,
-                    headers: { "content-type": "application/json" },
-                  });
-                }
-                if (!text) {
-                  return new Response(JSON.stringify({ error: "comment text required" }), {
-                    status: 400,
-                    headers: { "content-type": "application/json" },
-                  });
-                }
-                if (text.length > 500) {
-                  return new Response(JSON.stringify({ error: "comment exceeds 500 characters" }), {
-                    status: 400,
-                    headers: { "content-type": "application/json" },
-                  });
-                }
-                const target = base.findings.find((item) => item.id === finding_id);
-                if (!target) {
-                  return new Response(JSON.stringify({ error: "finding not found" }), {
-                    status: 404,
-                    headers: { "content-type": "application/json" },
-                  });
-                }
-                const author = input.author === "agent" ? "agent" : "user";
+              target.status = "open";
+              target.updated_at = Date.now();
+              target.closed_at = undefined;
+              // R9 #1: when the reopen came via the manual-override path,
+              // stamp the honor-flag + clear stale close_reason + record
+              // the system comment that explains why the user re-opened.
+              if (manualOverride) {
+                target.manually_reopened = true;
+                target.close_reason = undefined;
+                const reason = typeof input.reason === "string" ? input.reason.trim() : "";
+                const trimmedReason = reason.slice(0, 200);
+                const commentText = trimmedReason
+                  ? `Manually reopened: ${trimmedReason}`
+                  : "Manually reopened";
                 const comment: FindingComment = {
                   id: `comment_${Date.now().toString(36)}_${crypto.randomUUID().slice(0, 6)}`,
-                  author,
-                  text,
+                  author: "user",
+                  text: commentText,
                   created_at: Date.now(),
                 };
                 target.comments = target.comments ?? [];
                 target.comments.push(comment);
-                target.updated_at = Date.now();
-                base.updated_at = Date.now();
-                await saveState(state_file, base);
-                const idx = data.existing_findings.findIndex((item) => item.id === finding_id);
-                if (idx !== -1) {
-                  data.existing_findings[idx] = { ...target };
-                } else {
-                  data.existing_findings.push({ ...target });
-                }
-                return new Response(JSON.stringify({ ok: true, comment }), {
+              }
+              base.updated_at = Date.now();
+              await saveState(state_file, base);
+              const idx = data.existing_findings.findIndex((item) => item.id === finding_id);
+              if (idx !== -1) {
+                data.existing_findings[idx] = { ...target };
+              } else {
+                data.existing_findings.push({ ...target });
+              }
+              return new Response(JSON.stringify({ ok: true }), {
+                headers: { "content-type": "application/json" },
+              });
+            }
+
+            if (request.method === "POST" && pathname === `/api/review/${id}/comment`) {
+              const input = (await request.json().catch(() => ({}))) as CommentInput;
+              const finding_id = input.finding_id;
+              const text = typeof input.text === "string" ? input.text.trim() : "";
+              if (!finding_id) {
+                return new Response(JSON.stringify({ error: "finding_id required" }), {
+                  status: 400,
                   headers: { "content-type": "application/json" },
                 });
               }
+              if (!text) {
+                return new Response(JSON.stringify({ error: "comment text required" }), {
+                  status: 400,
+                  headers: { "content-type": "application/json" },
+                });
+              }
+              if (text.length > 500) {
+                return new Response(JSON.stringify({ error: "comment exceeds 500 characters" }), {
+                  status: 400,
+                  headers: { "content-type": "application/json" },
+                });
+              }
+              const target = base.findings.find((item) => item.id === finding_id);
+              if (!target) {
+                return new Response(JSON.stringify({ error: "finding not found" }), {
+                  status: 404,
+                  headers: { "content-type": "application/json" },
+                });
+              }
+              const author = input.author === "agent" ? "agent" : "user";
+              const comment: FindingComment = {
+                id: `comment_${Date.now().toString(36)}_${crypto.randomUUID().slice(0, 6)}`,
+                author,
+                text,
+                created_at: Date.now(),
+              };
+              target.comments = target.comments ?? [];
+              target.comments.push(comment);
+              target.updated_at = Date.now();
+              base.updated_at = Date.now();
+              await saveState(state_file, base);
+              const idx = data.existing_findings.findIndex((item) => item.id === finding_id);
+              if (idx !== -1) {
+                data.existing_findings[idx] = { ...target };
+              } else {
+                data.existing_findings.push({ ...target });
+              }
+              return new Response(JSON.stringify({ ok: true, comment }), {
+                headers: { "content-type": "application/json" },
+              });
+            }
 
-              if (request.method === "PATCH" && editFindingPathnameMatch(pathname, id)) {
-                const findingId = editFindingPathnameMatch(pathname, id)!;
-                const input = (await request.json().catch(() => ({}))) as {
-                  category?: string;
-                  severity?: string;
-                  comment?: string;
-                };
-                const hasCategory = typeof input.category === "string";
-                const hasSeverity = typeof input.severity === "string";
-                const hasComment = typeof input.comment === "string";
-                if (!hasCategory && !hasSeverity && !hasComment) {
-                  return new Response(JSON.stringify({ error: "no fields to update" }), {
-                    status: 400,
-                    headers: { "content-type": "application/json" },
-                  });
-                }
-                if (hasCategory && !isCategory(input.category as string)) {
-                  return new Response(
-                    JSON.stringify({ error: `invalid category: ${input.category}` }),
-                    { status: 400, headers: { "content-type": "application/json" } },
-                  );
-                }
-                if (hasSeverity && !isSeverity(input.severity as string)) {
-                  return new Response(
-                    JSON.stringify({ error: `invalid severity: ${input.severity}` }),
-                    { status: 400, headers: { "content-type": "application/json" } },
-                  );
-                }
-                if (hasComment && (input.comment as string).length > 2000) {
-                  return new Response(
-                    JSON.stringify({ error: "comment exceeds 2000 characters" }),
-                    { status: 400, headers: { "content-type": "application/json" } },
-                  );
-                }
-                const target = base.findings.find((item) => item.id === findingId);
-                if (!target) {
-                  return new Response(JSON.stringify({ error: "finding not found" }), {
-                    status: 404,
-                    headers: { "content-type": "application/json" },
-                  });
-                }
-                const before: Pick<Finding, "category" | "severity" | "comment"> = {
-                  category: target.category,
-                  severity: target.severity,
-                  comment: target.comment,
-                };
-                const changes: string[] = [];
-                if (hasCategory && input.category !== target.category) {
-                  changes.push(`category ${target.category}→${input.category}`);
-                  target.category = input.category as Category;
-                }
-                if (hasSeverity && input.severity !== target.severity) {
-                  changes.push(`severity ${target.severity}→${input.severity}`);
-                  target.severity = input.severity as Severity;
-                }
-                if (hasComment && input.comment !== target.comment) {
-                  changes.push("comment updated");
-                  target.comment = input.comment as string;
-                }
-                if (changes.length > 0) {
-                  target.audit_log = target.audit_log ?? [];
-                  target.audit_log.push({
-                    before,
-                    after: {
-                      category: target.category,
-                      severity: target.severity,
-                      comment: target.comment,
-                    },
-                    at: Date.now(),
-                    by: "user",
-                  });
-                  if (target.audit_log.length > 10) target.audit_log = target.audit_log.slice(-10);
-                }
-                target.manually_edited = true;
-                target.edited_at = Date.now();
-                target.updated_at = Date.now();
-                const summary = changes.length > 0 ? ` (${changes.join(", ")})` : "";
-                const editComment: FindingComment = {
-                  id: `comment_${Date.now().toString(36)}_${crypto.randomUUID().slice(0, 6)}`,
-                  author: "user",
-                  text: `Edited by user${summary}`,
-                  created_at: Date.now(),
-                };
-                target.comments = target.comments ?? [];
-                target.comments.push(editComment);
-                base.updated_at = Date.now();
-                await saveState(state_file, base);
-                const idx = data.existing_findings.findIndex((item) => item.id === findingId);
-                if (idx !== -1) {
-                  data.existing_findings[idx] = { ...target };
-                } else {
-                  data.existing_findings.push({ ...target });
-                }
+            if (request.method === "PATCH" && editFindingPathnameMatch(pathname, id)) {
+              const findingId = editFindingPathnameMatch(pathname, id)!;
+              const input = (await request.json().catch(() => ({}))) as {
+                category?: string;
+                severity?: string;
+                comment?: string;
+              };
+              const hasCategory = typeof input.category === "string";
+              const hasSeverity = typeof input.severity === "string";
+              const hasComment = typeof input.comment === "string";
+              if (!hasCategory && !hasSeverity && !hasComment) {
+                return new Response(JSON.stringify({ error: "no fields to update" }), {
+                  status: 400,
+                  headers: { "content-type": "application/json" },
+                });
+              }
+              if (hasCategory && !isCategory(input.category as string)) {
                 return new Response(
-                  JSON.stringify({
-                    ok: true,
-                    finding: target,
-                  }),
-                  { headers: { "content-type": "application/json" } },
+                  JSON.stringify({ error: `invalid category: ${input.category}` }),
+                  { status: 400, headers: { "content-type": "application/json" } },
                 );
               }
-
-              // R12 #17 — pin a finding for revisit. Idempotent: a second
-              // pin call on an already-pinned finding keeps the original
-              // `at` timestamp. The `manually_pinned` flag mirrors R9's
-              // `manually_reopened` so the agent's auto-apply loop honors
-              // the user's "revisit this" intent.
-              if (request.method === "POST" && pathname === `/api/review/${id}/pin`) {
-                const input = (await request.json().catch(() => ({}))) as { finding_id?: string };
-                const finding_id = input.finding_id;
-                if (!finding_id) {
-                  return new Response(JSON.stringify({ error: "finding_id required" }), {
-                    status: 400,
-                    headers: { "content-type": "application/json" },
-                  });
-                }
-                const target = base.findings.find((item) => item.id === finding_id);
-                if (!target) {
-                  return new Response(JSON.stringify({ error: "finding not found" }), {
-                    status: 404,
-                    headers: { "content-type": "application/json" },
-                  });
-                }
-                if (!target.pinned) {
-                  target.pinned = { by: "user", at: Date.now() };
-                  target.manually_pinned = true;
-                  target.updated_at = Date.now();
-                  base.updated_at = Date.now();
-                  await saveState(state_file, base);
-                  const idx = data.existing_findings.findIndex((item) => item.id === finding_id);
-                  if (idx !== -1) data.existing_findings[idx] = { ...target };
-                  else data.existing_findings.push({ ...target });
-                }
-                return new Response(JSON.stringify({ ok: true, pinned: target.pinned }), {
+              if (hasSeverity && !isSeverity(input.severity as string)) {
+                return new Response(
+                  JSON.stringify({ error: `invalid severity: ${input.severity}` }),
+                  { status: 400, headers: { "content-type": "application/json" } },
+                );
+              }
+              if (hasComment && (input.comment as string).length > 2000) {
+                return new Response(
+                  JSON.stringify({ error: "comment exceeds 2000 characters" }),
+                  { status: 400, headers: { "content-type": "application/json" } },
+                );
+              }
+              const target = base.findings.find((item) => item.id === findingId);
+              if (!target) {
+                return new Response(JSON.stringify({ error: "finding not found" }), {
+                  status: 404,
                   headers: { "content-type": "application/json" },
                 });
               }
+              const before: Pick<Finding, "category" | "severity" | "comment"> = {
+                category: target.category,
+                severity: target.severity,
+                comment: target.comment,
+              };
+              const changes: string[] = [];
+              if (hasCategory && input.category !== target.category) {
+                changes.push(`category ${target.category}→${input.category}`);
+                target.category = input.category as Category;
+              }
+              if (hasSeverity && input.severity !== target.severity) {
+                changes.push(`severity ${target.severity}→${input.severity}`);
+                target.severity = input.severity as Severity;
+              }
+              if (hasComment && input.comment !== target.comment) {
+                changes.push("comment updated");
+                target.comment = input.comment as string;
+              }
+              if (changes.length > 0) {
+                target.audit_log = target.audit_log ?? [];
+                target.audit_log.push({
+                  before,
+                  after: {
+                    category: target.category,
+                    severity: target.severity,
+                    comment: target.comment,
+                  },
+                  at: Date.now(),
+                  by: "user",
+                });
+                if (target.audit_log.length > 10) target.audit_log = target.audit_log.slice(-10);
+              }
+              target.manually_edited = true;
+              target.edited_at = Date.now();
+              target.updated_at = Date.now();
+              const summary = changes.length > 0 ? ` (${changes.join(", ")})` : "";
+              const editComment: FindingComment = {
+                id: `comment_${Date.now().toString(36)}_${crypto.randomUUID().slice(0, 6)}`,
+                author: "user",
+                text: `Edited by user${summary}`,
+                created_at: Date.now(),
+              };
+              target.comments = target.comments ?? [];
+              target.comments.push(editComment);
+              base.updated_at = Date.now();
+              await saveState(state_file, base);
+              const idx = data.existing_findings.findIndex((item) => item.id === findingId);
+              if (idx !== -1) {
+                data.existing_findings[idx] = { ...target };
+              } else {
+                data.existing_findings.push({ ...target });
+              }
+              return new Response(
+                JSON.stringify({
+                  ok: true,
+                  finding: target,
+                }),
+                { headers: { "content-type": "application/json" } },
+              );
+            }
 
-              // R12 #17 — unpin a finding. Symmetric to `/pin`. Idempotent.
-              if (request.method === "POST" && pathname === `/api/review/${id}/unpin`) {
-                const input = (await request.json().catch(() => ({}))) as { finding_id?: string };
-                const finding_id = input.finding_id;
-                if (!finding_id) {
-                  return new Response(JSON.stringify({ error: "finding_id required" }), {
-                    status: 400,
-                    headers: { "content-type": "application/json" },
-                  });
-                }
-                const target = base.findings.find((item) => item.id === finding_id);
-                if (!target) {
-                  return new Response(JSON.stringify({ error: "finding not found" }), {
-                    status: 404,
-                    headers: { "content-type": "application/json" },
-                  });
-                }
-                if (target.pinned) {
-                  target.pinned = undefined;
-                  target.manually_pinned = undefined;
-                  target.updated_at = Date.now();
-                  base.updated_at = Date.now();
-                  await saveState(state_file, base);
-                  const idx = data.existing_findings.findIndex((item) => item.id === finding_id);
-                  if (idx !== -1) data.existing_findings[idx] = { ...target };
-                  else data.existing_findings.push({ ...target });
-                }
-                return new Response(JSON.stringify({ ok: true }), {
+            // R12 #17 — pin a finding for revisit. Idempotent: a second
+            // pin call on an already-pinned finding keeps the original
+            // `at` timestamp. The `manually_pinned` flag mirrors R9's
+            // `manually_reopened` so the agent's auto-apply loop honors
+            // the user's "revisit this" intent.
+            if (request.method === "POST" && pathname === `/api/review/${id}/pin`) {
+              const input = (await request.json().catch(() => ({}))) as { finding_id?: string };
+              const finding_id = input.finding_id;
+              if (!finding_id) {
+                return new Response(JSON.stringify({ error: "finding_id required" }), {
+                  status: 400,
                   headers: { "content-type": "application/json" },
                 });
               }
-
-              // R12 #18 — add/toggle an emoji reaction. Idempotent toggle:
-              // same emoji + same author = remove the reaction. Validates
-              // emoji against the 6-emoji whitelist (400 on miss).
-              if (request.method === "POST" && pathname === `/api/review/${id}/reaction`) {
-                const input = (await request.json().catch(() => ({}))) as {
-                  finding_id?: string;
-                  emoji?: string;
-                };
-                const finding_id = input.finding_id;
-                if (!finding_id) {
-                  return new Response(JSON.stringify({ error: "finding_id required" }), {
-                    status: 400,
-                    headers: { "content-type": "application/json" },
-                  });
-                }
-                if (!isReactionEmoji(input.emoji)) {
-                  return new Response(
-                    JSON.stringify({
-                      error: `invalid emoji: ${input.emoji ?? ""} (allowed: ${[...EMOJI_WHITELIST].join(" ")})`,
-                    }),
-                    { status: 400, headers: { "content-type": "application/json" } },
-                  );
-                }
-                const target = base.findings.find((item) => item.id === finding_id);
-                if (!target) {
-                  return new Response(JSON.stringify({ error: "finding not found" }), {
-                    status: 404,
-                    headers: { "content-type": "application/json" },
-                  });
-                }
-                const existing = (target.reactions ?? []).findIndex(
-                  (item) => item.emoji === input.emoji && item.author === "user",
-                );
-                if (existing !== -1) {
-                  target.reactions = (target.reactions ?? []).filter((_, i) => i !== existing);
-                } else {
-                  target.reactions = [
-                    ...(target.reactions ?? []),
-                    { emoji: input.emoji as ReactionEmoji, author: "user", created_at: Date.now() },
-                  ];
-                }
+              const target = base.findings.find((item) => item.id === finding_id);
+              if (!target) {
+                return new Response(JSON.stringify({ error: "finding not found" }), {
+                  status: 404,
+                  headers: { "content-type": "application/json" },
+                });
+              }
+              if (!target.pinned) {
+                target.pinned = { by: "user", at: Date.now() };
+                target.manually_pinned = true;
                 target.updated_at = Date.now();
                 base.updated_at = Date.now();
                 await saveState(state_file, base);
                 const idx = data.existing_findings.findIndex((item) => item.id === finding_id);
                 if (idx !== -1) data.existing_findings[idx] = { ...target };
                 else data.existing_findings.push({ ...target });
-                return new Response(JSON.stringify({ ok: true, reactions: target.reactions }), {
+              }
+              return new Response(JSON.stringify({ ok: true, pinned: target.pinned }), {
+                headers: { "content-type": "application/json" },
+              });
+            }
+
+            // R12 #17 — unpin a finding. Symmetric to `/pin`. Idempotent.
+            if (request.method === "POST" && pathname === `/api/review/${id}/unpin`) {
+              const input = (await request.json().catch(() => ({}))) as { finding_id?: string };
+              const finding_id = input.finding_id;
+              if (!finding_id) {
+                return new Response(JSON.stringify({ error: "finding_id required" }), {
+                  status: 400,
                   headers: { "content-type": "application/json" },
                 });
               }
+              const target = base.findings.find((item) => item.id === finding_id);
+              if (!target) {
+                return new Response(JSON.stringify({ error: "finding not found" }), {
+                  status: 404,
+                  headers: { "content-type": "application/json" },
+                });
+              }
+              if (target.pinned) {
+                target.pinned = undefined;
+                target.manually_pinned = undefined;
+                target.updated_at = Date.now();
+                base.updated_at = Date.now();
+                await saveState(state_file, base);
+                const idx = data.existing_findings.findIndex((item) => item.id === finding_id);
+                if (idx !== -1) data.existing_findings[idx] = { ...target };
+                else data.existing_findings.push({ ...target });
+              }
+              return new Response(JSON.stringify({ ok: true }), {
+                headers: { "content-type": "application/json" },
+              });
+            }
 
-              if (request.method === "POST" && pathname === `/api/review/${id}/submit`) {
-                const input = (await request.json().catch(() => ({}))) as Submit;
-                const notes = typeof input.notes === "string" ? input.notes.trim() : "";
-                const fresh = Array.isArray(input.new_findings) ? input.new_findings : [];
-                const round = base.round + 1;
-                const created = sanitize(fresh, round, map);
-                const carry = base.findings.filter((item) => item.status === "open");
-                const closed = base.findings.filter((item) => item.status !== "open");
-                const findings = [...closed, ...carry, ...created];
-                const next: State = {
-                  ...base,
-                  round,
-                  findings,
-                  previous_diff_base: base.diff_base,
-                  diff_base: data.diff_base,
-                  draft: undefined,
-                  updated_at: Date.now(),
-                };
-                await saveState(state_file, next);
+            // R12 #18 — add/toggle an emoji reaction. Idempotent toggle:
+            // same emoji + same author = remove the reaction. Validates
+            // emoji against the 6-emoji whitelist (400 on miss).
+            if (request.method === "POST" && pathname === `/api/review/${id}/reaction`) {
+              const input = (await request.json().catch(() => ({}))) as {
+                finding_id?: string;
+                emoji?: string;
+              };
+              const finding_id = input.finding_id;
+              if (!finding_id) {
+                return new Response(JSON.stringify({ error: "finding_id required" }), {
+                  status: 400,
+                  headers: { "content-type": "application/json" },
+                });
+              }
+              if (!isReactionEmoji(input.emoji)) {
+                return new Response(
+                  JSON.stringify({
+                    error: `invalid emoji: ${input.emoji ?? ""} (allowed: ${[...EMOJI_WHITELIST].join(" ")})`,
+                  }),
+                  { status: 400, headers: { "content-type": "application/json" } },
+                );
+              }
+              const target = base.findings.find((item) => item.id === finding_id);
+              if (!target) {
+                return new Response(JSON.stringify({ error: "finding not found" }), {
+                  status: 404,
+                  headers: { "content-type": "application/json" },
+                });
+              }
+              const existing = (target.reactions ?? []).findIndex(
+                (item) => item.emoji === input.emoji && item.author === "user",
+              );
+              if (existing !== -1) {
+                target.reactions = (target.reactions ?? []).filter((_, i) => i !== existing);
+              } else {
+                target.reactions = [
+                  ...(target.reactions ?? []),
+                  { emoji: input.emoji as ReactionEmoji, author: "user", created_at: Date.now() },
+                ];
+              }
+              target.updated_at = Date.now();
+              base.updated_at = Date.now();
+              await saveState(state_file, base);
+              const idx = data.existing_findings.findIndex((item) => item.id === finding_id);
+              if (idx !== -1) data.existing_findings[idx] = { ...target };
+              else data.existing_findings.push({ ...target });
+              return new Response(JSON.stringify({ ok: true, reactions: target.reactions }), {
+                headers: { "content-type": "application/json" },
+              });
+            }
 
-                const stamp = String(round).padStart(3, "0");
-                const json_path = path.join(output_root, `round-${stamp}.json`);
-                const md_path = path.join(output_root, `round-${stamp}.md`);
-                const export_data = {
+            if (request.method === "POST" && pathname === `/api/review/${id}/submit`) {
+              const input = (await request.json().catch(() => ({}))) as Submit;
+              const notes = typeof input.notes === "string" ? input.notes.trim() : "";
+              const fresh = Array.isArray(input.new_findings) ? input.new_findings : [];
+              const round = base.round + 1;
+              const created = sanitize(fresh, round, map);
+              const carry = base.findings.filter((item) => item.status === "open");
+              const closed = base.findings.filter((item) => item.status !== "open");
+              const findings = [...closed, ...carry, ...created];
+              const next: State = {
+                ...base,
+                round,
+                findings,
+                previous_diff_base: base.diff_base,
+                diff_base: data.diff_base,
+                draft: undefined,
+                updated_at: Date.now(),
+              };
+              await saveState(state_file, next);
+
+              const stamp = String(round).padStart(3, "0");
+              const json_path = path.join(output_root, `round-${stamp}.json`);
+              const md_path = path.join(output_root, `round-${stamp}.md`);
+              const export_data = {
+                session_id: context.sessionID,
+                round,
+                notes,
+                findings,
+                filter: parsed.files,
+                base: parsed.base,
+                generated_at: Date.now(),
+              };
+              await writeFileAtomic(json_path, JSON.stringify(export_data, null, 2));
+              await writeFileAtomic(
+                md_path,
+                markdown({
                   session_id: context.sessionID,
                   round,
                   notes,
                   findings,
                   filter: parsed.files,
                   base: parsed.base,
-                  generated_at: Date.now(),
-                };
-                await writeFileAtomic(json_path, JSON.stringify(export_data, null, 2));
-                await writeFileAtomic(
-                  md_path,
-                  markdown({
-                    session_id: context.sessionID,
-                    round,
-                    notes,
-                    findings,
-                    filter: parsed.files,
-                    base: parsed.base,
-                  }),
-                );
+                }),
+              );
 
-                const completed: Done = {
-                  cancelled: false,
+              const completed: Done = {
+                cancelled: false,
+                round,
+                notes,
+                findings,
+                json_path,
+                md_path,
+                url: `http://127.0.0.1:${server.port}/review/${id}?token=${token}`,
+                opened,
+                state_file,
+              };
+
+              queueMicrotask(() => resolve(completed));
+
+              return new Response(
+                JSON.stringify({
+                  ok: true,
                   round,
-                  notes,
-                  findings,
                   json_path,
                   md_path,
-                  url: `http://127.0.0.1:${server.port}/review/${id}?token=${token}`,
-                  opened,
-                  state_file,
-                };
+                }),
+                {
+                  headers: { "content-type": "application/json" },
+                },
+              );
+            }
 
-                queueMicrotask(() => resolve(completed));
+            return new Response("not found", { status: 404 });
+          };
 
-                return new Response(
-                  JSON.stringify({
-                    ok: true,
-                    round,
-                    json_path,
-                    md_path,
-                  }),
-                  {
-                    headers: { "content-type": "application/json" },
-                  },
-                );
-              }
-
-              return new Response("not found", { status: 404 });
-            },
-          });
+          let server: Awaited<ReturnType<typeof serve>>;
+          try {
+            server = await serve({ port: 8890, fetch: fetchHandler });
+          } catch (err) {
+            const code =
+              err && typeof err === "object" ? (err as { code?: string }).code : undefined;
+            if (code !== "EADDRINUSE") {
+              throw err;
+            }
+            console.warn(
+              "[opencode-review-dashboard] port 8890 in use, falling back to OS-assigned port (localStorage WILL NOT persist across restart)",
+            );
+            server = await serve({ port: 0, fetch: fetchHandler });
+          }
 
           const review_url = `http://127.0.0.1:${server.port}/review/${id}?token=${token}`;
           opened = open(review_url, { cwd: effective_scope });
