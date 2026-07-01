@@ -3907,6 +3907,34 @@ function renderConversationPanel(root: HTMLElement) {
   // (preserves pre-R14 chronological behavior).
   const sorted = sortConversationEntries(searched, state.sortFindingsBy);
 
+  // R34 AC3: select-all checkbox row at top of conversation list.
+  // Composes with R26 #54 per-finding checkboxes — toggling selects all
+  // visible (sorted + filtered) findings. data-active mirrors the same
+  // pattern used by sidebar file-checkbox + ignore-whitespace toggle.
+  if (sorted.length > 0) {
+    const selectAllRow = document.createElement("label");
+    selectAllRow.className = "conversation-select-all";
+    const allSelected = sorted.every((entry) => entry.id && selectedFindings.has(entry.id));
+    if (allSelected && sorted.length > 0) selectAllRow.setAttribute("data-active", "");
+    const selectAllCb = document.createElement("input");
+    selectAllCb.type = "checkbox";
+    selectAllCb.setAttribute("aria-label", "Select all visible findings");
+    selectAllCb.checked = allSelected;
+    const selectAllText = document.createElement("span");
+    selectAllText.textContent = `Select all visible (${sorted.length})`;
+    selectAllRow.appendChild(selectAllCb);
+    selectAllRow.appendChild(selectAllText);
+    selectAllCb.addEventListener("change", () => {
+      if (selectAllCb.checked) {
+        for (const entry of sorted) if (entry.id) selectedFindings.add(entry.id);
+      } else {
+        for (const entry of sorted) if (entry.id) selectedFindings.delete(entry.id);
+      }
+      renderConversationPane();
+    });
+    root.appendChild(selectAllRow);
+  }
+
   for (const entry of sorted) {
     const item = document.createElement("div");
     item.className = "conversation-item";
@@ -3960,6 +3988,30 @@ function renderConversationPanel(root: HTMLElement) {
     statusBadge.dataset.status = entry.status;
     statusBadge.textContent = entry.status === "closed_auto" ? "stale" : entry.status;
     headLeft.appendChild(statusBadge);
+
+    // R34 AC3: prominent type + severity badges in the conversation head.
+    // entry.kind is "file" (whole-file finding) vs "line" (line-anchored).
+    // entry.severity is "high" | "medium" | "low". Surfaced inline so the
+    // user can scan severity + scope at a glance without expanding the card.
+    const metaBadges = document.createElement("span");
+    metaBadges.className = "conversation-meta-badges";
+    const kind = entry.kind ?? "line";
+    const kindBadge = document.createElement("span");
+    kindBadge.className = `meta-badge kind-${kind}`;
+    kindBadge.textContent = kind;
+    kindBadge.title =
+      kind === "file"
+        ? "Whole-file finding (no specific line range)"
+        : "Line-anchored finding";
+    metaBadges.appendChild(kindBadge);
+    if (entry.severity) {
+      const sevBadge = document.createElement("span");
+      sevBadge.className = `meta-badge severity-${entry.severity}`;
+      sevBadge.textContent = entry.severity;
+      sevBadge.title = `Severity: ${entry.severity}`;
+      metaBadges.appendChild(sevBadge);
+    }
+    headLeft.appendChild(metaBadges);
 
     head.appendChild(headLeft);
 
@@ -4295,7 +4347,7 @@ function renderConversationPanel(root: HTMLElement) {
       }
     });
     const submitBtn = document.createElement("button");
-    submitBtn.className = "primary";
+    submitBtn.className = "btn btn-primary";
     submitBtn.textContent = "Comment";
     submitBtn.addEventListener("click", (event) => {
       event.stopPropagation();
