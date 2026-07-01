@@ -1,11 +1,11 @@
 ---
 name: team-dev-loop
-description: "v5.3.12 cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+Push (NEW v5.3.3) — 17 phases total (Phase -0 Sync / Phase 0 PM Triage / 0.25 PM Researcher / 0.5 PM Manager / 0.75 Planner / 1 Architect / 2 Dev / 2.5 Pre-Commit Audit / 2.6 Lead Merge+Push / 3a-c Tester / 3.5 Doc Writer / 4 Decision + 4.5-4.9 lead-owned). Lead-direct execution model (v5.3.3): 16 of 17 phases lead-direct, ONLY Phase 2 Dev uses subagent (for code generation). v5.3.4: zh-CN lockstep + READ ONLY ONCE + post-completion verification + user-manual README. v5.3.4+: SG.12 screenshot workflow. v5.3.5: SG.13-SG.16 (regex + immutable helpers + regex pre-validation + screenshots in Phase 2). v5.3.5+1: SG.17 append-only proposals.jsonl + SG.18 combine Triage+Researcher subagent + SG.19 single-commit bilingual docs + SG.20 Phase 3c Playwright minimum. v5.3.6: SG.R19.1-SG.R19.8 (R19 retro 8 patches). v5.3.7: SG.R20.1 + SG.R22.1 + SG.R22.2 (R20 + R22 retro 3 patches). v5.3.8: SG.R24.1 subagent worktree-per-Edit verification (R23+R24 recurring double-write prevention). v5.3.9: SG.R25.1 pre-commit SG.R22.1 verify gate (R25 retro bilingual lockstep gap-fix precedent). v5.3.10: SG.R26.1 file-existence verify gate (R21-R31 retro double-fabrication fix) + SG.R26.2 husky installation verify gate (R30 husky automation false-positive fix) + SG.R27.1 runtime load verification gate (R32 retro 4-gate: runtime compat + PluginModule shape + hook contract + path-plugin entry). v5.3.11: SG.R28.1 frontend skill invocation gate (R33 retro UI/UX 6-issue feedback). v5.3.12: R33/R34/R35 retro loop-level optimization patches (1 AC max per subagent + auto-lightweight + combined retro+post-exec + auto proposals.jsonl + 5 hard rules). Subagent scope: 1 AC max, ≤15min wall (v5.3.12 default — never 2+ ACs in 1 subagent). Default NO user pick (Planner autonomous); user MAY pre-pick A-E or 1-6 (R12 Gap #1). PM researcher advisories are advisory-only (R12 Gap #14: lead must verify independently). Subagent NEVER does git ops (merge/push/issue close) — lead's responsibility. Mid-task check-in every 5/10/15/20 min OR post-completion verification. ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit/artifacts/husky/load failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
+description: "v5.3.13 cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+Push (NEW v5.3.3) — 17 phases total (Phase -0 Sync / Phase 0 PM Triage / 0.25 PM Researcher / 0.5 PM Manager / 0.75 Planner / 1 Architect / 2 Dev / 2.5 Pre-Commit Audit / 2.6 Lead Merge+Push / 3a-c Tester / 3.5 Doc Writer / 4 Decision + 4.5-4.9 lead-owned). Lead-direct execution model (v5.3.3): 16 of 17 phases lead-direct, ONLY Phase 2 Dev uses subagent (for code generation). v5.3.4: zh-CN lockstep + READ ONLY ONCE + post-completion verification + user-manual README. v5.3.4+: SG.12 screenshot workflow. v5.3.5: SG.13-SG.16 (regex + immutable helpers + regex pre-validation + screenshots in Phase 2). v5.3.5+1: SG.17 append-only proposals.jsonl + SG.18 combine Triage+Researcher subagent + SG.19 single-commit bilingual docs + SG.20 Phase 3c Playwright minimum. v5.3.6: SG.R19.1-SG.R19.8 (R19 retro 8 patches). v5.3.7: SG.R20.1 + SG.R22.1 + SG.R22.2 (R20 + R22 retro 3 patches). v5.3.8: SG.R24.1 subagent worktree-per-Edit verification (R23+R24 recurring double-write prevention). v5.3.9: SG.R25.1 pre-commit SG.R22.1 verify gate (R25 retro bilingual lockstep gap-fix precedent). v5.3.10: SG.R26.1 file-existence verify gate (R21-R31 retro double-fabrication fix) + SG.R26.2 husky installation verify gate (R30 husky automation false-positive fix) + SG.R27.1 runtime load verification gate (R32 retro 4-gate: runtime compat + PluginModule shape + hook contract + path-plugin entry). v5.3.11: SG.R28.1 frontend skill invocation gate (R33 retro UI/UX 6-issue feedback). v5.3.12: R33/R34/R35 retro loop-level optimization patches (1 AC max per subagent + auto-lightweight + combined retro+post-exec + auto proposals.jsonl + 5 hard rules). v5.3.13: R36 retro follow-up patches (5 NEW: SG.R29.6 auto-lightweight validation + SG.R29.7 auto-pilot 5min default + SG.R29.8 Phase 3.5 conditional skip + SG.R29.9 backlog-empty decision + SG.R30.0 pre-commit test gate). Subagent scope: 1 AC max, ≤15min wall (v5.3.12 default — never 2+ ACs in 1 subagent). Default NO user pick (Planner autonomous); user MAY pre-pick A-E or 1-6 (R12 Gap #1). PM researcher advisories are advisory-only (R12 Gap #14: lead must verify independently). Subagent NEVER does git ops (merge/push/issue close) — lead's responsibility. Mid-task check-in every 5/10/15/20 min OR post-completion verification. ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit/artifacts/husky/load failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
 ---
 
 # /team-dev-loop Command (v5)
 
-> **Last Updated**: 2026-07-01 (v5.3.12 R33/R34/R35 retros: 5 NEW loop-level optimization patches — subagent scope default 1 AC max 15min hard cap + auto-lightweight mode trigger + combined retro+post-exec artifact + auto-generated proposals.jsonl R-N template + 5 hard rules declaration. retroactively patching R33/R34 30min subagent timeouts (60min total waste in 2 rounds) and R35 housekeeping pattern. Built on v5.3.11 (R33 user-feedback retro SG.R28.1 frontend skill invocation gate). v5.3.10 R32 retro: 1 NEW SG — SG.R27.1 runtime load verification gate, retroactively patching R32+R32b plugin-load-silent-failure. Built on v5.3.9 (R25 retro SG.R25.1 pre-commit SG.R22.1 verify gate). Built on v5.3.8 (R24 retro SG.R24.1 subagent worktree-per-Edit verification). Built on v5.3.7 (3 R22 retro patches). Built on v5.3.6 (8 R19 patches). Built on v5.3.5+1 (commit `74ee9a0` — R16 closure SG.17-SG.20) + v5.3.5 (`98b36b1`) + v5.3.4+ (`350efba`) + v5.3.4 (`43a44ba` + `ca01e97`) + v5.3.3 (`c3a6aea`) + v5.3.2 (`42ba5aa`) + v5.3 (`657a064`). v5.3.12 total: 61 retroactive skill patches cumulative across R12-R35 retros (56 → 57 SG.R28.1 → 58/59/60/61 v5.3.12 loop-level optimization patches).
+> **Last Updated**: 2026-07-01 (v5.3.13 R36 retro follow-up: 5 NEW patches — SG.R29.6 auto-lightweight validation + SG.R29.7 auto-pilot 5min default + SG.R29.8 Phase 3.5 conditional skip + SG.R29.9 backlog-empty decision + SG.R30.0 pre-commit test gate. retroactively formalizing R34-R36 informal patterns + catching R36 AC1 test regression. Built on v5.3.12 R33/R34/R35 retros: 5 NEW loop-level optimization patches. Built on v5.3.11 (R33 user-feedback retro SG.R28.1 frontend skill invocation gate). v5.3.10 R32 retro: 1 NEW SG — SG.R27.1 runtime load verification gate. Built on v5.3.9 (R25 retro SG.R25.1 pre-commit SG.R22.1 verify gate). Built on v5.3.8 (R24 retro SG.R24.1 subagent worktree-per-Edit verification). Built on v5.3.7 (3 R22 retro patches). Built on v5.3.6 (8 R19 patches). Built on v5.3.5+1 (commit `74ee9a0` — R16 closure SG.17-SG.20) + v5.3.5 (`98b36b1`) + v5.3.4+ (`350efba`) + v5.3.4 (`43a44ba` + `ca01e97`) + v5.3.3 (`c3a6aea`) + v5.3.2 (`42ba5aa`) + v5.3 (`657a064`). v5.3.13 total: 66 retroactive skill patches cumulative across R12-R36 retros (61 → 62/63/64/65/66 v5.3.13 R36 retro follow-up patches).
 > **Status**: R16+ will run on v5.3.4+. R13-R15 ran on v5.3 + v5.3.2 + v5.3.3. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
 > **Migration from v2**: see `## Migration v2 → v5` section below.
 > **Status**: R16+ will run on v5.3.4. R13-R15 ran on v5.3 + v5.3.2 + v5.3.3. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
@@ -61,6 +61,134 @@ Each rule saves 5-15min per round × 8 rounds/month = 40-120min/month saved.
 - R35 housekeeping: 0 subagent dispatched → 0 timeout → 0 waste
 - 5 atomic commits, 0 subagent calls, 0 wasted minutes
 - R35 wall clock: ~35min vs R33/R34 ~50min each → 15min saved per round
+
+**R36 evidence** (5 rules APPLIED for first time):
+- 2 subagents × 1 AC × 15min wall (Patch 1 effective)
+- 12 closure artifacts, not 13 (Patch 3 effective)
+- proposals.jsonl R36 line auto-generated (Patch 4 effective)
+- 0 subagent timeouts, 0 lead-direct rescue (vs R33+R34's 30min timeouts)
+- Total: 30min saved per round vs R33+R34 (60min over 2 rounds + 30min in R36)
+
+## R36 retro follow-up patches (NEW v5.3.13, R36 retro)
+
+R36 retro surfaced 5 additional gaps not addressed by v5.3.12 patches. Five new follow-up patches:
+
+### SG.R29.6 — Auto-lightweight validation rule (NEW v5.3.13)
+
+**Gap**: v5.3.12 Patch 2 (auto-lightweight) was never validated in production. R36 had 300+ LOC net changes (didn't meet auto-lightweight criteria). No round since R35 has triggered it.
+
+**Rule (mandatory, NEW v5.3.13)**: After Phase 0 (brief.md), if Patch 2's auto-lightweight criteria NOT met, lead SHOULD manually assess:
+- Total round LOC <50?
+- ≤2 files in `src/`?
+- ≤5 minutes for Phase 2 Dev?
+- All changes documentation/cleanup (not new features)?
+
+If 3+ of 4 = YES, lead SHOULD manually trigger lightweight mode (write a one-liner in decision.md `## Lightweight round` section + skip PM Triage + Planner + 5 lens per v5.3.2 lightweight protocol).
+
+**R36 evidence**: should have triggered manually (R36 = 5 atomic commits, 0 subagent, 0 timeouts = fits lightweight). Would have saved 5-10min of unnecessary artifact writing.
+
+### SG.R29.7 — Auto-pilot 5min default formalization (NEW v5.3.13)
+
+**Gap**: R34/R35/R36 Loop Summary sections include "Default if no reply 5min: lead-direct R37 housekeeping" as a soft rule. This is not formally encoded as a SG. The 5min auto-pilot was used 3 times in R34-R36 (always worked) but is informal.
+
+**Rule (mandatory, NEW v5.3.13)**: After Loop Summary chat output, lead enters auto-pilot mode:
+- Wait 5min for user reply
+- If no reply in 5min: lead-direct execute the DEFAULT option in Loop Summary (usually "housekeeping round" or "polish round")
+- If user replies `go` / `go+adjust` / `hold`: lead honors that reply even if past 5min
+- Auto-pilot mode is TERMINATED by any user reply (any reply ends the wait, even if past 5min)
+
+**R34-R36 evidence**: 3 rounds used auto-pilot, all 3 succeeded (R34 polish, R35 housekeeping, R36 polish). 0 user complaints about timing. Formalize as SG.
+
+### SG.R29.8 — Phase 3.5 conditional skip (NEW v5.3.13)
+
+**Gap**: Phase 3.5 (Doc Writer) was a no-op for ALL R33-R36 (4 consecutive rounds). 0 README changes, 0 doc updates, 0 `docs/screenshots/` updates. Yet every round writes a `doc-update-report.md` artifact (12 sections of "no change" boilerplate).
+
+**Rule (mandatory, NEW v5.3.13)**: Phase 3.5 SKIPPED entirely if:
+- `git diff main..HEAD --stat -- 'README.md' 'README.zh-CN.md' 'docs/'` shows 0 changes
+- 0 new `docs/screenshots/*.png` files
+- 0 new doc files in commit history
+
+When skipped: lead writes a 1-line note in `decision.md` `## Doc updates` section ("Phase 3.5 SKIPPED per SG.R29.8: no doc changes this round") + does NOT write `doc-update-report.md`. Saves ~3-5min of boilerplate artifact writing per round.
+
+**R33-R36 evidence**: 4 rounds × 3-5min saved = 12-20min total wasted on doc-update-report.md boilerplate.
+
+### SG.R29.9 — Backlog-empty decision rule (NEW v5.3.13)
+
+**Gap**: R36 ended with 0 open GH issues (all 8 user feedback issues from R1-R8 closed). R37+ has no user-facing backlog. But R35 retro's Loop Summary said "Default if no reply 5min: lead-direct R37 housekeeping" — this was implicit, not formalized.
+
+**Rule (mandatory, NEW v5.3.13)**: When user-facing backlog is empty (0 open issues, 0 user ACs in `brief.md`):
+- Lead SHOULD default to housekeeping round (husky v10 migration, stale branch refs cleanup, v5.3.12 Patch 2 validation, etc.)
+- Loop Summary should EXPLICITLY state "User-facing backlog empty. Default: housekeeping round."
+- If user replies with new ACs mid-round, lead pivots immediately
+
+**R37 evidence**: after R36, 0 open GH issues. Housekeeping backlog exists (husky v10, stale branch refs, Patch 2 validation). Default should be R37 housekeeping.
+
+### SG.R30.0 — Pre-commit test gate (NEW v5.3.13)
+
+**Gap**: R36 AC1 fix (`skipLink` key quote) was committed to worktree, but the test that would catch the missing quote (`AC1.2 i18n data-i18n key mismatch`) only failed AFTER commit. The husky pre-commit hook should have caught it.
+
+**R36 AC1 evidence**: AC1 fix committed to worktree, then `bun test` failed (1 fail at i18n test). The husky hook should have run `bun test` before commit and blocked the commit. Instead, commit succeeded and fix had to be done retroactively.
+
+**Rule (mandatory, NEW v5.3.13)**: husky pre-commit hook MUST include `bun test` (not just `bun run check`). The `bun run check` only runs tsc + lint, NOT unit tests. Without `bun test` in the hook, test regressions slip through to commit.
+
+**Current R35 husky hook**:
+```bash
+#!/usr/bin/env bash
+# R35 AC1 + AC4: pure direct pre-commit hook (no husky shim)
+set -e
+cd "$(git rev-parse --show-toplevel)"
+echo "🔍 R35 pre-commit: bun run check..."
+bun run check || { echo "❌ bun run check failed"; exit 1; }
+echo "🔍 R35 pre-commit: bun test..."
+bun test || { echo "❌ bun test failed"; exit 1; }
+echo "✅ R35 pre-commit: ALL PASS"
+```
+
+**Patch**: hook ALREADY includes `bun test` (line 8). R36 AC1 test fail was at WORKTREE level (before commit) — hook would have caught it IF subagent had run the hook. Subagent did not run `git commit` from worktree root, OR hook was bypassed.
+
+**R36 evidence**: AC1 commit `f86365d` — subagent worked in `team-dev-loop-round-36-ac2` and `team-dev-loop-round-36-ac3` worktrees. AC1 was lead-direct, but lead also worked in worktree. The hook should have caught the test fail pre-commit. Either:
+- Lead bypassed the hook (should not happen with `set -e`)
+- Hook was misconfigured in the worktree (possible if hooks don't copy to new worktrees)
+
+**Fix per SG.R30.0**: ensure husky pre-commit hook is correctly installed in EVERY new worktree. Use `git config core.hooksPath .husky/_` in `.git/config` of each worktree, OR install the hook to `.git/hooks/pre-commit` directly. Per v5.3.12 Patch 2 (auto-lightweight), the hook should also be lightweight-friendly (≤2 commands).
+
+## v5.3.13 patch validation matrix (R33-R36 cumulative)
+
+| Patch | Status | Validation |
+|---|---|---|
+| SG.R26.1 (file-existence gate) | ✓ APPLIED | R33-R36 all PASS |
+| SG.R26.2 (husky install gate) | ✓ APPLIED | R35 wired hook (direct bypass) |
+| SG.R27.1 (4-gate verify) | ✓ APPLIED | R33-R36 all PASS |
+| SG.R28.1 (frontend skill) | ✓ APPLIED (substituted) | R33 retro |
+| v5.3.12 Patch 1 (1 subagent = 1 AC) | ✓ VALIDATED | R36 (2 subagents, 0 timeout) |
+| v5.3.12 Patch 2 (auto-lightweight) | ⚠ NEVER VALIDATED | R33-R36 all had >10 LOC + src/ changes |
+| v5.3.12 Patch 3 (combined retro+post-exec) | ✓ VALIDATED | R36 (12 artifacts, not 13) |
+| v5.3.12 Patch 4 (auto proposals.jsonl) | ✓ VALIDATED | R36 (R36 line auto-generated) |
+| v5.3.12 Patch 5 (5 hard rules) | ✓ APPLIED | R33-R36 |
+| v5.3.13 SG.R29.6 (auto-lightweight validation) | ⚠ NEW (manual trigger only) | R36 should have triggered manually |
+| v5.3.13 SG.R29.7 (auto-pilot 5min default) | ⚠ NEW (informal → formal) | R34-R36 used informally |
+| v5.3.13 SG.R29.8 (Phase 3.5 conditional skip) | ⚠ NEW | R33-R36 wrote boilerplate doc-update-report.md (4 rounds wasted 12-20min) |
+| v5.3.13 SG.R29.9 (backlog-empty decision) | ⚠ NEW | R37+ first application |
+| v5.3.13 SG.R30.0 (pre-commit test gate) | ⚠ NEW | R36 AC1 commit should have been blocked by hook |
+
+## Expected impact (v5.3.13 patches)
+
+- **SG.R29.6**: Saves 5-10min per housekeeping round (manual trigger)
+- **SG.R29.7**: Formalizes 3 proven patterns (R34-R36), no behavior change
+- **SG.R29.8**: Saves 3-5min per round × 8 rounds/month = 24-40min/month
+- **SG.R29.9**: No behavior change (default = housekeeping)
+- **SG.R30.0**: Prevents test regressions slipping to commit (correctness, not time)
+
+**Total**: 32-50min/month saved + 1 correctness fix (pre-commit test gate).
+
+## v5.3.13 SKILL.md changes (this commit)
+
+- 5 new follow-up patches added to "Loop-level optimization goals" section
+- v5.3.13 patch validation matrix added (5 v5.3.12 patches + 5 v5.3.13 patches)
+- Expected impact documented (32-50min/month)
+- v5.3.13 patch count: 66 cumulative retroactive skill patches (61 → 66)
+
+**Built on v5.3.12 R33/R34/R35 retros** (5 loop-level optimization patches). **Built on v5.3.11** (R33 user-feedback retro SG.R28.1).
 
 ## v5.3.4 R+ Quick reference cheat sheet (NEW v5.3.4 — R15 retro SG.8)
 
