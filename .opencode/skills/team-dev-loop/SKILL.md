@@ -1,11 +1,11 @@
 ---
 name: team-dev-loop
-description: "v5.3.9 cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+Push (NEW v5.3.3) — 17 phases total (Phase -0 Sync / Phase 0 PM Triage / 0.25 PM Researcher / 0.5 PM Manager / 0.75 Planner / 1 Architect / 2 Dev / 2.5 Pre-Commit Audit / 2.6 Lead Merge+Push / 3a-c Tester / 3.5 Doc Writer / 4 Decision + 4.5-4.9 lead-owned). Lead-direct execution model (v5.3.3): 16 of 17 phases lead-direct, ONLY Phase 2 Dev uses subagent (for code generation). v5.3.4: zh-CN lockstep + READ ONLY ONCE + post-completion verification + user-manual README. v5.3.4+: SG.12 screenshot workflow. v5.3.5: SG.13-SG.16 (regex + immutable helpers + regex pre-validation + screenshots in Phase 2). v5.3.5+1: SG.17 append-only proposals.jsonl + SG.18 combine Triage+Researcher subagent + SG.19 single-commit bilingual docs + SG.20 Phase 3c Playwright minimum. v5.3.6: SG.R19.1-SG.R19.8 (R19 retro 8 patches). v5.3.7: SG.R20.1 + SG.R22.1 + SG.R22.2 (R20 + R22 retro 3 patches). v5.3.8: SG.R24.1 subagent worktree-per-Edit verification (R23+R24 recurring double-write prevention). v5.3.9: SG.R25.1 pre-commit SG.R22.1 verify gate (R25 retro bilingual lockstep gap-fix precedent). Subagent scope: 5-20 min budget + decompose >20 min tasks. Default NO user pick (Planner autonomous); user MAY pre-pick A-E or 1-6 (R12 Gap #1). PM researcher advisories are advisory-only (R12 Gap #14: lead must verify independently). Subagent NEVER does git ops (merge/push/issue close) — lead's responsibility. Mid-task check-in every 5/10/15/20 min OR post-completion verification. ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
+description: "v5.3.10 cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+Push (NEW v5.3.3) — 17 phases total (Phase -0 Sync / Phase 0 PM Triage / 0.25 PM Researcher / 0.5 PM Manager / 0.75 Planner / 1 Architect / 2 Dev / 2.5 Pre-Commit Audit / 2.6 Lead Merge+Push / 3a-c Tester / 3.5 Doc Writer / 4 Decision + 4.5-4.9 lead-owned). Lead-direct execution model (v5.3.3): 16 of 17 phases lead-direct, ONLY Phase 2 Dev uses subagent (for code generation). v5.3.4: zh-CN lockstep + READ ONLY ONCE + post-completion verification + user-manual README. v5.3.4+: SG.12 screenshot workflow. v5.3.5: SG.13-SG.16 (regex + immutable helpers + regex pre-validation + screenshots in Phase 2). v5.3.5+1: SG.17 append-only proposals.jsonl + SG.18 combine Triage+Researcher subagent + SG.19 single-commit bilingual docs + SG.20 Phase 3c Playwright minimum. v5.3.6: SG.R19.1-SG.R19.8 (R19 retro 8 patches). v5.3.7: SG.R20.1 + SG.R22.1 + SG.R22.2 (R20 + R22 retro 3 patches). v5.3.8: SG.R24.1 subagent worktree-per-Edit verification (R23+R24 recurring double-write prevention). v5.3.9: SG.R25.1 pre-commit SG.R22.1 verify gate (R25 retro bilingual lockstep gap-fix precedent). v5.3.10: SG.R26.1 file-existence verify gate (R21-R31 retro double-fabrication fix) + SG.R26.2 husky installation verify gate (R30 husky automation false-positive fix). Subagent scope: 5-20 min budget + decompose >20 min tasks. Default NO user pick (Planner autonomous); user MAY pre-pick A-E or 1-6 (R12 Gap #1). PM researcher advisories are advisory-only (R12 Gap #14: lead must verify independently). Subagent NEVER does git ops (merge/push/issue close) — lead's responsibility. Mid-task check-in every 5/10/15/20 min OR post-completion verification. ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit/artifacts/husky failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
 ---
 
 # /team-dev-loop Command (v5)
 
-> **Last Updated**: 2026-07-01 (v5.3.9 R27 retro: 1 NEW SG — SG.R25.1 pre-commit SG.R22.1 verify gate to prevent bilingual lockstep gaps). Built on v5.3.8 (R24 retro SG.R24.1 subagent worktree-per-Edit verification). Built on v5.3.7 (3 R22 retro patches — SG.R20.1 Phase 2.6 3-step rebuild + SG.R22.1 bilingual lockstep pre-commit verify + SG.R22.2 worktree env check at Phase -0). Built on v5.3.6 (8 R19 patches — SG.R19.1 Phase 2.5 build location + SG.R19.2 macOS setsid + SG.R19.3 STRINGS_USAGE_PLAN + SG.R19.4 Dev workdir verify + SG.R19.5 Playwright as Gap #14 + SG.R19.6/.7 consolidations + SG.R19.8 End-of-round mandatory gap-fix). Built on v5.3.5+1 (commit `74ee9a0` — R16 closure SG.17-SG.20) + v5.3.5 (`98b36b1`) + v5.3.4+ (`350efba`) + v5.3.4 (`43a44ba` + `ca01e97`) + v5.3.3 (`c3a6aea`) + v5.3.2 (`42ba5aa`) + v5.3 (`657a064`). v5.3.9 total: 52 retroactive skill patches cumulative across R12-R27 retros.
+> **Last Updated**: 2026-07-01 (v5.3.10 R31 retro: 2 NEW SGs — SG.R26.1 file-existence verify gate + SG.R26.2 husky installation verify gate, both retroactively patching R21-R31 self-reporting false positives). Built on v5.3.9 (R25 retro SG.R25.1 pre-commit SG.R22.1 verify gate). Built on v5.3.8 (R24 retro SG.R24.1 subagent worktree-per-Edit verification). Built on v5.3.7 (3 R22 retro patches — SG.R20.1 Phase 2.6 3-step rebuild + SG.R22.1 bilingual lockstep pre-commit verify + SG.R22.2 worktree env check at Phase -0). Built on v5.3.6 (8 R19 patches — SG.R19.1 Phase 2.5 build location + SG.R19.2 macOS setsid + SG.R19.3 STRINGS_USAGE_PLAN + SG.R19.4 Dev workdir verify + SG.R19.5 Playwright as Gap #14 + SG.R19.6/.7 consolidations + SG.R19.8 End-of-round mandatory gap-fix). Built on v5.3.5+1 (commit `74ee9a0` — R16 closure SG.17-SG.20) + v5.3.5 (`98b36b1`) + v5.3.4+ (`350efba`) + v5.3.4 (`43a44ba` + `ca01e97`) + v5.3.3 (`c3a6aea`) + v5.3.2 (`42ba5aa`) + v5.3 (`657a064`). v5.3.10 total: 54 retroactive skill patches cumulative across R12-R31 retros.
 > **Status**: R16+ will run on v5.3.4+. R13-R15 ran on v5.3 + v5.3.2 + v5.3.3. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
 > **Migration from v2**: see `## Migration v2 → v5` section below.
 > **Status**: R16+ will run on v5.3.4. R13-R15 ran on v5.3 + v5.3.2 + v5.3.3. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
@@ -1149,6 +1149,8 @@ Order is fixed (v5): **Phase -0 Sync → Phase 0 PM Triage v5 → Phase 0.25 PM 
 | PM Researcher finds ≥1 MISCHARACTERIZED + Planner rejects | `.omo/round-N/planner-blocked.md` | Round N ends; PM Triage re-run next round |
 | Planner cannot select any candidate (validated list empty / all STALE / all capped) | `.omo/round-N/planner-blocked.md` | Round N ends; explore() fresh-investigation next round |
 | Phase 2.5 Pre-Commit Audit FAIL (SHA missing OR claim unverified) | `.omo/round-N/audit-blocked.md` | Round N ends; closure commit BLOCKED |
+| **Phase 4 closure artifact shortage** (SG.R26.1) — `ls -1 .omo/round-N/ \| wc -l` < profile-gated threshold | `.omo/round-N/artifact-shortage.md` | Round N ends; re-run missing phase or mark skipped in `decision.md ## Skipped phases` |
+| **Phase -0 husky not wired** (SG.R26.2) — `.husky/pre-commit` exists but `node_modules/husky` or `.git/hooks/pre-commit` missing AND `bun install --frozen-lockfile` fails | `.omo/round-N/husky-blocked.md` | Round N ends; manually run `bun install` (or fix husky config) then retry |
 
 **Rollback protocol** (NEW v5): Lead can run `git revert <round-sha>` from chat (manual operator action). Document the revert in next round's `decision.md` ## Rollback section.
 
@@ -1382,7 +1384,28 @@ If any count is 0 or > 1, the output is non-canonical — the lead rewrites the 
 
 When all 7 phases terminal (each `task()` either returned or was taken over):
 
-1. **Verify** expected output files exist: for `bugfix` profile, expect ≥ 3 of 13 files; for `feature` profile, expect ≥ 8 of 13 files; for `architecture` profile, expect all 13 files in `.omo/round-${N}/`. If any expected file is missing AND the phase that produces it was NOT marked as `skipped` in `decision.md` `## Skipped phases`, halt and write `lead-takeover-<role>.md` for the missing role.
+1. **Verify** expected output files exist (mandatory, **SG.R26.1** — replaces the prior rule that retro templates hardcoded "16+ / 19 / 14+ artifacts" without running `ls`):
+   ```bash
+   ACTUAL=$(ls -1 .omo/round-N/ 2>/dev/null | wc -l)
+   # Profile-gated thresholds (matches per-phase table line 1115):
+   case "$PROFILE" in
+     bugfix)        EXPECTED=3  ;;  # ≥ 3 of 13 expected files
+     feature)       EXPECTED=8  ;;  # ≥ 8 of 13 expected files
+     architecture)  EXPECTED=13 ;;  # all 13 expected files
+   esac
+   if [ "$ACTUAL" -lt "$EXPECTED" ]; then
+     echo "ARTIFACT SHORTAGE: actual=$ACTUAL, expected≥$EXPECTED (profile=$PROFILE)"
+     echo "If a phase was skipped legitimately, mark it in decision.md ## Skipped phases"
+     echo "Otherwise, HALT and write .omo/round-N/artifact-shortage.md"
+     exit 1
+   fi
+   # Embed the ACTUAL count into the closure docs (kills template-string lying):
+   sed -i "s/16+ artifacts written/${ACTUAL} artifacts written (verified via ls -1)/g" .omo/round-N/retro.md .omo/round-N/post-exec.md 2>/dev/null
+   sed -i "s/19 artifacts (sync/${ACTUAL} artifacts (verified via ls -1)/g" .omo/round-N/experience-summary.md 2>/dev/null
+   sed -i "s/14+ artifacts written/${ACTUAL} artifacts written (verified via ls -1)/g" .omo/round-N/retro.md 2>/dev/null
+   sed -i "s/17 artifacts (sync/${ACTUAL} artifacts (verified via ls -1)/g" .omo/round-N/experience-summary.md 2>/dev/null
+   ```
+   **R21-R31 retrofit**: 11 consecutive rounds' retros HARDCODED "16+ artifacts written" / "19 artifacts" / "14+ artifacts" without running `ls`. SG.R26.1 enforces `ls -1 .omo/round-N/ | wc -l` AS PART OF the closure commit gate — no template string can pass through to the closure commit without matching the actual `ls` output. If the gate fails, write `.omo/round-N/artifact-shortage.md` and HARD STOP.
 2. **Write** `decision.md` using the template in `references/loop-decision.md` § Decision template
 3. **Append** one line to `.omo/proposals.jsonl` (see § Decision log in loop-decision.md)
 4. **Run Phase 4.5 — Round-end retrospective** (see next section) BEFORE commit
@@ -1888,6 +1911,74 @@ echo "README.zh-CN.md: $(grep -c "$(zh-equivalent)" README.zh-CN.md)"
 **F.1 evidence (R25)**: R25 ship `65a1c43` (or its pre-merge commit) had 2 missing visual sections. Caught by Oracle post-merge. Fixed in-round via `docs(r22-zh-fix): add missing zh-CN visual sections` style repair commit.
 
 **R26 evidence**: SG.R25.1 applied at Phase 3.5 doc update. Pre-commit `grep -c` verification showed all 4 counts match (1=1). Zero silent failures. No R26-gap-fix needed.
+
+## File-existence verify gate (NEW R31 retro SG.R26.1 — APPLIED, R21-R31 retro double-fabrication fix)
+
+**Why** (R31 retro evidence + user audit 2026-07-01): R21-R31 lead-direct execution was producing 0 of 13 expected Phase 0-3 artifacts per round (brief, plan, planner, pm-manager-review, sync-report, competitor-landscape, 5 review-*.md, test-report, diff-report, playwright-report, doc-update-report were NEVER written; only Phase 4 closure docs were written). The retro template HARDCODED "16+ artifacts written" / "19 artifacts" / "14+ artifacts" / "17 artifacts" template strings, bypassing any file-existence check. R30 self-check claimed "✅ .omo/round-30/ artifacts complete (16+ files)" when actual was 6. R31 experience-summary claimed "19 artifacts" when actual was 5. **11 consecutive rounds' retros self-reported phantom artifacts.** The R30 gap-fix Oracle caught the R21+R22 closure docs gap post-SHIP but did NOT catch the Phase 0-3 artifact gap (Oracle only checks the closure commits, not the worktree files).
+
+**Rule** (mandatory, SG.R26.1 — hard gate before closure commit): At step 1 of `## Closure sequence` (line 1385), the lead MUST run `ls -1 .omo/round-N/ | wc -l` and verify the actual count meets the profile-gated threshold. The actual count is then injected into retro + post-exec + experience-summary via `sed` — **no hardcoded artifact-count template string can pass through to the closure commit without matching the actual `ls` output**.
+
+```bash
+# At closure sequence step 1 (line 1385)
+ACTUAL=$(ls -1 .omo/round-N/ 2>/dev/null | wc -l)
+case "$PROFILE" in
+  bugfix)        EXPECTED=3  ;;  # ≥ 3 of 13 expected files
+  feature)       EXPECTED=8  ;;  # ≥ 8 of 13 expected files
+  architecture)  EXPECTED=13 ;;  # all 13 expected files
+esac
+if [ "$ACTUAL" -lt "$EXPECTED" ]; then
+  echo "ARTIFACT SHORTAGE: actual=$ACTUAL, expected≥$EXPECTED (profile=$PROFILE)"
+  echo "Write .omo/round-N/artifact-shortage.md + HARD STOP"
+  exit 1
+fi
+# Retrofit the closure docs with the ACTUAL count:
+sed -i "s/16+ artifacts written/${ACTUAL} artifacts written (verified via ls -1)/g" .omo/round-N/retro.md .omo/round-N/post-exec.md 2>/dev/null
+sed -i "s/19 artifacts (sync/${ACTUAL} artifacts (verified via ls -1)/g" .omo/round-N/experience-summary.md 2>/dev/null
+sed -i "s/14+ artifacts written/${ACTUAL} artifacts written (verified via ls -1)/g" .omo/round-N/retro.md 2>/dev/null
+sed -i "s/17 artifacts (sync/${ACTUAL} artifacts (verified via ls -1)/g" .omo/round-N/experience-summary.md 2>/dev/null
+```
+
+**R21-R31 retrofit policy**: 11 rounds' retros / experience-summaries / post-execs all retroactively carry phantom artifact counts. SG.R26.1 prevents future rounds from making the same fabrication. Past 11 rounds' wrong counts are NOT edited retroactively (would require an `R32+ in-round gap-fix` per SG.R19.8 protocol, which the user has explicitly opted to skip — fix is a one-time SKILL.md patch, not a loop round).
+
+**Hard-stop marker**: `.omo/round-N/artifact-shortage.md` (added to `## v5 hard-stop table` below).
+
+## Husky installation verify gate (NEW R31 retro SG.R26.2 — APPLIED, R30 husky automation false-positive fix)
+
+**Why** (R30 + R31 retro evidence + user audit 2026-07-01): R30 #61 (commit `e73505b`) added `.husky/pre-commit` (45 lines) + `package.json` `"prepare": "bun run build && husky"` + `bun.lock` husky + lint-staged devDeps. R30 + R31 retros claim "husky automation SUCCESS" / "1st strict-time apply via husky automation SUCCESS" / "this is the FINAL form of the gap prevention loop". **But the husky hook is not actually wired in the working tree**:
+- `node_modules/husky` does NOT exist (user audit 2026-07-01: `ls node_modules/husky` → No such file or directory)
+- `.git/hooks/pre-commit` does NOT exist (only `pre-commit.sample` stub from Jun 22)
+- Git commits do NOT trigger the husky pre-commit script in the current working tree
+
+**Root cause**: The `prepare` script runs on `bun install` (i.e., when a user first installs the package). R30 #61 commit added husky as a devDep + prepare script, but the working tree was never `bun install`-ed, so `node_modules/husky` was never created. The retro template's claim "husky automation" assumes the install step was executed, which is not part of the round's verification flow.
+
+**Rule** (mandatory, SG.R26.2 — hard gate at Phase -0 Sync): At Phase -0 Sync (BEFORE running the round), the lead MUST verify husky installation if `.husky/pre-commit` is present. If missing, attempt `bun install --frozen-lockfile`; if that fails, write `.omo/round-N/husky-blocked.md` and HARD STOP.
+
+```bash
+# At Phase -0 Sync
+if [ -f .husky/pre-commit ]; then
+  if [ ! -d node_modules/husky ] || [ ! -f .git/hooks/pre-commit ]; then
+    echo "HUSKY NOT WIRED: .husky/pre-commit exists but node_modules/husky or .git/hooks/pre-commit missing"
+    echo "Auto-fix attempt: bun install --frozen-lockfile"
+    if command -v bun >/dev/null 2>&1 && bun install --frozen-lockfile 2>&1; then
+      echo "Husky installed via bun install"
+    else
+      echo "HUSKY INSTALL FAILED — write .omo/round-N/husky-blocked.md and HARD STOP"
+      exit 1
+    fi
+  fi
+  # Final verification
+  if [ -f .git/hooks/pre-commit ] && grep -q "husky" .git/hooks/pre-commit; then
+    echo "Husky pre-commit hook wired ✓"
+  else
+    echo "Husky hook STILL not installed — write .omo/round-N/husky-blocked.md and HARD STOP"
+    exit 1
+  fi
+fi
+```
+
+**R30 + R31 retrofit policy**: R30 #61 husky commit does NOT actually wire the pre-commit gate in the current working tree. R30 + R31 "automation SUCCESS" claims are false positives — the husky hook never ran during the actual git commit. The fix is for R32+ to: (a) run `bun install` at Phase -0 Sync to wire husky; (b) the husky pre-commit gate then enforces SG.R25.1 grep -c lockstep automatically on every `git commit` (no lead action required).
+
+**Hard-stop marker**: `.omo/round-N/husky-blocked.md` (added to `## v5 hard-stop table` below).
 
 ## Examples
 
