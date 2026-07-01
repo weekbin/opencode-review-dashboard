@@ -30,6 +30,11 @@
 
 import { copyFile, mkdir, rename, unlink } from "node:fs/promises";
 import path from "node:path";
+import {
+  fileExists as compatFileExists,
+  readFileJson as compatReadFileJson,
+  writeFile as compatWriteFile,
+} from "./runtime-compat";
 
 /**
  * Test injection seams (module-private mutable refs).
@@ -42,12 +47,20 @@ import path from "node:path";
  * (Bun freezes the Bun global binding per-module). So we hold the
  * references in `let` bindings and expose a tiny setter for tests.
  * Production callers never touch these.
+ *
+ * R32 (2026-07-01) — replaced the top-level `Bun.write.bind(Bun)` with the
+ * `compatWriteFile` indirection from `runtime-compat.ts`. The compat layer
+ * resolves to `Bun.write` on Bun and `fs/promises.writeFile` on Node.js.
+ * Storing the seam in a `let` keeps the existing test-injection shape
+ * (tests can swap the function reference) without forcing the import to
+ * read `Bun` at module top-level — which was the root cause of OpenCode
+ * 1.17.12's "Plugin export is not a function" error.
  */
 let _rename: typeof rename = rename;
 let _copyFile: typeof copyFile = copyFile;
 let _unlink: typeof unlink = unlink;
 let _mkdir: typeof mkdir = mkdir;
-let _bunWrite: typeof Bun.write = Bun.write.bind(Bun);
+let _writeFile: typeof compatWriteFile = compatWriteFile;
 
 /** @internal — exported only for unit tests. Do not call from production code. */
 export function __setFsPromisesForTest(overrides?: {
@@ -55,13 +68,13 @@ export function __setFsPromisesForTest(overrides?: {
   copyFile?: typeof copyFile;
   unlink?: typeof unlink;
   mkdir?: typeof mkdir;
-  bunWrite?: typeof Bun.write;
+  writeFile?: typeof compatWriteFile;
 }): void {
   if (overrides?.rename !== undefined) _rename = overrides.rename;
   if (overrides?.copyFile !== undefined) _copyFile = overrides.copyFile;
   if (overrides?.unlink !== undefined) _unlink = overrides.unlink;
   if (overrides?.mkdir !== undefined) _mkdir = overrides.mkdir;
-  if (overrides?.bunWrite !== undefined) _bunWrite = overrides.bunWrite;
+  if (overrides?.writeFile !== undefined) _writeFile = overrides.writeFile;
 }
 
 /**
@@ -77,7 +90,7 @@ export async function writeFileAtomic(target: string, content: string | Uint8Arr
   await _mkdir(path.dirname(target), { recursive: true });
   const tmp = `${target}.tmp.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2, 8)}`;
   try {
-    await _bunWrite(tmp, content);
+    await _writeFile(tmp, content);
     try {
       await _rename(tmp, target);
     } catch (err) {
@@ -130,27 +143,37 @@ export async function readState<T>(
   session_id: string,
   defaultState: (session_id: string) => T,
 ): Promise<T> {
-  const source = Bun.file(file);
-  if (!(await source.exists())) return defaultState(session_id);
+  if (!(await compatFileExists(file))) return defaultState(session_id);
+  let parsed: T | undefined;
+  let parseError: unknown = undefined;
   try {
-    return (await source.json()) as T;
+    // compatReadFileJson swallows ENOENT; with the fileExists check above
+    // the only failure mode left is JSON.parse — capture and re-throw so
+    // the corrupt-file preservation path runs.
+    const sentinel = {} as T;
+    const got = await compatReadFileJson<T>(file, sentinel);
+    parsed = got === sentinel ? undefined : got;
   } catch (err) {
-    // FIX: was `.catch(() => defaultState(...))` — silently destroyed data.
-    // Now: preserve the corrupt file as evidence, log a warning, return fresh.
-    const ts = new Date().toISOString().replace(/[:.]/g, "-");
-    const corruptPath = `${file}.corrupt-${ts}`;
-    try {
-      await _rename(file, corruptPath);
-      console.warn(
-        `[diff-review-dashboard] state.json at ${file} was unreadable; preserved as ${corruptPath}. ` +
-          `Starting fresh. Original error: ${(err as Error).message}`,
-      );
-    } catch (renameErr) {
-      console.error(
-        `[diff-review-dashboard] state.json at ${file} was unreadable AND could not be preserved ` +
-          `(rename failed: ${(renameErr as Error).message}). Starting fresh; data is lost.`,
-      );
-    }
-    return defaultState(session_id);
+    parseError = err;
   }
+  if (parsed !== undefined) return parsed;
+
+  // FIX: was `.catch(() => defaultState(...))` — silently destroyed data.
+  // Now: preserve the corrupt file as evidence, log a warning, return fresh.
+  const err = parseError;
+  const ts = new Date().toISOString().replace(/[:.]/g, "-");
+  const corruptPath = `${file}.corrupt-${ts}`;
+  try {
+    await _rename(file, corruptPath);
+    console.warn(
+      `[diff-review-dashboard] state.json at ${file} was unreadable; preserved as ${corruptPath}. ` +
+        `Starting fresh. Original error: ${(err as Error)?.message ?? "unknown"}`,
+    );
+  } catch (renameErr) {
+    console.error(
+      `[diff-review-dashboard] state.json at ${file} was unreadable AND could not be preserved ` +
+        `(rename failed: ${(renameErr as Error).message}). Starting fresh; data is lost.`,
+    );
+  }
+  return defaultState(session_id);
 }

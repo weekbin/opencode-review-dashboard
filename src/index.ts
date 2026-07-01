@@ -1,6 +1,15 @@
 import { type Plugin, tool } from "@opencode-ai/plugin";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { readState, saveState, writeFileAtomic } from "./state-store";
+import {
+  fileExists,
+  readFileText,
+  serve,
+  spawnDetached,
+  spawnText,
+  which as whichBin,
+} from "./runtime-compat";
 
 const command = "diff-review-dashboard";
 const name = "diff_review_dashboard";
@@ -568,11 +577,8 @@ async function readPriorNotesFromSession(
   if (sessionDir.includes("\u0000")) {
     return { ok: false, status: 400, error: "invalid session_dir" };
   }
-  const dirStat = await Bun.file(sessionDir)
-    .stat()
-    .catch(() => null);
-  // Bun.file().stat() works for files; for a directory, fall back to readdir.
-  let exists = dirStat != null;
+  const dirStat = await fileExists(sessionDir);
+  let exists = dirStat;
   if (!exists) {
     try {
       const { readdir } = await import("node:fs/promises");
@@ -655,26 +661,28 @@ function markdown(input: {
 
 function open(url: string, options?: { cwd?: string }) {
   if (process.platform === "darwin") {
-    const bin = Bun.which("open");
-    if (!bin) return false;
-    Bun.spawn([bin, url], { stdout: "ignore", stderr: "ignore", cwd: options?.cwd });
+    void (async () => {
+      const bin = await whichBin("open");
+      if (!bin) return;
+      spawnDetached([bin, url], { cwd: options?.cwd });
+    })();
     return true;
   }
 
   if (process.platform === "win32") {
-    const bin = Bun.which("cmd");
-    if (!bin) return false;
-    Bun.spawn([bin, "/c", "start", "", url], {
-      stdout: "ignore",
-      stderr: "ignore",
-      cwd: options?.cwd,
-    });
+    void (async () => {
+      const bin = await whichBin("cmd");
+      if (!bin) return;
+      spawnDetached([bin, "/c", "start", "", url], { cwd: options?.cwd });
+    })();
     return true;
   }
 
-  const bin = Bun.which("xdg-open");
-  if (!bin) return false;
-  Bun.spawn([bin, url], { stdout: "ignore", stderr: "ignore", cwd: options?.cwd });
+  void (async () => {
+    const bin = await whichBin("xdg-open");
+    if (!bin) return;
+    spawnDetached([bin, url], { cwd: options?.cwd });
+  })();
   return true;
 }
 
@@ -724,22 +732,11 @@ function text(content: string) {
 }
 
 async function run(cwd: string, args: string[]) {
-  const proc = Bun.spawn(args, {
-    cwd,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-
-  const [stdout, stderr, code] = await Promise.all([
-    Bun.readableStreamToText(proc.stdout).catch(() => ""),
-    Bun.readableStreamToText(proc.stderr).catch(() => ""),
-    proc.exited,
-  ]);
-
+  const result = await spawnText(args, { cwd });
   return {
-    ok: code === 0,
-    stdout,
-    stderr,
+    ok: result.ok,
+    stdout: result.stdout,
+    stderr: result.stderr,
   };
 }
 
@@ -1072,13 +1069,9 @@ async function before(root: string, file: string, withHead: boolean) {
 }
 
 async function after(root: string, file: string) {
-  const source = Bun.file(path.join(root, file));
-  const exists = await source.exists();
+  const exists = await fileExists(path.join(root, file));
   if (!exists) return "";
-  return source
-    .text()
-    .then(text)
-    .catch(() => "");
+  return text(await readFileText(path.join(root, file)));
 }
 
 async function at(root: string, rev: string, file: string) {
@@ -1468,29 +1461,26 @@ function mime(file: string, fallback: string) {
 
 async function resolveFile(paths: string[]) {
   for (const item of paths) {
-    const exists = await Bun.file(item).exists();
+    const exists = await fileExists(item);
     if (exists) return item;
   }
 }
 
 export const DiffReviewPlugin: Plugin = async (ctx) => {
+  const plugin_dir = path.dirname(fileURLToPath(import.meta.url));
   const html_file = await resolveFile([
-    path.join(import.meta.dir, "ui", "review.html"),
-    path.join(import.meta.dir, "..", "ui", "review.html"),
-    path.join(import.meta.dir, "..", "dist", "ui", "review.html"),
+    path.join(plugin_dir, "ui", "review.html"),
+    path.join(plugin_dir, "..", "ui", "review.html"),
+    path.join(plugin_dir, "..", "dist", "ui", "review.html"),
   ]);
   const app_file = await resolveFile([
-    path.join(import.meta.dir, "ui", "app.js"),
-    path.join(import.meta.dir, "..", "ui", "app.js"),
-    path.join(import.meta.dir, "..", "dist", "ui", "app.js"),
+    path.join(plugin_dir, "ui", "app.js"),
+    path.join(plugin_dir, "..", "ui", "app.js"),
+    path.join(plugin_dir, "..", "dist", "ui", "app.js"),
   ]);
   const asset_root = app_file ? path.dirname(app_file) : "";
 
-  const html = html_file
-    ? await Bun.file(html_file)
-        .text()
-        .catch(() => "")
-    : "";
+  const html = html_file ? await readFileText(html_file) : "";
 
   return {
     config: async (output) => {
@@ -1762,7 +1752,7 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
 
           let opened = false;
 
-          const server = Bun.serve({
+          const server = await serve({
             port: 0,
             fetch: async (request: Request) => {
               const url = new URL(request.url);
@@ -1787,11 +1777,12 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                   return new Response("forbidden", { status: 403 });
                 }
 
-                const file = Bun.file(resolved);
-                const exists = await file.exists();
-                if (!exists) return new Response("not found", { status: 404 });
+                if (!(await fileExists(resolved))) {
+                  return new Response("not found", { status: 404 });
+                }
 
-                return new Response(file, {
+                const buf = await readFileText(resolved);
+                return new Response(buf, {
                   headers: {
                     "content-type": mime(resolved, "application/octet-stream"),
                     "cache-control": "no-store",

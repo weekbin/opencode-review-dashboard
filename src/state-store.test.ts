@@ -19,6 +19,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { __setFsPromisesForTest, readState, saveState, writeFileAtomic } from "./state-store";
+import { writeFile as compatWriteFile } from "./runtime-compat";
 
 let work: string;
 
@@ -33,7 +34,7 @@ afterEach(async () => {
     copyFile: fsPromises.copyFile,
     unlink: fsPromises.unlink,
     mkdir: fsPromises.mkdir,
-    bunWrite: Bun.write.bind(Bun),
+    writeFile: compatWriteFile.bind(globalThis),
   });
   await fsPromises.rm(work, { recursive: true, force: true });
 });
@@ -108,13 +109,13 @@ describe("writeFileAtomic — T2 mid-write failure isolation (ENOSPC)", () => {
     const before = await readStateFile(file);
     expect(before).toEqual(original);
 
-    const realWrite = Bun.write.bind(Bun);
-    const fakeWrite = ((..._args: Parameters<typeof Bun.write>) => {
+    const realWrite = compatWriteFile.bind(globalThis);
+    const fakeWrite = ((..._args: Parameters<typeof compatWriteFile>) => {
       const err: NodeJS.ErrnoException = new Error("ENOSPC: no space left on device");
       err.code = "ENOSPC";
       throw err;
-    }) as unknown as typeof Bun.write;
-    __setFsPromisesForTest({ bunWrite: fakeWrite });
+    }) as unknown as typeof compatWriteFile;
+    __setFsPromisesForTest({ writeFile: fakeWrite });
 
     let caught: Error | undefined;
     try {
@@ -122,7 +123,7 @@ describe("writeFileAtomic — T2 mid-write failure isolation (ENOSPC)", () => {
     } catch (e) {
       caught = e as Error;
     } finally {
-      __setFsPromisesForTest({ bunWrite: realWrite });
+      __setFsPromisesForTest({ writeFile: realWrite });
     }
 
     expect(caught).toBeDefined();
@@ -306,13 +307,13 @@ describe("writeFileAtomic — T7 round-export atomicity", () => {
 
     await writeFileAtomic(jsonPath, jsonContent);
 
-    const realWrite = Bun.write.bind(Bun);
-    const fakeWrite = ((..._args: Parameters<typeof Bun.write>) => {
+    const realWrite = compatWriteFile.bind(globalThis);
+    const fakeWrite = ((..._args: Parameters<typeof compatWriteFile>) => {
       const err: NodeJS.ErrnoException = new Error("EIO: simulated mid-write failure");
       err.code = "EIO";
       throw err;
-    }) as unknown as typeof Bun.write;
-    __setFsPromisesForTest({ bunWrite: fakeWrite });
+    }) as unknown as typeof compatWriteFile;
+    __setFsPromisesForTest({ writeFile: fakeWrite });
 
     let caught: Error | undefined;
     try {
@@ -320,7 +321,7 @@ describe("writeFileAtomic — T7 round-export atomicity", () => {
     } catch (e) {
       caught = e as Error;
     } finally {
-      __setFsPromisesForTest({ bunWrite: realWrite });
+      __setFsPromisesForTest({ writeFile: realWrite });
     }
 
     expect(caught).toBeDefined();
