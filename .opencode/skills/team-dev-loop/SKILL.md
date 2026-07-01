@@ -1582,7 +1582,7 @@ ps aux | grep -c "cliDaemon" | head -1                          # should be 0
 
 **R33/R34 retro surfaced**: `retro.md` and `post-exec-analysis.md` have ≥70% content overlap (both list ACs, commits, call flow timeline, skill gaps, followup, action items). Writing both is 5-10min of duplicate work per round.
 
-**Rule (mandatory, NEW v5.3.12)**: for rounds with ≤5 ACs OR bugfix profile, lead MAY combine `retro.md` + `post-exec-analysis.md` into a single `retro-post-exec.md` file with 6 sections:
+**Rule (mandatory, NEW v5.3.12)**: for rounds with ≤5 ACs OR bugfix profile, lead MAY combine `retro.md` + `post-exec-analysis.md` into a single `retro-post-exec.md` file with 7 sections (v5.4 NEW: 7th section replaces old "Action items for next round"):
 
 ```markdown
 # Round <N> Retrospective + Post-execution (combined)
@@ -1600,10 +1600,18 @@ ps aux | grep -c "cliDaemon" | head -1                          # should be 0
 <0-N bullets or "None — this round was a clean execution">
 
 ## Followup items
-<0-N bullets>
+<0-N bullets, PRODUCT carry-over only (feature/bugfix, NEVER loop-internal)>
 
-## Action items for next round
-<ordered list>
+## Closed in this round (loop-internal) — v5.4 NEW
+<numbered list, each item: description + commit SHA that closed it. If empty, write "None — clean execution, no loop-internal items surfaced.">
+
+## Open loop-internal at retro time — v5.4 NEW
+<numbered list. MUST be EMPTY for Phase 4 SHIP verdict. If non-empty, Phase 4 = BLOCKED.>
+If empty, write "None — all loop-internal items closed in this round (per v5.4 no-deferral rule)."
+If non-empty, each entry must include:
+- **Item**: <description>
+- **Reason cannot close in this round**: <technical blocker, not "out of time">
+- **Closure plan**: <concrete next action — usually: re-run retro close-out, do NOT defer>
 ```
 
 **When to apply**: any round with ≤5 ACs OR bugfix profile OR lightweight mode triggered.
