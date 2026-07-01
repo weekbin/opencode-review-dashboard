@@ -93,7 +93,9 @@ describe("AC4.6 — theme change persists in localStorage", () => {
 
   it("theme change handler calls setTheme with selected value", async () => {
     const src = await readSource(APP_TS);
-    expect(src).toMatch(/settingsThemeSelect\?\.addEventListener\("change",\s*\(\)\s*=>\s*\{\s*setTheme\(/);
+    expect(src).toMatch(
+      /settingsThemeSelect\?\.addEventListener\("change",\s*\(\)\s*=>\s*\{\s*setTheme\(/,
+    );
   });
 });
 
@@ -110,14 +112,18 @@ describe("AC4.7 — layout change persists in localStorage", () => {
 
   it("layout change handler calls setLayout with selected value", async () => {
     const src = await readSource(APP_TS);
-    expect(src).toMatch(/settingsLayoutSelect\?\.addEventListener\("change",\s*\(\)\s*=>\s*\{\s*setLayout\(/);
+    expect(src).toMatch(
+      /settingsLayoutSelect\?\.addEventListener\("change",\s*\(\)\s*=>\s*\{\s*setLayout\(/,
+    );
   });
 });
 
 describe("AC4.8 — language change persists + UI re-renders", () => {
   it("setLanguage from i18n is called by language select handler", async () => {
     const src = await readSource(APP_TS);
-    expect(src).toMatch(/settingsLanguageSelect\?\.addEventListener\("change",\s*\(\)\s*=>\s*\{\s*setLanguage\(/);
+    expect(src).toMatch(
+      /settingsLanguageSelect\?\.addEventListener\("change",\s*\(\)\s*=>\s*\{\s*setLanguage\(/,
+    );
   });
 
   it("openSettingsModal populates language select from peekLanguage()", async () => {
@@ -127,7 +133,9 @@ describe("AC4.8 — language change persists + UI re-renders", () => {
 
   it("language change handler calls setLanguage with selected value", async () => {
     const src = await readSource(APP_TS);
-    expect(src).toMatch(/settingsLanguageSelect\?\.addEventListener\("change",\s*\(\)\s*=>\s*\{\s*setLanguage\(/);
+    expect(src).toMatch(
+      /settingsLanguageSelect\?\.addEventListener\("change",\s*\(\)\s*=>\s*\{\s*setLanguage\(/,
+    );
   });
 });
 
@@ -164,7 +172,9 @@ describe("AC4.9 — Reset to defaults button restores all 6 keys", () => {
 
   it("resetSettings removes SEARCH_HISTORY_MAX_KEY from localStorage", async () => {
     const src = await readSource(APP_TS);
-    expect(src).toMatch(/resetSettings[\s\S]{0,200}localStorage\.removeItem\(SEARCH_HISTORY_MAX_KEY\)/);
+    expect(src).toMatch(
+      /resetSettings[\s\S]{0,200}localStorage\.removeItem\(SEARCH_HISTORY_MAX_KEY\)/,
+    );
   });
 
   it("SEARCH_HISTORY_MAX_KEY constant is defined", async () => {

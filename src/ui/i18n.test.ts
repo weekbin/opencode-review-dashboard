@@ -373,7 +373,11 @@ describe("AC1.2 — toggle re-renders static-HTML labels via registerUITranslato
   it("STRINGS['toolbar.ignoreWs.description'] has both en + zh-CN translations", async () => {
     const i18n = await readSource(I18N);
     expect(i18n.includes('"toolbar.ignoreWs.description":')).toBe(true);
-    expect(i18n.includes('"Collapse consecutive whitespace + trim trailing (useful for reformatting diffs)"')).toBe(true);
+    expect(
+      i18n.includes(
+        '"Collapse consecutive whitespace + trim trailing (useful for reformatting diffs)"',
+      ),
+    ).toBe(true);
     expect(i18n.includes('"折叠连续空白 + 去除行尾空格 (对重排版 diff 有用)"')).toBe(true);
   });
 

@@ -12,9 +12,7 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
-import {
-  __testonlyClearRecentSearches,
-} from "./search-history";
+import { __testonlyClearRecentSearches } from "./search-history";
 
 const APP_TS = join(import.meta.dir, "..", "..", "src", "ui", "app.ts");
 const I18N_TS = join(import.meta.dir, "..", "..", "src", "ui", "i18n.ts");
@@ -98,7 +96,10 @@ describe("R25 #52 AC12.6 — localStorage: 0 keys added (uses existing state.rea
   it("bulk handler does NOT add new localStorage keys", async () => {
     const src = await fsPromises.readFile(APP_TS, "utf8");
     const bulkIdx = src.indexOf("sidebar-bulk-mark-reviewed");
-    if (bulkIdx < 0) { expect("bulk button").toBe("found"); return; }
+    if (bulkIdx < 0) {
+      expect("bulk button").toBe("found");
+      return;
+    }
     const afterBulk = src.slice(bulkIdx, bulkIdx + 2000);
     const hasLocalStorage = /localStorage\.(setItem|getItem)/.test(afterBulk);
     expect(hasLocalStorage).toBe(false);

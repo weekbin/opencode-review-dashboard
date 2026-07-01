@@ -19,11 +19,7 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
 
-import {
-  computeHunkRanges,
-  DiffVirtualizer,
-  type HunkRange,
-} from "./diff-virtualization";
+import { computeHunkRanges, DiffVirtualizer, type HunkRange } from "./diff-virtualization";
 
 const APP_TS = join(import.meta.dir, "..", "..", "src", "ui", "app.ts");
 
@@ -36,11 +32,7 @@ class FakeIntersectionObserverEntry {
   rootBounds: DOMRect | null;
   time: number;
 
-  constructor(opts: {
-    target: FakeElement;
-    isIntersecting: boolean;
-    ratio?: number;
-  }) {
+  constructor(opts: { target: FakeElement; isIntersecting: boolean; ratio?: number }) {
     this.target = opts.target;
     this.isIntersecting = opts.isIntersecting;
     this.intersectionRatio = opts.ratio ?? (opts.isIntersecting ? 1 : 0);
@@ -82,7 +74,10 @@ class FakeIntersectionObserver implements IntersectionObserver {
   }
 
   simulate(target: Element, isIntersecting: boolean): void {
-    const entry = new FakeIntersectionObserverEntry({ target: target as unknown as FakeElement, isIntersecting }) as unknown as IntersectionObserverEntry;
+    const entry = new FakeIntersectionObserverEntry({
+      target: target as unknown as FakeElement,
+      isIntersecting,
+    }) as unknown as IntersectionObserverEntry;
     this.entries.set(target, entry);
     this.callback([entry], this);
   }
@@ -239,7 +234,8 @@ function restoreDOM(): void {
 }
 
 function setupFakeIntersectionObserver(): void {
-  originalIntersectionObserver = (globalThis as unknown as { IntersectionObserver: unknown }).IntersectionObserver;
+  originalIntersectionObserver = (globalThis as unknown as { IntersectionObserver: unknown })
+    .IntersectionObserver;
   Object.defineProperty(globalThis, "IntersectionObserver", {
     value: FakeIntersectionObserver,
     writable: true,
@@ -385,7 +381,7 @@ describe("AC7.5 — 1000+ line file scroll remains smooth (integration)", () => 
         endLine: (i + 1) * 50,
       });
       const line = fakeDoc.createElement("span");
-      line.setAttribute("data-line", String((i * 50) + 1));
+      line.setAttribute("data-line", String(i * 50 + 1));
       line.setAttribute("data-line-index", "0");
       container.appendChild(line);
     }
@@ -415,9 +411,63 @@ describe("AC7.6 — Existing scrollSpy IntersectionObserver not broken (regressi
 describe("computeHunkRanges", () => {
   it("maps Hunk array to HunkRange array with correct indices", () => {
     const hunks = [
-      { additionStart: 1, additionCount: 10, collapsedBefore: 0, additionLines: 10, additionLineIndex: 0, deletionStart: 1, deletionCount: 10, deletionLines: 10, deletionLineIndex: 0, hunkContent: [], type: "unified" as const, splitLineStart: 1, splitLineCount: 10, unifiedLineStart: 1, unifiedLineCount: 10, noEOFCRDeletions: false, noEOFCRAdditions: false },
-      { additionStart: 15, additionCount: 5, collapsedBefore: 0, additionLines: 5, additionLineIndex: 10, deletionStart: 15, deletionCount: 5, deletionLines: 5, deletionLineIndex: 10, hunkContent: [], type: "unified" as const, splitLineStart: 15, splitLineCount: 5, unifiedLineStart: 15, unifiedLineCount: 5, noEOFCRDeletions: false, noEOFCRAdditions: false },
-      { additionStart: 25, additionCount: 8, collapsedBefore: 0, additionLines: 8, additionLineIndex: 15, deletionStart: 25, deletionCount: 8, deletionLines: 8, deletionLineIndex: 15, hunkContent: [], type: "unified" as const, splitLineStart: 25, splitLineCount: 8, unifiedLineStart: 25, unifiedLineCount: 8, noEOFCRDeletions: false, noEOFCRAdditions: false },
+      {
+        additionStart: 1,
+        additionCount: 10,
+        collapsedBefore: 0,
+        additionLines: 10,
+        additionLineIndex: 0,
+        deletionStart: 1,
+        deletionCount: 10,
+        deletionLines: 10,
+        deletionLineIndex: 0,
+        hunkContent: [],
+        type: "unified" as const,
+        splitLineStart: 1,
+        splitLineCount: 10,
+        unifiedLineStart: 1,
+        unifiedLineCount: 10,
+        noEOFCRDeletions: false,
+        noEOFCRAdditions: false,
+      },
+      {
+        additionStart: 15,
+        additionCount: 5,
+        collapsedBefore: 0,
+        additionLines: 5,
+        additionLineIndex: 10,
+        deletionStart: 15,
+        deletionCount: 5,
+        deletionLines: 5,
+        deletionLineIndex: 10,
+        hunkContent: [],
+        type: "unified" as const,
+        splitLineStart: 15,
+        splitLineCount: 5,
+        unifiedLineStart: 15,
+        unifiedLineCount: 5,
+        noEOFCRDeletions: false,
+        noEOFCRAdditions: false,
+      },
+      {
+        additionStart: 25,
+        additionCount: 8,
+        collapsedBefore: 0,
+        additionLines: 8,
+        additionLineIndex: 15,
+        deletionStart: 25,
+        deletionCount: 8,
+        deletionLines: 8,
+        deletionLineIndex: 15,
+        hunkContent: [],
+        type: "unified" as const,
+        splitLineStart: 25,
+        splitLineCount: 8,
+        unifiedLineStart: 25,
+        unifiedLineCount: 8,
+        noEOFCRDeletions: false,
+        noEOFCRAdditions: false,
+      },
     ] as unknown as import("@pierre/diffs").Hunk[];
 
     const ranges = computeHunkRanges(hunks);
@@ -435,7 +485,27 @@ describe("computeHunkRanges", () => {
   });
 
   it("single hunk maps correctly", () => {
-    const hunks = [{ additionStart: 100, additionCount: 25, collapsedBefore: 0, additionLines: 25, additionLineIndex: 0, deletionStart: 100, deletionCount: 25, deletionLines: 25, deletionLineIndex: 0, hunkContent: [], type: "unified" as const, splitLineStart: 100, splitLineCount: 25, unifiedLineStart: 100, unifiedLineCount: 25, noEOFCRDeletions: false, noEOFCRAdditions: false }] as unknown as import("@pierre/diffs").Hunk[];
+    const hunks = [
+      {
+        additionStart: 100,
+        additionCount: 25,
+        collapsedBefore: 0,
+        additionLines: 25,
+        additionLineIndex: 0,
+        deletionStart: 100,
+        deletionCount: 25,
+        deletionLines: 25,
+        deletionLineIndex: 0,
+        hunkContent: [],
+        type: "unified" as const,
+        splitLineStart: 100,
+        splitLineCount: 25,
+        unifiedLineStart: 100,
+        unifiedLineCount: 25,
+        noEOFCRDeletions: false,
+        noEOFCRAdditions: false,
+      },
+    ] as unknown as import("@pierre/diffs").Hunk[];
     const ranges = computeHunkRanges(hunks);
     expect(ranges).toEqual([{ hunkIndex: 0, startLine: 100, endLine: 124 }]);
   });
@@ -612,13 +682,17 @@ describe("AC9.7 — localStorage: 0 keys added", () => {
 
 describe("AC9.8 — 2 new STRINGS keys present in i18n.test.ts regression guard", () => {
   it("i18n.test.ts contains diff.hunk.collapse regression test", async () => {
-    const testSrc = await readSource(join(import.meta.dir, "..", "..", "src", "ui", "i18n.test.ts"));
+    const testSrc = await readSource(
+      join(import.meta.dir, "..", "..", "src", "ui", "i18n.test.ts"),
+    );
     expect(testSrc).toMatch(/diff\.hunk\.collapse/);
     expect(testSrc).toMatch(/折叠 hunk/);
   });
 
   it("i18n.test.ts contains diff.hunk.expand regression test", async () => {
-    const testSrc = await readSource(join(import.meta.dir, "..", "..", "src", "ui", "i18n.test.ts"));
+    const testSrc = await readSource(
+      join(import.meta.dir, "..", "..", "src", "ui", "i18n.test.ts"),
+    );
     expect(testSrc).toMatch(/diff\.hunk\.expand/);
     expect(testSrc).toMatch(/展开 hunk/);
   });
@@ -724,7 +798,9 @@ describe("AC11.4 — Toggle OFF → all hunks render eagerly (no IntersectionObs
     const wrapper = fakeDoc.createElement("div");
     wrapper.setAttribute("data-hunk", "0");
     container.appendChild(wrapper);
-    const virtualizer = new DiffVirtualizer(container as unknown as HTMLElement, { enabled: false });
+    const virtualizer = new DiffVirtualizer(container as unknown as HTMLElement, {
+      enabled: false,
+    });
     virtualizer.observe([wrapper as unknown as HTMLElement]);
     expect(wrapper.hasAttribute("data-hunk")).toBe(true);
   });
@@ -734,7 +810,9 @@ describe("AC11.4 — Toggle OFF → all hunks render eagerly (no IntersectionObs
     const wrapper = fakeDoc.createElement("div");
     wrapper.setAttribute("data-hunk", "0");
     container.appendChild(wrapper);
-    const virtualizer = new DiffVirtualizer(container as unknown as HTMLElement, { enabled: false });
+    const virtualizer = new DiffVirtualizer(container as unknown as HTMLElement, {
+      enabled: false,
+    });
     expect(() => virtualizer.disconnect()).not.toThrow();
   });
 });
@@ -756,7 +834,9 @@ describe("AC11.6 — R24 #49 per-hunk collapse still works regardless of toggle 
     wrapper.dataset.hunkStart = "1";
     wrapper.dataset.hunkEnd = "10";
     container.appendChild(wrapper);
-    const virtualizer = new DiffVirtualizer(container as unknown as HTMLElement, { enabled: false });
+    const virtualizer = new DiffVirtualizer(container as unknown as HTMLElement, {
+      enabled: false,
+    });
     virtualizer.markHunkBoundaries([{ hunkIndex: 0, startLine: 1, endLine: 10 }], "test.ts");
     expect(virtualizer.isCollapsed("test.ts", 0)).toBe(false);
     virtualizer.toggleHunk("test.ts", 0);
@@ -767,11 +847,10 @@ describe("AC11.6 — R24 #49 per-hunk collapse still works regardless of toggle 
 
   it("expandAll/collapseAll work when enabled=false", () => {
     const container = fakeDoc.createElement("div");
-    const virtualizer = new DiffVirtualizer(container as unknown as HTMLElement, { enabled: false });
-    virtualizer.markHunkBoundaries(
-      [{ hunkIndex: 0, startLine: 1, endLine: 10 }],
-      "file2.ts",
-    );
+    const virtualizer = new DiffVirtualizer(container as unknown as HTMLElement, {
+      enabled: false,
+    });
+    virtualizer.markHunkBoundaries([{ hunkIndex: 0, startLine: 1, endLine: 10 }], "file2.ts");
     virtualizer.collapseAll("file2.ts");
     expect(virtualizer.isCollapsed("file2.ts", 0)).toBe(true);
     virtualizer.expandAll("file2.ts");
@@ -781,14 +860,18 @@ describe("AC11.6 — R24 #49 per-hunk collapse still works regardless of toggle 
 
 describe("AC11.7 — 2 new STRINGS keys present in i18n.test.ts regression guard", () => {
   it("i18n.test.ts contains settings.virtualization.label regression test", async () => {
-    const testSrc = await readSource(join(import.meta.dir, "..", "..", "src", "ui", "i18n.test.ts"));
+    const testSrc = await readSource(
+      join(import.meta.dir, "..", "..", "src", "ui", "i18n.test.ts"),
+    );
     expect(testSrc).toMatch(/settings\.virtualization\.label/);
     expect(testSrc).toMatch(/Diff virtualization/);
     expect(testSrc).toMatch(/Diff 虚拟化/);
   });
 
   it("i18n.test.ts contains settings.virtualization.description regression test", async () => {
-    const testSrc = await readSource(join(import.meta.dir, "..", "..", "src", "ui", "i18n.test.ts"));
+    const testSrc = await readSource(
+      join(import.meta.dir, "..", "..", "src", "ui", "i18n.test.ts"),
+    );
     expect(testSrc).toMatch(/settings\.virtualization\.description/);
     expect(testSrc).toMatch(/Render only visible hunks for faster scrolling/);
     expect(testSrc).toMatch(/仅渲染可见 hunk，加快滚动速度/);

@@ -46,10 +46,7 @@ export class DiffVirtualizer {
    * hunk's lines in a `<div data-hunk="N">` container. Returns the wrapper
    * elements for observation.
    */
-  markHunkBoundaries(
-    hunkRanges: HunkRange[],
-    filePath: string,
-  ): HTMLElement[] {
+  markHunkBoundaries(hunkRanges: HunkRange[], filePath: string): HTMLElement[] {
     this.hunkRanges.set(filePath, hunkRanges);
     const wrappers: HTMLElement[] = [];
 
@@ -79,10 +76,16 @@ export class DiffVirtualizer {
         const allLines = this.container.querySelectorAll<HTMLElement>("[data-line]");
         for (const el of Array.from(allLines)) {
           const lineNum = parseInt(el.getAttribute("data-line") ?? "-1", 10);
-          if (lineNum >= startLine && (!firstLine || lineNum < parseInt(firstLine.getAttribute("data-line") ?? "-1", 10))) {
+          if (
+            lineNum >= startLine &&
+            (!firstLine || lineNum < parseInt(firstLine.getAttribute("data-line") ?? "-1", 10))
+          ) {
             firstLine = el;
           }
-          if (lineNum <= endLine && lineNum > parseInt(lastLine?.getAttribute("data-line") ?? "-1", 10)) {
+          if (
+            lineNum <= endLine &&
+            lineNum > parseInt(lastLine?.getAttribute("data-line") ?? "-1", 10)
+          ) {
             lastLine = el;
           }
         }

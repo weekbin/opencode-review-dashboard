@@ -51,7 +51,7 @@ describe("R26 #54 AC12.1 — Per-finding checkbox visible in Conversation tab li
 
   it("checkbox has data-id attribute for finding tracking", async () => {
     const src = await fsPromises.readFile(APP_TS, "utf8");
-    expect(src.includes('cb.dataset.id = entry.id')).toBe(true);
+    expect(src.includes("cb.dataset.id = entry.id")).toBe(true);
   });
 });
 
@@ -111,7 +111,10 @@ describe("R26 #54 AC12.5 — Conversation state preserved (activeTab, filter)", 
   it("bulk handler does NOT reset activeTab or conversationFilter", async () => {
     const src = await fsPromises.readFile(APP_TS, "utf8");
     const bulkIdx = src.indexOf("conversation-bulk-delete");
-    if (bulkIdx < 0) { expect("bulk button").toBe("found"); return; }
+    if (bulkIdx < 0) {
+      expect("bulk button").toBe("found");
+      return;
+    }
     const afterBulk = src.slice(bulkIdx, bulkIdx + 1500);
     const touchesActiveTab = /activeTab\s*=/.test(afterBulk);
     const touchesFilter = /conversationFilter\s*=/.test(afterBulk);
@@ -124,7 +127,10 @@ describe("R26 #54 AC12.6 — localStorage: 0 keys added (uses existing conversat
   it("bulk handler does NOT add new localStorage keys", async () => {
     const src = await fsPromises.readFile(APP_TS, "utf8");
     const bulkIdx = src.indexOf("conversation-bulk-delete");
-    if (bulkIdx < 0) { expect("bulk button").toBe("found"); return; }
+    if (bulkIdx < 0) {
+      expect("bulk button").toBe("found");
+      return;
+    }
     const afterBulk = src.slice(bulkIdx, bulkIdx + 1500);
     const hasLocalStorage = /localStorage\.(setItem|getItem)/.test(afterBulk);
     expect(hasLocalStorage).toBe(false);
