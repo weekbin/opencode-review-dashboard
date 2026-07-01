@@ -1,11 +1,11 @@
 ---
 name: team-dev-loop
-description: "v5.3.10 cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+Push (NEW v5.3.3) — 17 phases total (Phase -0 Sync / Phase 0 PM Triage / 0.25 PM Researcher / 0.5 PM Manager / 0.75 Planner / 1 Architect / 2 Dev / 2.5 Pre-Commit Audit / 2.6 Lead Merge+Push / 3a-c Tester / 3.5 Doc Writer / 4 Decision + 4.5-4.9 lead-owned). Lead-direct execution model (v5.3.3): 16 of 17 phases lead-direct, ONLY Phase 2 Dev uses subagent (for code generation). v5.3.4: zh-CN lockstep + READ ONLY ONCE + post-completion verification + user-manual README. v5.3.4+: SG.12 screenshot workflow. v5.3.5: SG.13-SG.16 (regex + immutable helpers + regex pre-validation + screenshots in Phase 2). v5.3.5+1: SG.17 append-only proposals.jsonl + SG.18 combine Triage+Researcher subagent + SG.19 single-commit bilingual docs + SG.20 Phase 3c Playwright minimum. v5.3.6: SG.R19.1-SG.R19.8 (R19 retro 8 patches). v5.3.7: SG.R20.1 + SG.R22.1 + SG.R22.2 (R20 + R22 retro 3 patches). v5.3.8: SG.R24.1 subagent worktree-per-Edit verification (R23+R24 recurring double-write prevention). v5.3.9: SG.R25.1 pre-commit SG.R22.1 verify gate (R25 retro bilingual lockstep gap-fix precedent). v5.3.10: SG.R26.1 file-existence verify gate (R21-R31 retro double-fabrication fix) + SG.R26.2 husky installation verify gate (R30 husky automation false-positive fix). Subagent scope: 5-20 min budget + decompose >20 min tasks. Default NO user pick (Planner autonomous); user MAY pre-pick A-E or 1-6 (R12 Gap #1). PM researcher advisories are advisory-only (R12 Gap #14: lead must verify independently). Subagent NEVER does git ops (merge/push/issue close) — lead's responsibility. Mid-task check-in every 5/10/15/20 min OR post-completion verification. ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit/artifacts/husky failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
+description: "v5.3.11 cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+Push (NEW v5.3.3) — 17 phases total (Phase -0 Sync / Phase 0 PM Triage / 0.25 PM Researcher / 0.5 PM Manager / 0.75 Planner / 1 Architect / 2 Dev / 2.5 Pre-Commit Audit / 2.6 Lead Merge+Push / 3a-c Tester / 3.5 Doc Writer / 4 Decision + 4.5-4.9 lead-owned). Lead-direct execution model (v5.3.3): 16 of 17 phases lead-direct, ONLY Phase 2 Dev uses subagent (for code generation). v5.3.4: zh-CN lockstep + READ ONLY ONCE + post-completion verification + user-manual README. v5.3.4+: SG.12 screenshot workflow. v5.3.5: SG.13-SG.16 (regex + immutable helpers + regex pre-validation + screenshots in Phase 2). v5.3.5+1: SG.17 append-only proposals.jsonl + SG.18 combine Triage+Researcher subagent + SG.19 single-commit bilingual docs + SG.20 Phase 3c Playwright minimum. v5.3.6: SG.R19.1-SG.R19.8 (R19 retro 8 patches). v5.3.7: SG.R20.1 + SG.R22.1 + SG.R22.2 (R20 + R22 retro 3 patches). v5.3.8: SG.R24.1 subagent worktree-per-Edit verification (R23+R24 recurring double-write prevention). v5.3.9: SG.R25.1 pre-commit SG.R22.1 verify gate (R25 retro bilingual lockstep gap-fix precedent). v5.3.10: SG.R26.1 file-existence verify gate (R21-R31 retro double-fabrication fix) + SG.R26.2 husky installation verify gate (R30 husky automation false-positive fix) + SG.R27.1 runtime load verification gate (R32 retro 4-gate: runtime compat + PluginModule shape + hook contract + path-plugin entry). v5.3.11: SG.R28.1 frontend skill invocation gate (R33 retro UI/UX 6-issue feedback: lead must invoke `visual-engineering` skill at Phase 2.5 + 3.5 when round produces UI artifacts; soft practice, not hard-stop). Subagent scope: 5-20 min budget + decompose >20 min tasks. Default NO user pick (Planner autonomous); user MAY pre-pick A-E or 1-6 (R12 Gap #1). PM researcher advisories are advisory-only (R12 Gap #14: lead must verify independently). Subagent NEVER does git ops (merge/push/issue close) — lead's responsibility. Mid-task check-in every 5/10/15/20 min OR post-completion verification. ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit/artifacts/husky/load failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
 ---
 
 # /team-dev-loop Command (v5)
 
-> **Last Updated**: 2026-07-01 (v5.3.10 R32 retro: 1 NEW SG — SG.R27.1 runtime load verification gate, retroactively patching R32+R32b plugin-load-silent-failure (Node.js runtime compat + strict PluginModule shape). Built on v5.3.9 (R25 retro SG.R25.1 pre-commit SG.R22.1 verify gate). Built on v5.3.8 (R24 retro SG.R24.1 subagent worktree-per-Edit verification). Built on v5.3.7 (3 R22 retro patches — SG.R20.1 Phase 2.6 3-step rebuild + SG.R22.1 bilingual lockstep pre-commit verify + SG.R22.2 worktree env check at Phase -0). Built on v5.3.6 (8 R19 patches — SG.R19.1 Phase 2.5 build location + SG.R19.2 macOS setsid + SG.R19.3 STRINGS_USAGE_PLAN + SG.R19.4 Dev workdir verify + SG.R19.5 Playwright as Gap #14 + SG.R19.6/.7 consolidations + SG.R19.8 End-of-round mandatory gap-fix). Built on v5.3.5+1 (commit `74ee9a0` — R16 closure SG.17-SG.20) + v5.3.5 (`98b36b1`) + v5.3.4+ (`350efba`) + v5.3.4 (`43a44ba` + `ca01e97`) + v5.3.3 (`c3a6aea`) + v5.3.2 (`42ba5aa`) + v5.3 (`657a064`). v5.3.10 total: 55 retroactive skill patches cumulative across R12-R32 retros (52 → 53 SG.R25.1 → 54 SG.R26.1+SG.R26.2 → 55 SG.R27.1).
+> **Last Updated**: 2026-07-01 (v5.3.11 R33 user-feedback retro: 1 NEW SG — SG.R28.1 frontend skill invocation gate, retroactively patching R33 6-issue UI/UX backlog from opencode-review-dashboard review session (#65-#70, "页面对齐 + 加载前端 skill" user feedback). v5.3.10 R32 retro: 1 NEW SG — SG.R27.1 runtime load verification gate, retroactively patching R32+R32b plugin-load-silent-failure (Node.js runtime compat + strict PluginModule shape). Built on v5.3.9 (R25 retro SG.R25.1 pre-commit SG.R22.1 verify gate). Built on v5.3.8 (R24 retro SG.R24.1 subagent worktree-per-Edit verification). Built on v5.3.7 (3 R22 retro patches — SG.R20.1 Phase 2.6 3-step rebuild + SG.R22.1 bilingual lockstep pre-commit verify + SG.R22.2 worktree env check at Phase -0). Built on v5.3.6 (8 R19 patches — SG.R19.1 Phase 2.5 build location + SG.R19.2 macOS setsid + SG.R19.3 STRINGS_USAGE_PLAN + SG.R19.4 Dev workdir verify + SG.R19.5 Playwright as Gap #14 + SG.R19.6/.7 consolidations + SG.R19.8 End-of-round mandatory gap-fix). Built on v5.3.5+1 (commit `74ee9a0` — R16 closure SG.17-SG.20) + v5.3.5 (`98b36b1`) + v5.3.4+ (`350efba`) + v5.3.4 (`43a44ba` + `ca01e97`) + v5.3.3 (`c3a6aea`) + v5.3.2 (`42ba5aa`) + v5.3 (`657a064`). v5.3.11 total: 56 retroactive skill patches cumulative across R12-R33 retros (52 → 53 SG.R25.1 → 54 SG.R26.1+SG.R26.2 → 55 SG.R27.1 → 56 SG.R28.1).
 > **Status**: R16+ will run on v5.3.4+. R13-R15 ran on v5.3 + v5.3.2 + v5.3.3. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
 > **Migration from v2**: see `## Migration v2 → v5` section below.
 > **Status**: R16+ will run on v5.3.4. R13-R15 ran on v5.3 + v5.3.2 + v5.3.3. R10-R12 ran on v5. R1-R9 ran on v1-v2 (tracked in `.omo/round-{1..12}/`).
@@ -2032,6 +2032,52 @@ fi
 **Skip condition**: docs-only rounds (only README/SKILL.md changes, no dist/ modification) MAY skip SG.R27.1 — but `decision.md ## Skipped phases` MUST explicitly list it as skipped with rationale.
 
 **Hard-stop marker**: `.omo/round-N/load-blocked.md` (added to `## v5 hard-stop table` below).
+
+## Frontend skill invocation gate (NEW R33 user-feedback SG.R28.1 — APPLIED, 6-issue UI/UX backlog from opencode-review-dashboard 2026-07-01)
+
+**Why** (user audit 2026-07-01, opencode-review-dashboard session): During a /diff-review-dashboard review session, the user reported 6 separate UI/UX bugs (filed as issues #65-#70, ~16 sub-findings across 6 rounds of feedback). Root cause: pages were "凑出来的" (thrown together) instead of designed. Examples: post-submit overlay has no backdrop (CSS bug, #70), previously-discussed tab uses a completely different DOM/CSS from the conversation tab (#69), settings panel has 3 layout bugs (#65), conversation panel doesn't show finding key info prominently (#67), submit dialog shows "0 open findings" because the schema is missing `status: "open"` on fresh findings (#68). All of these would have been prevented — or caught earlier — if the lead had invoked the `visual-engineering` category frontend skill during the writing phases. The user explicitly said: "写页面的时候要加载好一点的前端 skill" (when writing pages, load a better frontend skill).
+
+**Rule** (mandatory practice, SG.R28.1 — runs during the writing phases, not a hard-stop gate):
+
+For any R+ round that produces a UI artifact (HTML/CSS layout, modal, tab, list, panel, button, etc.), the lead MUST invoke the `visual-engineering` category skill at TWO specific points in the phase sequence:
+
+1. **Phase 2.5 (Pre-Commit Audit)** — before merge to MAIN. The lead's audit should include: "would a user looking at this page for the first time understand what they're looking at within 5 seconds? Is the visual style consistent with existing pages in the same app? Are there obvious CSS bugs (overlapping elements, missing backdrops, content showing through transparent areas)?" The frontend skill invocation produces design tokens, CSS patterns, and a consistency checklist the lead applies against the current round's dist.
+
+2. **Phase 3.5 (Doc Writer / UI verification)** — before the closure commit. The lead reviews the rendered UI against the design tokens from step 1. If the round produced a new panel/modal/tab, the lead runs Playwright (or visual-engineering's browser-automation sub-mode) to screenshot the page in light + dark mode and at mobile + desktop widths.
+
+**Why these two specific phases**:
+- Phase 2.5 is the LAST pre-merge gate (catches design issues before they hit main)
+- Phase 3.5 is the LAST pre-closure gate (catches design issues that survived the merge)
+- Phase 2.6 (merge) and Phase 4 (decision) are too late — the change is already in history
+
+**Skip condition**: docs-only rounds (no dist/ modification) MAY skip SG.R28.1 — but `decision.md ## Skipped phases` MUST explicitly list it as skipped with rationale, same pattern as SG.R27.1 docs-only skip.
+
+**Practical integration** (in the lead's chat prompt for the relevant phases):
+
+```
+When running Phase 2.5 audit on a round that touched src/ui/* or dist/ui/*:
+
+1. Invoke skill `visual-engineering` (or equivalent) to load design tokens
+   and consistency checklist.
+2. For each new or modified UI component, verify:
+   - z-index ordering (overlay > modals > cards > body content > header)
+   - backdrop / mask coverage (no transparent gaps in modal overlays)
+   - status enums in state (e.g., fresh findings must include status: "open")
+   - layout consistency vs sibling pages (conversation ↔ previously ↔ commits)
+   - i18n completeness (no hardcoded English user-facing strings)
+3. Document any design-level findings in audit-blocked.md.
+```
+
+**Reference evidence** (this session's 6 issues that motivated the gate):
+
+- #65 (settings panel 3 bugs) — layout / auto-pop / cannot close
+- #66 (port stability) — localStorage失效 across restart
+- #67 (conversation panel 4 UX) — layout / button style / mystery checkbox / key info
+- #68 (submit dialog stat bug) — fresh findings missing `status: "open"` schema field
+- #69 (previously discussed tab) — completely different DOM/CSS from conversation, no design tokens
+- #70 (post-submit overlay) — no backdrop, z-index too low, content shows through
+
+All 6 issues would have been caught or prevented if `visual-engineering` skill had been invoked at Phase 2.5/3.5 in those rounds. This is process feedback, not a code-level verification — so it's a recommended practice, NOT a hard-stop gate (the hard-stop table at `## v5 hard-stop table` is unchanged; SG.R28.1 is a soft practice, lead can skip with explicit rationale).
 
 ## Examples
 
