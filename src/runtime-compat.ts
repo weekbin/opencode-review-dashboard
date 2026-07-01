@@ -119,10 +119,7 @@ export async function readFileJson<T>(path: string, defaultValue: T): Promise<T>
 // Node: fs/promises.writeFile(path, content)
 // ---------------------------------------------------------------------------
 
-export async function writeFile(
-  path: string,
-  content: string | Uint8Array,
-): Promise<void> {
+export async function writeFile(path: string, content: string | Uint8Array): Promise<void> {
   if (IS_BUN) {
     return bun().write(path, content);
   }
@@ -203,8 +200,12 @@ export async function spawnText(
       stderr: "pipe",
     });
     const [stdout, stderr, code] = await Promise.all([
-      bun().readableStreamToText(proc.stdout).catch(() => ""),
-      bun().readableStreamToText(proc.stderr).catch(() => ""),
+      bun()
+        .readableStreamToText(proc.stdout)
+        .catch(() => ""),
+      bun()
+        .readableStreamToText(proc.stderr)
+        .catch(() => ""),
       proc.exited as Promise<number>,
     ]);
     return { ok: code === 0, stdout, stderr, code };
@@ -220,18 +221,22 @@ export async function spawnText(
       resolve(r);
     };
     try {
-      const proc = spawn(args[0], args.slice(1), {
+      const proc = spawn(args[0]!, args.slice(1), {
         cwd: opts.cwd,
         env: { ...process.env, ...(opts.env ?? {}) } as NodeJS.ProcessEnv,
         stdio: ["ignore", "pipe", "pipe"],
-      });
+        // Cast through ChildProcess because spawn()'s overload
+        // intersection collapses proc to `never` when stdio is a
+        // 3-tuple (TS narrowing bug with cross-platform types).
+        // Runtime behavior unchanged — `as` only widens the type.
+      }) as ReturnType<typeof spawn>;
       proc.stdout?.on("data", (chunk: Buffer | string) => {
         stdout += typeof chunk === "string" ? chunk : chunk.toString("utf8");
       });
       proc.stderr?.on("data", (chunk: Buffer | string) => {
         stderr += typeof chunk === "string" ? chunk : chunk.toString("utf8");
       });
-      proc.on("error", (err) => {
+      proc.on("error", (err: Error) => {
         finish({ ok: false, stdout, stderr: stderr + err.message, code: -1 });
       });
       proc.on("close", (code) => {
@@ -256,10 +261,7 @@ export async function spawnText(
 // survives parent exit if needed.
 // ---------------------------------------------------------------------------
 
-export function spawnDetached(
-  args: string[],
-  opts: SpawnTextOptions = {},
-): void {
+export function spawnDetached(args: string[], opts: SpawnTextOptions = {}): void {
   if (IS_BUN) {
     bun().spawn(args, {
       cwd: opts.cwd,
@@ -274,12 +276,12 @@ export function spawnDetached(
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { spawn } = require("node:child_process") as typeof import("node:child_process");
   try {
-    const proc = spawn(args[0], args.slice(1), {
+    const proc = spawn(args[0]!, args.slice(1), {
       cwd: opts.cwd,
       env: { ...process.env, ...(opts.env ?? {}) } as NodeJS.ProcessEnv,
       stdio: "ignore",
       detached: true,
-    });
+    }) as ReturnType<typeof spawn>;
     proc.unref();
   } catch {
     // best-effort — caller doesn't await this

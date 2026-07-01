@@ -2052,6 +2052,25 @@ For any R+ round that produces a UI artifact (HTML/CSS layout, modal, tab, list,
 
 **Skip condition**: docs-only rounds (no dist/ modification) MAY skip SG.R28.1 — but `decision.md ## Skipped phases` MUST explicitly list it as skipped with rationale, same pattern as SG.R27.1 docs-only skip.
 
+**Skill-availability fallback (NEW R34 AC1 / R33 retro gap-fix)**:
+
+When `visual-engineering` skill is NOT loadable in the current environment (some OpenCode builds ship with only `frontend`/`visual-qa`/`shared/visual-qa` — verified during R33 retro 2026-07-01), apply the **5-item inline design checklist** instead of relying on skill invocation. The lead embeds this checklist inline in `.omo/round-N/test-report.md`:
+
+1. **z-index ordering**: overlay > modals > cards > body > header (overlay must be >10000 if header is 10000)
+2. **backdrop/mask coverage**: every modal/overlay must have explicit `background: rgba(...,0.5)` or equivalent (R33 #70 failure mode: `.post-submit` had no background)
+3. **status enums in state**: any `freshFindings.push()` or equivalent must set `status: "open"` (R33 #68 failure mode: schema field missing → submit dialog count showed 0)
+4. **layout consistency vs sibling pages**: new panel/modal/tab should reuse existing CSS class patterns; matches commits↔conversation↔previously tab style (R33 #69 failure mode)
+5. **i18n completeness**: hardcoded user-facing English strings in `<h1>/<h2>/<button>/toast` are forbidden; use `data-i18n="..."` + `data-i18n-title="..."` + aria-label from `STRINGS` table (R33 #71 failure mode: title attribute hardcoded English)
+
+**Fallback chain** (in order of preference):
+1. `skill(visual-engineering)` if loadable (per current skill list)
+2. `skill(frontend)` — broader design tool, available in most envs
+3. `skill(visual-qa)` — more focused on QA/visual regression
+4. **Inline 5-item checklist** (above) — always applicable, no skill needed
+5. Skill-creation-then-load (last resort; 30+ min, only for complex rounds)
+
+**Evidence collection** (when fallback #4 or #5 used): record in `.omo/round-N/post-exec-analysis.md ## New skill gaps` section, then queue SG.R28.1 patch for next round (e.g., R34 retro → amend with this exact fallback chain → R35 starts with the new fallback in place).
+
 **Practical integration** (in the lead's chat prompt for the relevant phases):
 
 ```
