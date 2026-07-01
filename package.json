@@ -33,7 +33,7 @@
   ],
   "scripts": {
     "build": "tsdown && cp src/ui/review.html dist/ui/review.html",
-    "prepare": "bun run build && husky",
+    "prepare": "husky",
     "lint": "oxlint src/",
     "format": "oxfmt --write src/",
     "format:check": "oxfmt src/",
