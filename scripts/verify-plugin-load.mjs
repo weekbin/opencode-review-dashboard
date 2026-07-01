@@ -66,16 +66,21 @@ async function checkIn(runtimeHint) {
   }
   log(runtimeHint, "runtime-compat", true, `import OK (default=${typeof m.default})`);
 
-  // Gate 2: PluginModule shape — `default.server` is a function
+  // Gate 2: PluginModule shape — `default.id` is a string AND `default.server` is a function
+  const id = m.default?.id;
+  const idOk = typeof id === "string" && id.length > 0;
   const server = m.default?.server;
   const serverOk = typeof server === "function";
+  const shapeOk = idOk && serverOk;
   log(
     runtimeHint,
     "PluginModule-shape",
-    serverOk,
-    `default.server = ${typeof server}${serverOk ? "" : " (need function)"}`,
+    shapeOk,
+    `default.id=${typeof id === "string" ? JSON.stringify(id) : typeof id} ` +
+      `default.server=${typeof server}` +
+      (shapeOk ? "" : " (need id:string + server:function)"),
   );
-  if (!serverOk) return false;
+  if (!shapeOk) return false;
 
   // Gate 3: hook contract — config() registers a non-empty output.command
   let commands = [];
