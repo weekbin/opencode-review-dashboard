@@ -1439,6 +1439,7 @@ const severityRoot = document.querySelector("#severity") as HTMLSelectElement;
 const commentRoot = document.querySelector("#comment") as HTMLTextAreaElement;
 const selectionRoot = document.querySelector("#selection") as HTMLDivElement;
 const scopeRoot = document.querySelector("#scope") as HTMLSpanElement;
+const copyBranchButton = document.querySelector("#copy-branch") as HTMLButtonElement | null;
 const statusRoot = document.querySelector("#status") as HTMLDivElement;
 const addButton = document.querySelector("#add") as HTMLButtonElement;
 const clearButton = document.querySelector("#clear") as HTMLButtonElement;
@@ -1609,6 +1610,8 @@ registerUITranslator("toolbar.theme.dark", () => t("toolbar.theme.dark"));
 registerUITranslator("toolbar.review", () => t("toolbar.review"));
 registerUITranslator("toolbar.export", () => t("toolbar.export"));
 registerUITranslator("toolbar.submit", () => t("toolbar.submit"));
+// R36 AC3 #72: copy-current-branch button next to the worktree scope display.
+registerUITranslator("toolbar.copyBranch.label", () => t("toolbar.copyBranch.label"));
 registerUITranslator("sidebar.files", () => t("sidebar.files"));
 registerUITranslator("sidebar.commits", () => t("sidebar.commits"));
 registerUITranslator("sidebar.conversation", () => t("sidebar.conversation"));
@@ -1658,6 +1661,65 @@ layoutToggle.addEventListener("click", (event) => {
   if (!btn) return;
   setLayout(btn.dataset.layout as DiffLayout);
 });
+
+// R36 AC3 #72: copy the current worktree branch name to the clipboard.
+// Mirrors the navigator.clipboard.writeText + textarea-fallback pattern from
+// copyFindingPermalinkToClipboard (app.ts:360). Reads auto_worktree_branch
+// first, then falls back to current_branch, so it works for both the
+// worktree (per-branch session) and the main-repo (single-branch) layouts.
+async function copyBranchNameToClipboard(button: HTMLButtonElement): Promise<void> {
+  const branch =
+    state.data?.auto_worktree_branch || state.data?.current_branch || "";
+  if (!branch) {
+    showToast(t("status.copyBranchEmpty"), { error: true });
+    return;
+  }
+  const fallbackCopy = (text: string) => {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  let ok = false;
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(branch);
+      ok = true;
+    } catch {
+      ok = fallbackCopy(branch);
+    }
+  } else {
+    ok = fallbackCopy(branch);
+  }
+  if (ok) {
+    const original = button.textContent ?? "";
+    const label = t("toolbar.copyBranch.label");
+    button.textContent = `✓ ${label}`;
+    button.disabled = true;
+    setTimeout(() => {
+      button.textContent = original || label;
+      button.disabled = false;
+    }, 1200);
+    showToast(t("status.copiedBranch", { name: branch }));
+  } else {
+    showToast(t("status.copyBranchBlocked"), { error: true });
+  }
+}
+
+if (copyBranchButton) {
+  copyBranchButton.addEventListener("click", () => {
+    void copyBranchNameToClipboard(copyBranchButton);
+  });
+}
 
 const ignoreWhitespaceToggle = document.querySelector("#ignore-whitespace") as HTMLButtonElement;
 

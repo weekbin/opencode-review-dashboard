@@ -46,6 +46,7 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "toolbar.review": { en: "Review", "zh-CN": "审查" },
   "toolbar.export": { en: "Export", "zh-CN": "导出" },
   "toolbar.submit": { en: "Submit Review", "zh-CN": "提交审查" },
+  "toolbar.copyBranch.label": { en: "Copy branch", "zh-CN": "复制分支" },
   "toolbar.lang.toggle": { en: "EN | 中文", "zh-CN": "中文 | EN" },
   "toolbar.lang.ariaLabel": {
     en: "Switch interface language",
@@ -97,6 +98,15 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "save.idle": { en: "All changes saved", "zh-CN": "所有更改已保存" },
   "save.fresh": { en: "Saved {seconds}s ago", "zh-CN": "{seconds} 秒前已保存" },
   "status.copiedMarkdown": { en: "Copied as Markdown", "zh-CN": "已复制为 Markdown" },
+  "status.copiedBranch": { en: "Copied branch: {name}", "zh-CN": "已复制分支: {name}" },
+  "status.copyBranchBlocked": {
+    en: "Could not copy branch name — clipboard blocked",
+    "zh-CN": "复制分支名失败 — 剪贴板被阻止",
+  },
+  "status.copyBranchEmpty": {
+    en: "No branch name to copy",
+    "zh-CN": "没有可复制的分支名",
+  },
   "status.copyBlocked": {
     en: "Could not copy markdown — clipboard blocked",
     "zh-CN": "复制失败 — 剪贴板被阻止",
