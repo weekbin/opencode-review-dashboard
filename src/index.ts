@@ -2535,4 +2535,4 @@ export const __test = {
 
 // OpenCode 1.17.12 loader checks module.default.server (PluginModule
 // shape); 1.17.11 was lenient. Wrapping in { server } keeps both working.
-export default { server: DiffReviewPlugin };
+export default { id: "diff-review-dashboard", server: DiffReviewPlugin };
