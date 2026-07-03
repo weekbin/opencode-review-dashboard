@@ -496,10 +496,13 @@ function flashFindingPermaHighlight(findingId: string): boolean {
   if (!el) return false;
   el.scrollIntoView({ behavior: "smooth", block: "center" });
   el.classList.remove("finding-permalink-flash");
-  // Force reflow so the animation restarts even on rapid re-triggers.
   void el.offsetWidth;
   el.classList.add("finding-permalink-flash");
-  setTimeout(() => el.classList.remove("finding-permalink-flash"), 1600);
+  const wEl = el as HTMLElement & { _findingPermaFlashTimer?: number };
+  clearTimeout(wEl._findingPermaFlashTimer);
+  wEl._findingPermaFlashTimer = setTimeout(() => {
+    el.classList.remove("finding-permalink-flash");
+  }, 1600) as unknown as number;
   return true;
 }
 
@@ -735,10 +738,13 @@ function clearDiffSearchHighlights(): void {
 
 function flashDiffSearchMatch(el: HTMLElement): void {
   el.classList.remove("diff-search-match-flash");
-  // Force reflow so the animation restarts even on rapid re-triggers.
   void el.offsetWidth;
   el.classList.add("diff-search-match-flash");
-  setTimeout(() => el.classList.remove("diff-search-match-flash"), DIFF_SEARCH_FLASH_MS);
+  const wEl = el as HTMLElement & { _diffSearchMatchFlashTimer?: number };
+  clearTimeout(wEl._diffSearchMatchFlashTimer);
+  wEl._diffSearchMatchFlashTimer = setTimeout(() => {
+    el.classList.remove("diff-search-match-flash");
+  }, DIFF_SEARCH_FLASH_MS) as unknown as number;
 }
 
 function escapeRegExp(input: string): string {
