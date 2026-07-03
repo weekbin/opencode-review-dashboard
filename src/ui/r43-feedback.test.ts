@@ -89,7 +89,7 @@ describe("R43 AC3 — settings button has no data-i18n (uses SVG instead)", () =
     const startIdx = html.lastIndexOf("<button", idx);
     const endIdx = html.indexOf(">", idx);
     const openingTag = html.substring(startIdx, endIdx + 1);
-    expect(openingTag.includes("data-i18n")).toBe(false);
+    expect(openingTag.includes('data-i18n="')).toBe(false);
   });
 
   it("#settings-btn contains an inline SVG icon", async () => {

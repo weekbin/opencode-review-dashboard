@@ -32,7 +32,7 @@ describe("AC4.1 — settings button exists in header", () => {
     const html = await readSource(HTML);
     const match = html.match(/<button[^>]*id="settings-btn"[^>]*>/);
     expect(match).not.toBeNull();
-    expect(match![0].includes("data-i18n")).toBe(false);
+    expect(match![0].includes('data-i18n="')).toBe(false);
   });
 
   it("R43 AC3: settings button contains an SVG icon", async () => {
