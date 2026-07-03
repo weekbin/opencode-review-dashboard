@@ -93,6 +93,15 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "Optional global notes for this round",
     "zh-CN": "本轮的可选全局笔记",
   },
+  "editFinding.title": { en: "Edit finding", "zh-CN": "编辑审查项" },
+  "editFinding.body": {
+    en: "Update category, severity, or comment. Changes are audited and visible to the agent.",
+    "zh-CN": "更新类别、严重程度或评论。变更会被记录并对 agent 可见。",
+  },
+  "editFinding.categoryLabel": { en: "Category", "zh-CN": "类别" },
+  "editFinding.severityLabel": { en: "Severity", "zh-CN": "严重程度" },
+  "editFinding.commentLabel": { en: "Comment", "zh-CN": "评论" },
+  "editFinding.save": { en: "Save", "zh-CN": "保存" },
   "modal.reopenReason.placeholder": {
     en: "e.g., 'The previous fix removed the symptom but the root cause is still there'",
     "zh-CN": "例如：「上一次修复只消除了症状，但根本原因还在」",

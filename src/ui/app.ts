@@ -5419,23 +5419,23 @@ function showEditFindingModal(finding: {
       .map((s) => `<option value="${s}"${s === finding.severity ? " selected" : ""}>${s}</option>`)
       .join("");
     dialog.innerHTML = `
-      <h3>Edit finding</h3>
-      <p>Update category, severity, or comment. Changes are audited and visible to the agent.</p>
+      <h3>${escapeHtml(t("editFinding.title"))}</h3>
+      <p>${escapeHtml(t("editFinding.body"))}</p>
       <div class="modal-field">
-        <label for="edit-category">Category</label>
+        <label for="edit-category">${escapeHtml(t("editFinding.categoryLabel"))}</label>
         <select id="edit-category">${catOptions}</select>
       </div>
       <div class="modal-field">
-        <label for="edit-severity">Severity</label>
+        <label for="edit-severity">${escapeHtml(t("editFinding.severityLabel"))}</label>
         <select id="edit-severity">${sevOptions}</select>
       </div>
       <div class="modal-field">
-        <label for="edit-comment">Comment</label>
+        <label for="edit-comment">${escapeHtml(t("editFinding.commentLabel"))}</label>
         <textarea id="edit-comment" rows="4" maxlength="2000"></textarea>
       </div>
       <div class="modal-actions">
-        <button id="edit-cancel" type="button">Cancel</button>
-        <button id="edit-save" class="primary" type="button">Save</button>
+        <button id="edit-cancel" type="button">${escapeHtml(t("modal.cancel"))}</button>
+        <button id="edit-save" class="primary" type="button">${escapeHtml(t("editFinding.save"))}</button>
       </div>
     `;
     overlay.appendChild(dialog);
