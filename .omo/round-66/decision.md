@@ -1,1 +1,3 @@
-SHIP — drawer-toggle a11y fix. R63-R66 i18n sweep complete (4/4 items).
+# R66 Decision
+
+SHIP — drawer-toggle aria-label i18n. R63-R66 carry-over fully drained.

@@ -1,7 +1,7 @@
 # R66 Discovery
 
-R65 carry-over (last item): drawer-toggle button (review.html:3267) had no aria-label for screen readers.
+R65 carry-over: drawer-toggle (review.html:3267) missing aria-label.
 
-Selected scope: drawer-toggle aria-label. Last carry-over from R63-R66 i18n sweep.
+Last item of R63 carry-over list (copy-branch ✓ R63, settings-btn ✓ R64, export ✓ R65, drawer-toggle ← R66).
 
-drawer.toggle.ariaLabel key already exists in STRINGS table (from earlier exploration: en: "Open review drawer", zh-CN: "打开审查抽屉").
+Selected scope: 1-attribute addition. Drawer-toggle has visible "Review" text + count badge, but screen readers may announce just the count (e.g., "0") without button purpose. Adding data-i18n-aria-label makes screen readers say "Open review drawer" or zh-CN equivalent.

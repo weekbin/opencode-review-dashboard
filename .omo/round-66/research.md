@@ -1,7 +1,5 @@
 # R66 Research
 
-Static HTML button — use `data-i18n-aria-label` attribute (same pattern as R64 settings-btn).
+i18n key `drawer.toggle.ariaLabel` already exists in STRINGS table (en: "Open review drawer", zh-CN: "打开审查抽屉"). Static HTML button — use `data-i18n-aria-label` attribute pattern, like R64 settings-btn.
 
-No regression-test risk: existing R43 tests now use precise `'data-i18n="'` pattern (per R64 tightening).
-
-drawer-toggle button has multi-line opening tag (4 attributes on 4 lines), so test regex must use substring approach (not `<button[^>]*...>` which fails on first `>` at end of line).
+Multi-line button tag (button opens on one line, attributes spread across 4 lines) — R64's regex `<button[^>]*id="..."[^>]*>` doesn't capture all attributes because `>` at end of `type="button"` line closes the regex match early. Use substring extraction (lastIndexOf("<button") + indexOf(">")) to capture the full opening tag.
