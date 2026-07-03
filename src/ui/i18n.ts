@@ -92,6 +92,17 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "search.recent.bulkDelete": { en: "Delete selected", "zh-CN": "删除选中" },
   "search.recent.delete": { en: "Delete from history", "zh-CN": "从历史中删除" },
   "search.recent.delete.confirm": { en: "Removed from history", "zh-CN": "已从历史中移除" },
+  "search.diff.placeholder": {
+    en: "Find in diffs (case-insensitive substring)",
+    "zh-CN": "在 diff 中查找（不区分大小写子串）",
+  },
+  "search.diff.ariaLabel": { en: "Search diffs", "zh-CN": "搜索 diff" },
+  "search.diff.previous": {
+    en: "Previous match (Shift+Enter)",
+    "zh-CN": "上一个匹配（Shift+Enter）",
+  },
+  "search.diff.next": { en: "Next match (Enter)", "zh-CN": "下一个匹配（Enter）" },
+  "search.diff.close": { en: "Close (Escape)", "zh-CN": "关闭（Escape）" },
   "conversation.bulkDelete": { en: "Delete selected findings", "zh-CN": "删除选中的 finding" },
   "conversation.selected": { en: "Selected", "zh-CN": "已选" },
   "toolbar.settings": { en: "Settings", "zh-CN": "设置" },

@@ -850,11 +850,11 @@ function openDiffSearch(initialQuery: string | null = null): void {
   overlay.className = "diff-search-bar";
   overlay.setAttribute("role", "search");
   overlay.innerHTML = `
-    <input type="text" id="diff-search-input" placeholder="Find in diffs (case-insensitive substring)" aria-label="Search diffs">
+    <input type="text" id="diff-search-input" placeholder="${escapeHtml(t("search.diff.placeholder"))}" aria-label="${escapeHtml(t("search.diff.ariaLabel"))}">
     <span class="diff-search-counter" id="diff-search-counter"></span>
-    <button type="button" class="diff-search-nav" id="diff-search-prev" title="Previous match (Shift+Enter)">↑</button>
-    <button type="button" class="diff-search-nav" id="diff-search-next" title="Next match (Enter)">↓</button>
-    <button type="button" class="diff-search-close" id="diff-search-close" title="Close (Escape)">×</button>
+    <button type="button" class="diff-search-nav" id="diff-search-prev" title="${escapeHtml(t("search.diff.previous"))}">↑</button>
+    <button type="button" class="diff-search-nav" id="diff-search-next" title="${escapeHtml(t("search.diff.next"))}">↓</button>
+    <button type="button" class="diff-search-close" id="diff-search-close" title="${escapeHtml(t("search.diff.close"))}">×</button>
   `;
   document.body.appendChild(overlay);
   diffSearch.overlay = overlay;
