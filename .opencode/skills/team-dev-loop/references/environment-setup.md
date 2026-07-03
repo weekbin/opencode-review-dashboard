@@ -319,7 +319,7 @@ User's manual Chrome is NEVER matched.
 - `SKILL.md` L1078 + L1284-1295 — Test environment policy + Pre-test cleanup block
 - `references/phase-prompts.md` L906-940 (pre-test) + L947-953 (heartbeat) + L1083-1097 (post-test)
 - `references/environment-setup.md` (this section)
-- `references/sync-spec.md` Phase -0 Sync tool pre-flight (macOS cleanup gate)
+- `references/sync-spec.md` — *(removed in R50; v6 Capability 1 handles sync inline)*
 - `scripts/test-review-ui/take-screenshots.sh` (Ubuntu-path fix — replaces the dead `take-screenshots.mjs` from R1 backlog)
 
 ---
@@ -348,7 +348,7 @@ User's manual Chrome is NEVER matched.
 
 ## Recommended Phase -0 Sync tool pre-flight (NEW v5.1)
 
-Add this to `references/sync-spec.md` Phase -0 Sync step 1.5 (between fetch and status):
+Add this to `references/sync-spec.md` (removed in R50) Phase -0 Sync step 1.5 (between fetch and status):
 
 ```bash
 # === Tool pre-flight (NEW v5.1) ===
@@ -443,7 +443,7 @@ playwright-cli open https://example.com → "### Browser `default` opened with p
 
 ## Related references
 
-- `references/sync-spec.md` — Phase -0 Sync protocol (add tool pre-flight step)
+- `references/sync-spec.md` — *(removed in R50; v6 Capability 1 Discovery is the sync entry-point)*
 - `references/v5-prompts.md` — *(removed in R48; v6 doesn't use PM/Planner subagents)*
 - `references/pre-commit-audit-spec.md` — *(removed in R49; v6 Capability 5 uses `.husky/pre-commit`)*
 - `.opencode/skills/review-dashboard-ui-test/SKILL.md` — UI test harness (depends on `playwright-cli`)
