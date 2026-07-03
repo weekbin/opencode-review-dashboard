@@ -1122,7 +1122,7 @@ function openCmdPPalette(): void {
   palette.setAttribute("aria-label", "File jumper");
   const inputWrap = document.createElement("div");
   inputWrap.className = "cmd-p-input-wrap";
-  inputWrap.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M11 11l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><input class="cmd-p-input" type="text" placeholder="Jump to file…" autocomplete="off" autocorrect="off" spellcheck="false"/>`;
+  inputWrap.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M11 11l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><input class="cmd-p-input" type="text" placeholder="${escapeHtml(t("palette.cmdP.placeholder"))}" autocomplete="off" autocorrect="off" spellcheck="false"/>`;
   const results = document.createElement("div");
   results.className = "cmd-p-results";
   const footer = document.createElement("div");
@@ -2322,7 +2322,7 @@ function showReopenReasonModal(_findingId: string): Promise<string | null> {
     dialog.innerHTML = `
       <h3>Force Reopen Finding</h3>
       <p>Why are you re-opening this finding? (Optional but helps the agent understand your intent.)</p>
-      <textarea id="reopen-reason" rows="3" placeholder="e.g., 'The previous fix removed the symptom but the root cause is still there'"></textarea>
+      <textarea id="reopen-reason" rows="3" placeholder="${escapeHtml(t("modal.reopenReason.placeholder"))}"></textarea>
       <div class="modal-actions">
         <button id="reopen-cancel" type="button">Cancel</button>
         <button id="reopen-submit" class="primary" type="button">Re-open</button>
@@ -2387,7 +2387,7 @@ function showResolveReasonModal(_findingId: string): Promise<ResolveReasonModalR
         <button type="button" class="resolve-reason-chip" data-reason="will fix in follow-up">will fix in follow-up</button>
         <button type="button" class="resolve-reason-chip" data-reason="false alarm — keep the code">false alarm — keep the code</button>
       </div>
-      <textarea id="resolve-reason" rows="3" placeholder="e.g., 'verified, the function is no longer called from the public path'"></textarea>
+      <textarea id="resolve-reason" rows="3" placeholder="${escapeHtml(t("modal.resolveReason.placeholder"))}"></textarea>
       <div class="modal-actions">
         <button id="resolve-cancel" type="button">Cancel</button>
         <button id="resolve-submit" class="primary" type="button">Resolve</button>
@@ -2478,7 +2478,7 @@ function showMarkAsWontfixModal(_findingId: string): Promise<MarkAsWontfixResult
       <h3>Mark as wontfix</h3>
       <p>Why is this finding not actionable? Pick a category and add an optional reason.</p>
       <div class="wontfix-radios" id="wontfix-radios">${radios}</div>
-      <textarea id="wontfix-reason" rows="3" placeholder="Optional context (e.g. duplicate of F-002, see #123)"></textarea>
+      <textarea id="wontfix-reason" rows="3" placeholder="${escapeHtml(t("modal.wontfixReason.placeholder"))}"></textarea>
       <div class="modal-actions">
         <button id="wontfix-cancel" type="button">Cancel</button>
         <button id="wontfix-submit" class="primary" type="button">Mark as wontfix</button>

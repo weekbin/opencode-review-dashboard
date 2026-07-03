@@ -76,6 +76,19 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     "zh-CN": "打开审查抽屉",
   },
   "close.ariaLabel": { en: "Dismiss", "zh-CN": "关闭" },
+  "palette.cmdP.placeholder": { en: "Jump to file…", "zh-CN": "跳转到文件…" },
+  "modal.reopenReason.placeholder": {
+    en: "e.g., 'The previous fix removed the symptom but the root cause is still there'",
+    "zh-CN": "例如：「上一次修复只消除了症状，但根本原因还在」",
+  },
+  "modal.resolveReason.placeholder": {
+    en: "e.g., 'verified, the function is no longer called from the public path'",
+    "zh-CN": "例如：「已验证，该函数不再从公共路径调用」",
+  },
+  "modal.wontfixReason.placeholder": {
+    en: "Optional context (e.g. duplicate of F-002, see #123)",
+    "zh-CN": "可选上下文（例如与 F-002 重复，参见 #123）",
+  },
   "badge.edited.tooltip": {
     en: "Edited by user at {timestamp}",
     "zh-CN": "用户在 {timestamp} 编辑",
