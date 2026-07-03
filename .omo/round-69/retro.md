@@ -1,17 +1,12 @@
 # R69 Retro
 
 ## What worked
-- Same fix pattern as R59 (folder div → button pattern)
-- Pre-existing `toggleCollapse()` + `state.collapsed` Set reuse — no new state needed
-- Test passes first try after edit
+- Pattern reuse from R59 — identical a11y fix applied to a different interactive div
+- TDD RED → GREEN in 1 cycle (test regex caught it, fix straightforward)
+- Zero data structure changes
 
 ## What didn't
-- First edit used wrong Set (`state.collapsedFolders` for sidebar, not `state.collapsed` for diff cards) — fixed in 2nd edit
+- First edit used wrong Set name (`state.collapsedFolders` vs `state.collapsed`). Caught by tests + manual fix.
 
-## Closed in this round
-- [x] card-header role/tabindex/aria-expanded/keydown
-- [x] r69-card-header-keyboard-a11y.test.ts (2 tests)
-- [x] 6 artifacts + proposals.jsonl
-
-## Open loop-internal
-(none)
+## Carry-over
+- Other click-only divs in app.ts (if any)

@@ -1,1 +1,1 @@
-SHIP — card-header keyboard a11y.
+SHIP — card-header a11y fix.

@@ -1,14 +1,10 @@
 # R69 Research
 
-`card-header` is a `<div>` created by `renderDiffPanel` (app.ts:4997). Click handler at line 5002 toggles `state.collapsed` (Set<string>).
+`renderDiffPanel` (app.ts:4953) builds N cards per diff. Each `card-header` div (line 4999) has a click handler that calls `toggleCollapse(file.path)` (line 2753). `state.collapsed` (Set<string>) tracks which files are collapsed.
 
-`state.collapsed` is the canonical Set for file-card collapse state (vs `state.collapsedFolders` which is for sidebar folders — separate Set, used by `renderFileTree`).
+Two-step fix:
+1. Set initial `aria-expanded="true"` (or `"false"` if already collapsed) using `state.collapsed.has(file.path)`
+2. Inside click handler, after `toggleCollapse`, update `aria-expanded` to reflect new state
+3. Add `keydown` handler: Enter or Space → preventDefault + click() (same pattern as R59)
 
-Initial aria-expanded needs to read from `state.collapsed.has(file.path)` — same state the click handler toggles.
-
-Keydown handler pattern matches R59: `if (e.key === "Enter" || e.key === " ") { e.preventDefault(); header.click(); }`.
-
-## Risk
-- 1 src/ file, ~10 LOC
-- Zero behavior change for mouse users
-- Toggles aria-expanded on both initial render and click (covers the toggle state path)
+Same a11y pattern as R59 sidebar folder — no new dependency, no data structure change.
