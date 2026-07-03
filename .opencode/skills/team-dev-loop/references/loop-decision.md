@@ -560,7 +560,7 @@ The "When to consult user" section from v2 is **removed** because v5 is cron-sty
 
 ## Notes
 
-- This file is read by lead only — subagents do NOT see it (each gets its role-specific prompt from `phase-prompts.md` or `v5-prompts.md`)
+- This file is read by lead only — subagents do NOT see it (each gets its role-specific prompt from `phase-prompts.md`; `v5-prompts.md` removed in R48)
 - v1 version of this file referenced `team_*` tools and omo team_mode doctor — v2/v5 have no such dependencies
 - v5 cron-style means lead commits + pushes at end of every round without user confirmation. External operator can `git revert` if needed (see Rollback protocol in Self-judgment section).
 - For v1 retro-compat (re-running Round 1 with old tooling), see `git show fcdf498:references/loop-decision.md`
