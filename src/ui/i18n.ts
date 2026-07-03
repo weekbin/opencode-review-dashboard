@@ -77,6 +77,22 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   },
   "close.ariaLabel": { en: "Dismiss", "zh-CN": "关闭" },
   "palette.cmdP.placeholder": { en: "Jump to file…", "zh-CN": "跳转到文件…" },
+  "submit.modal.body": {
+    en: "You're about to submit your review.",
+    "zh-CN": "你即将提交本次审查。",
+  },
+  "submit.modal.findingCount": {
+    en: "{count} open finding(s) will be submitted.",
+    "zh-CN": "{count} 个未关闭审查项将被提交。",
+  },
+  "submit.modal.roundNotes.label": {
+    en: "Round notes (appear in next round's Previously discussed panel)",
+    "zh-CN": "本轮笔记（将出现在下一轮的「之前讨论过」面板中）",
+  },
+  "submit.modal.roundNotes.placeholder": {
+    en: "Optional global notes for this round",
+    "zh-CN": "本轮的可选全局笔记",
+  },
   "modal.reopenReason.placeholder": {
     en: "e.g., 'The previous fix removed the symptom but the root cause is still there'",
     "zh-CN": "例如：「上一次修复只消除了症状，但根本原因还在」",

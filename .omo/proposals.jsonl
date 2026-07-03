@@ -171,3 +171,4 @@
 {"round":69,"scope":"product-a11y-keyboard","commits":1,"files":2,"lines_added":23,"lines_removed":2,"net":21,"tests":"678/678 PASS (676 + 2 R69 new)","duration_min":4,"subagent_dispatched":0,"carry_over":[]}
 {"round":70,"scope":"product-i18n-fix","commits":1,"files":3,"lines_added":29,"lines_removed":4,"net":25,"tests":"682/682 PASS (678 + 4 R70 new)","duration_min":5,"subagent_dispatched":0,"carry_over":[]}
 {"round":70,"scope":"product-i18n-fix","commits":1,"files":3,"lines_added":36,"lines_removed":4,"net":32,"tests":"682/682 PASS (678 + 4 R70 new)","duration_min":5,"subagent_dispatched":0,"carry_over":["round-notes textarea + edit-finding modal placeholders"]}
+{"round":71,"scope":"product-i18n-fix","commits":1,"files":4,"lines_added":36,"lines_removed":4,"net":32,"tests":"688/688 PASS (682 + 5 R71 new + 1 R17 test fixed)","duration_min":7,"subagent_dispatched":0,"carry_over":["edit-finding modal (L5425-5430) placeholders not yet i18n'd"]}

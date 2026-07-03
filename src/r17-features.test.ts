@@ -108,11 +108,11 @@ describe("AC5 — Saved Xs ago indicator updates correctly (R14 pattern preserve
 describe("AC6 — Modal layout: header + textarea + Cancel/Submit, vertically stacked", () => {
   it("T32.6a modal HTML order: h3 → p → finding-count → textarea → modal-actions (within submit-confirm-modal block)", async () => {
     const src = await readSource(APP_TS);
-    const blockStart = src.indexOf("<h3>Submit review?</h3>");
+    const blockStart = src.indexOf("submit-confirm-modal");
     const blockEnd = src.indexOf("</div>`", blockStart);
     const block = src.slice(blockStart, blockEnd);
-    const h3Idx = block.indexOf("<h3>Submit review?</h3>");
-    const pIdx = block.indexOf("<p>You're about to submit");
+    const h3Idx = block.indexOf("<h3>");
+    const pIdx = block.indexOf("<p>");
     const countIdx = block.indexOf('class="finding-count"');
     const textareaIdx = block.indexOf('id="round-notes"');
     const actionsIdx = block.indexOf('class="modal-actions"');
