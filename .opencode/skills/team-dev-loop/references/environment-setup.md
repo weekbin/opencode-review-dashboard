@@ -317,7 +317,7 @@ User's manual Chrome is NEVER matched.
 ### Files updated by R18
 
 - `SKILL.md` L1078 + L1284-1295 — Test environment policy + Pre-test cleanup block
-- `references/phase-prompts.md` L906-940 (pre-test) + L947-953 (heartbeat) + L1083-1097 (post-test)
+- `references/phase-prompts.md` — *(removed in R54; v6 is lead-direct, no per-phase prompts)*
 - `references/environment-setup.md` (this section)
 - `references/sync-spec.md` — *(removed in R50; v6 Capability 1 handles sync inline)*
 - `scripts/test-review-ui/take-screenshots.sh` (Ubuntu-path fix — replaces the dead `take-screenshots.mjs` from R1 backlog)
