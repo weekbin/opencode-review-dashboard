@@ -75,6 +75,15 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "Open review drawer",
     "zh-CN": "打开审查抽屉",
   },
+  "close.ariaLabel": { en: "Dismiss", "zh-CN": "关闭" },
+  "badge.edited.tooltip": {
+    en: "Edited by user at {timestamp}",
+    "zh-CN": "用户在 {timestamp} 编辑",
+  },
+  "badge.resolution.tooltip": {
+    en: "Resolution: {kind}{reason}",
+    "zh-CN": "解决方案: {kind}{reason}",
+  },
   "settings.btn.ariaLabel": { en: "Settings", "zh-CN": "设置" },
   "fileComments.tooltip": {
     en: "File-level findings",

@@ -3655,7 +3655,7 @@ function renderRangeBanner(): void {
   banner.innerHTML = `
     <span class="icon">⚠️</span>
     <span class="text">Round ${data.round} diff range changed: was ${escapeHtml(prev)}, now ${escapeHtml(cur)}. Findings may shift.</span>
-    <button class="close" aria-label="Dismiss" type="button">×</button>
+    <button class="close" aria-label="${escapeHtml(t("close.ariaLabel"))}" type="button">×</button>
   `;
   banner.hidden = false;
   banner.querySelector(".close")?.addEventListener("click", () => {
@@ -4340,7 +4340,7 @@ function renderConversationPanel(root: HTMLElement) {
     badgesRow.className = "finding-badges";
     const editedBadge =
       entry.manually_edited && entry.edited_at
-        ? `<span class="badge badge-edited" title="Edited by user at ${new Date(entry.edited_at).toISOString()}">edited ${escapeHtml(formatRelativeTime(entry.edited_at))}</span>`
+        ? `<span class="badge badge-edited" title="${escapeHtml(t("badge.edited.tooltip", { timestamp: new Date(entry.edited_at).toISOString() }))}">edited ${escapeHtml(formatRelativeTime(entry.edited_at))}</span>`
         : "";
     // R13 #21 — render a `badge-resolution-<kind>` next to the existing
     // severity / category / kind badges when the finding has a
@@ -4349,7 +4349,7 @@ function renderConversationPanel(root: HTMLElement) {
     // Distinct from `editedBadge` (R10) and `pinned` (R12) — both render
     // a separate badge too, additive composition.
     const resolutionKindBadge = entry.resolution_kind
-      ? `<span class="badge badge-resolution-${escapeHtml(entry.resolution_kind)}" title="Resolution: ${escapeHtml(entry.resolution_kind)}${entry.resolution_reason ? ` — ${escapeHtml(entry.resolution_reason)}` : ""}">${escapeHtml(entry.resolution_kind)}</span>`
+      ? `<span class="badge badge-resolution-${escapeHtml(entry.resolution_kind)}" title="${escapeHtml(t("badge.resolution.tooltip", { kind: entry.resolution_kind, reason: entry.resolution_reason ? ` — ${entry.resolution_reason}` : "" }))}">${escapeHtml(entry.resolution_kind)}</span>`
       : "";
     badgesRow.innerHTML = [
       `<span class="badge ${entry.severity}">${escapeHtml(entry.severity)}</span>`,
