@@ -210,6 +210,9 @@
 - **批量标记侧边栏文件已审查** *(R25 新增)* —— 侧边栏每个文件 checkbox + 「标记选中为已审查」批量按钮。对齐 GitHub PR 文件树多选
 - **从历史中删除单条** *(R26 新增)* —— 最近搜索下拉每个条目的 × 按钮，可单独删除某条而不清空整个历史。对齐 GitHub per-PR hide / VS Code per-file delete
 - **批量删除 Conversation tab** *(R26 新增)* —— Conversation tab 每个 finding checkbox + 「Delete selected」批量按钮。对齐 GitHub PR comments multi-select / VS Code problems panel
+- **commit 卡折叠/展开箭头** *(R51 新增)* —— 点击 commit 头部现在切换可见的箭头 + ARIA-expanded 状态，用户能看出 commit 的文件列表是折叠还是展开。对齐 GitHub PR file tree / VS Code breadcrumb collapse UX
+- **Ignore ws 切换加载旋转图标** *(R52 新增)* —— 点击工具栏「Ignore ws」按钮时，diff 重渲染期间显示旋转图标 + 状态消息，用户可以看到应用变更的反馈。支持 aria-busy 键盘可访问
+- **侧边栏文件夹键盘导航** *(R59 新增)* —— 侧边栏文件夹行可获得焦点 + Enter/Space 切换折叠。之前只能鼠标点击。对齐 GitHub PR file tree 键盘导航
 
 ### 解决 finding
 

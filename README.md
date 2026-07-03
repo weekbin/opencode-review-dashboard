@@ -210,6 +210,9 @@ If you review pull requests or diffs on a regular basis, this saves you the back
 - **Bulk mark sidebar files as reviewed** *(added R25)* — per-file checkboxes in the sidebar + "Mark selected as reviewed" bulk button. Multi-select pattern matching GitHub PR file tree
 - **Per-finding delete from history** *(added R26)* — × button on each Recent Searches dropdown entry to remove a single entry without clearing all history. Mirrors GitHub per-PR hide / VS Code per-file delete
 - **Bulk delete in Conversation tab** *(added R26)* — per-finding checkboxes in the Conversation tab + "Delete selected" bulk button. Mirrors GitHub PR comments multi-select / VS Code problems panel
+- **Commit card fold/unfold chevron** *(added R51)* — clicking a commit's header now toggles a visible chevron + ARIA-expanded state so users can see whether the commit's file list is collapsed or expanded. Mirrors GitHub PR file tree / VS Code breadcrumb collapse UX
+- **Loading spinner on Ignore ws toggle** *(added R52)* — clicking the "Ignore ws" toolbar button shows a spinner + status message during the diff re-render so users have visible feedback while the change is being applied. Keyboard-equivalent accessible (aria-busy)
+- **Sidebar folder keyboard navigation** *(added R59)* — sidebar folder rows are now focusable + Enter/Space toggles collapse. Previously only mouse-click worked. Mirrors GitHub PR file tree keyboard navigation
 
 ### Resolving findings
 

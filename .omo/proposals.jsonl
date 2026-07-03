@@ -152,3 +152,4 @@
 {"round":57,"scope":"product-i18n-fix","commits":1,"files":3,"lines_added":20,"lines_removed":5,"net":15,"tests":"640/640 PASS (637 + 3 R57 new)","duration_min":6,"subagent_dispatched":0,"carry_over":["more hardcoded English strings in src/"]}
 {"round":58,"scope":"product-a11y-fix","commits":1,"files":1,"lines_added":5,"lines_removed":3,"net":2,"tests":"642/642 PASS (640 + 2 R58 new)","duration_min":4,"subagent_dispatched":0,"carry_over":[]}
 {"round":59,"scope":"product-a11y-keyboard","commits":1,"files":1,"lines_added":14,"lines_removed":2,"net":12,"tests":"645/645 PASS (642 + 3 R59 new)","duration_min":5,"subagent_dispatched":0,"carry_over":[]}
+{"round":60,"scope":"polish-readme","commits":1,"files":3,"lines_added":9,"lines_removed":0,"net":9,"tests":"650/650 PASS (645 + 5 R60 new)","duration_min":4,"subagent_dispatched":0,"carry_over":[]}
