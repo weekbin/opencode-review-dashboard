@@ -1,6 +1,6 @@
 ---
 name: team-dev-loop
-description: "v5.3.14 cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+Push — 17 phases total + close-out (Phase 4.5-4.9 lead-owned). v5.3.14 NEW: SG.R44.1 Pre-Phase-4.5 Discovery Sweep (objective gap discovery before retro) + SG.R44.2 Latent Gap Promotion Policy (decision tree for post-closure gaps: amend vs new round, no defer) + SG.R44.3 expanded Phase 4.9 Issue Auto-Close scan (catches orphaned pm-manager-approved issues). v5.3.13 R36 retro: 5 patches (SG.R29.6 lightweight validation + SG.R29.7 auto-pilot 5min + SG.R29.8 Phase 3.5 skip + SG.R29.9 backlog-empty + SG.R30.0 pre-commit test gate). v5.3.12 R33/R34/R35: 5 loop-level optimizations (1 AC max per subagent + auto-lightweight + combined retro+post-exec + auto proposals.jsonl + 5 hard rules). v5.3.11 R33 SG.R28.1 frontend skill invocation gate. v5.3.10 R32 SG.R26.1 file-existence + SG.R26.2 husky + SG.R27.1 runtime load (4-gate). v5.3.9 R25 SG.R25.1 pre-commit verify. v5.3.8 R24 SG.R24.1 subagent worktree-per-Edit. v5.3.7 R22 SG.R20.1+Sg.R22.1+Sg.R22.2. v5.3.6 R19 SG.R19.1-8. v5.3.5+1 SG.17-SG.20. v5.3.5 SG.13-SG.16. v5.3.4 SG.6-SG.12. v5.3.3 lead-direct 16/17 phases. Subagent scope: 1 AC max ≤15min. Default NO user pick (Planner autonomous). PM researcher advisories advisory-only. Subagent NEVER does git ops — lead's. Mid-task check-in OR post-completion verification. ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit/artifacts/husky/load failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
+description: "v5.3.14.1 cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+Push — 17 phases total + close-out (Phase 4.5-4.9 lead-owned). v5.3.14 NEW: SG.R44.1 Pre-Phase-4.5 Discovery Sweep (objective gap discovery before retro) + SG.R44.2 Latent Gap Promotion Policy (decision tree for post-closure gaps: amend vs new round, no defer) + SG.R44.3 expanded Phase 4.9 Issue Auto-Close scan (catches orphaned pm-manager-approved issues). v5.3.13 R36 retro: 5 patches (SG.R29.6 lightweight validation + SG.R29.7 auto-pilot 5min + SG.R29.8 Phase 3.5 skip + SG.R29.9 backlog-empty + SG.R30.0 pre-commit test gate). v5.3.12 R33/R34/R35: 5 loop-level optimizations (1 AC max per subagent + auto-lightweight + combined retro+post-exec + auto proposals.jsonl + 5 hard rules). v5.3.11 R33 SG.R28.1 frontend skill invocation gate. v5.3.10 R32 SG.R26.1 file-existence + SG.R26.2 husky + SG.R27.1 runtime load (4-gate). v5.3.9 R25 SG.R25.1 pre-commit verify. v5.3.8 R24 SG.R24.1 subagent worktree-per-Edit. v5.3.7 R22 SG.R20.1+Sg.R22.1+Sg.R22.2. v5.3.6 R19 SG.R19.1-8. v5.3.5+1 SG.17-SG.20. v5.3.5 SG.13-SG.16. v5.3.4 SG.6-SG.12. v5.3.3 lead-direct 16/17 phases. Subagent scope: 1 AC max ≤15min. Default NO user pick (Planner autonomous). PM researcher advisories advisory-only. Subagent NEVER does git ops — lead's. Mid-task check-in OR post-completion verification. ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit/artifacts/husky/load failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
 ---
 
 # /team-dev-loop Command (v5)
@@ -186,7 +186,29 @@ grep -rn 'match\![0-9]\+\] *\.' src/ scripts/ 2>/dev/null | grep -v node_modules
 # 7. Verify scripts that hard-stall — cross-check against user-known ground truth
 # (e.g., scripts/verify-plugin-load.mjs Gate 4 — R32c/R32d retrofit was wrong about file:// plugins)
 node scripts/verify-plugin-load.mjs 2>&1 | grep -E "❌|FAIL" | head
+
+# 8. Scripts that auto-modify files — pattern-match on `oxfmt --write`, `eslint --fix`,
+# `prettier --write`, `>out`, `2>out` etc. This catches tools where "check" mode is
+# missing or default is --write (R44 root-caused bug: oxfmt default --write was silently
+# unquoting strings under the `format:check` script — fixed at R44 c4d0fc6 too late).
+grep -rn '\-\-write\|\-w\s' scripts/*.sh scripts/*.mjs 2>/dev/null | head
+find scripts -name "*.sh" -o -name "*.mjs" | xargs grep -ln '"format:check"\|"lint:fix"\|"format"' 2>/dev/null | head -5
+# Any package.json script that calls a formatter/linter MUST be inspected: does it
+# pass --check / --dry-run / --no-write? If NOT, it's a latent auto-modify risk.
 ```
+
+**Cross-check rule (NEW v5.3.14.1 — R45 retrofit)**: lead MUST ALSO write evidence of each command's actual stdout into `sync-report.md`'s SG.R44.1 Discovery Sweep section. Just running the command and reporting "0 new gaps" is NOT sufficient — paste the actual output. R44 retro overclaimed "all 7 commands ran" without running them; this rule prevents recurrence.
+
+If any command surfaces an issue, lead MUST:
+- Add to retro.md `Closed in this round` if fixable inline (current-worktree, no deferral)
+- Add to retro.md `Open loop-internal at retro time` if not fixable (BLOCKED for SHIP)
+- Add to retro.md `Skill gaps found` if it's a SKILL.md / verification script issue (separate SKILL patch pipeline)
+
+**Failure mode this prevents**: lead's subjective memory filtering causes gaps to survive retro-close-out and surface only post-closure via user audit. Discovery Sweep forces an objective scan.
+
+**R44 validation** (corrected retroactively by R45 audit): R44 retro claimed 7 commands ran; **ACTUAL execution was 3 (commands 4, 5, 7)**. Commands 1, 2, 3, 6 were missing. R45 retrofit of SG.R44.1 supersedes R44's overclaim by adding cross-check rule + 8th command.
+
+**R45 validation** (this round): All 8 commands + cross-check rule ran in sync-report.md. Surfaced 0 new gaps (R44 audit closed all 8 R43 latent gaps + R45 closes the SG.R44.1 patch's own incompleteness). VALIDATION: ✓ APPLIED (now via cross-check rule).
 
 If any command surfaces an issue, lead MUST:
 - Add to retro.md `Closed in this round` if fixable inline (current-worktree, no deferral)
@@ -2060,8 +2082,9 @@ If FAIL: **the closure commit is BLOCKED**. Fix the missing artifact(s) (re-run 
 - [ ] Phase 3a test-report.md exists + 5/5 lens verdicts + per-lens source (lens-task or LEAD_SYNTHESIZED)
 - [ ] Phase 3b diff-report.md exists + no CRITICAL findings
 - [ ] Phase 3c playwright-report.md OR lead-takeover-tester-playwright.md OR profile-skipped justification
-- [ ] Phase 3.5 doc-update-report.md exists + sections + walkthrough validated
+- [ ] Phase 3.5 doc-update-report.md: per v5.3.8 fix, **if SG.R29.8 skip then artifact is 1-line** (decision.md `## Doc updates` suffices). 39+ line artifacts for skip are a recurring gap from R43 retro lesson.
 - [ ] Phase 4 decision.md exists + SHIP/CONTINUE/STOP verdict + AC trace + lead takeovers + dev self-check + ## Sync section + ## Planner section + ## Pre-Commit Audit section
+- [ ] **Phase 4.5 SG.R44.1 Discovery Sweep** completed (NEW v5.3.14.1 cross-check rule — R45 retrofit). 8 commands MUST actually execute; stdout evidence MUST be in sync-report.md. R44 retro overclaimed "all 7 commands ran" without running them — this row prevents recurrence.
 - [ ] Phase 4.5 retro.md exists + all sections, no blanks + `Open loop-internal at retro time` is EMPTY (BLOCKED otherwise — v5.4 no-deferral rule)
 - [ ] Phase 4.6 post-exec-analysis.md exists + all sections, no blanks + `Open loop-internal at retro time` is EMPTY (BLOCKED otherwise — v5.4 no-deferral rule)
 - [ ] Phase 4.5 close-out sub-step actually committed fix(es) to current worktree (verify via `git log main..HEAD --oneline` in current worktree, every loop-internal item in retro.md "Closed in this round" section has a corresponding commit SHA)

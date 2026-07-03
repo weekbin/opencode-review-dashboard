@@ -303,6 +303,52 @@ bun run scripts/test-review-ui/e2e.mjs
 
 This is what `/test-review-ui` command runs (see `.opencode/command/test-review-ui.md`).
 
+## Mock-server endpoints reference
+
+The mock-server (`scripts/test-review-ui/mock-server.py`) serves three endpoint classes from port 8890:
+
+| Endpoint | Method | Purpose | When to use |
+|---|---|---|---|
+| `/` or `/review/<id>` | GET | Serves `dist/ui/review.html` | Default UI mount |
+| `/assets/<file>` | GET | Serves `dist/ui/<file>` with correct MIME type | App.js bundle + theme styles |
+| `/api/review/<id>` | GET | Returns default `MOCK_PAYLOAD` (configurable via `MOCK_DATA_FILE` env) | Standard launch payload |
+| `/api/review/<id>/prior-notes` | GET | Returns prior-round notes for the previously-discussed panel | Visual regression for the previously tab |
+| **`/api/review/<id>/state`** (R44 NEW) | GET | Returns stateful fixture with 1 resolved+duplicate + 1 open finding + 1 prior note | **State-aware Playwright walkthroughs** — see below |
+
+### Using `/state` endpoint for state-aware walkthrough (R44 architecture)
+
+The `/state` endpoint exists because the default `/api/review/<id>` returns empty `existing_findings`/`prior_notes` arrays, making it impossible to interactively test UI behaviors that require populated state (mark-as-duplicated flow, conversation filtering, prior-round display).
+
+**Walkthrough pattern**:
+
+```bash
+# 1. Open review page
+playwright-cli open "http://127.0.0.1:8890/review/test?token=test"
+
+# 2. Inject the state fixture into the running app:
+playwright-cli eval "() => fetch('/api/review/test/state').then(r => r.json()).then(s => /* set in app: window.__setState?.(s) or update via DOM hook */)"
+
+# 3. Now the UI has F-MOCK-DUP (resolved/duplicate) + F-MOCK-OPEN (open) findings visible
+#    — click "Mark as duplicate" on F-MOCK-OPEN to test resolution_kind flow
+```
+
+**Why this matters**: R43 AC2 ("mark-as-duplicated → drawer update") couldn't be visually verified in R43 because mock-server only had empty-state. Future rounds adding resolution-kind-aware UI changes (R43 retro gap-6) should test against `/state` fixture.
+
+**Schema** (`serve_mock_state` in `mock-server.py`):
+
+```json
+{
+  "round": 2,
+  "files": [{ "path": "src/feature.ts", ... }],
+  "existing_findings": [
+    { "id": "F-MOCK-DUP", "status": "resolved", "resolution_kind": "duplicate", ... },
+    { "id": "F-MOCK-OPEN", "status": "open", ... }
+  ],
+  "draft": { "notes": "", "new_findings": [] },
+  "prior_notes": [{ "round": 1, "notes": "..." }]
+}
+```
+
 ## Files
 
 - `scripts/test-review-ui/mock-server.py` — Python http.server based
