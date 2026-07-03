@@ -5002,10 +5002,21 @@ function renderDiffPanel() {
     // ── Card header (always visible) ──
     const header = document.createElement("div");
     header.className = "card-header";
+    header.setAttribute("role", "button");
+    header.setAttribute("tabindex", "0");
+    header.setAttribute("aria-expanded", state.collapsed.has(file.path) ? "false" : "true");
     header.addEventListener("click", (event) => {
       const target = event.target;
       if (target instanceof Element && target.closest("button, .file-comments-badge")) return;
       toggleCollapse(file.path);
+      const isCollapsed = state.collapsed.has(file.path);
+      header.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
+    });
+    header.addEventListener("keydown", (e: KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        header.click();
+      }
     });
 
     const chevron = document.createElement("span");
