@@ -52,6 +52,10 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "Toggle whitespace diff hiding",
     "zh-CN": "切换空白差异隐藏",
   },
+  "toolbar.ignoreWs.loading": {
+    en: "Applying whitespace changes…",
+    "zh-CN": "正在应用空白变更…",
+  },
   "toolbar.theme.light": { en: "Light", "zh-CN": "浅色" },
   "toolbar.theme.auto": { en: "Auto", "zh-CN": "自动" },
   "toolbar.theme.dark": { en: "Dark", "zh-CN": "深色" },

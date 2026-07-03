@@ -1737,7 +1737,15 @@ function setIgnoreWhitespace(next: boolean) {
   state.ignoreWhitespace = next;
   applyIgnoreWhitespace();
   writeStored(IGNORE_WHITESPACE_KEY, next ? "on" : "off");
-  renderDiffPanel();
+  ignoreWhitespaceToggle.setAttribute("data-loading", "true");
+  setStatus(t("toolbar.ignoreWs.loading"));
+  requestAnimationFrame(() => {
+    renderDiffPanel();
+    requestAnimationFrame(() => {
+      ignoreWhitespaceToggle.removeAttribute("data-loading");
+      setStatus("");
+    });
+  });
 }
 
 applyIgnoreWhitespace();
