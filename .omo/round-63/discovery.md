@@ -1,13 +1,17 @@
 # R63 Discovery
 
-## Backlog scan
-- GH issues open: 0
-- R62 carry-over: empty (10-round arc complete; new 20-round arc R63-R82 starts)
-- Source scan found hardcoded English in 2 spots + 4 related buttons queued for R64-R67
+20-round ultrawork arc (R63-R82) starts. R62 retrospective identified need for more product work (only 30% of R53-R62 were product rounds).
 
-## Selected scope (small, TDD-strict)
-R19 introduced i18n but missed dynamic fileComments/fileCommentsBadge creation paths.
+Scan of src/ui/ for hardcoded English user-facing strings found the file-finding tooltip duplicated in 2 spots:
 - app.ts:3135 (sidebar): `fileComments.title = "File-level findings"`
-- app.ts:5060 (diff panel): `fileCommentsBadge.title = "File-level findings"`
+- app.ts:5060 (renderDiffPanel): `fileCommentsBadge.title = "File-level findings"`
 
-Both spots are dynamic (createElement), so they need `t("key")` calls rather than `data-i18n-*` attributes (which only work for static HTML).
+R19 introduced i18n but missed these dynamic createElement paths.
+
+4 additional same-class gaps queued for R64-R67:
+- L3184 copy-branch button title
+- L3242 settings-btn aria-label
+- L3273 export button title
+- L3268 drawer-toggle missing aria-label
+
+Selected scope: 2 spots of "File-level findings" → 1 i18n key + 2 t() calls. TDD-strict.
