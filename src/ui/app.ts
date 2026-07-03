@@ -392,10 +392,16 @@ async function copyFindingPermalinkToClipboard(
     const original = button.textContent;
     button.textContent = "✓ Copied";
     button.disabled = true;
-    setTimeout(() => {
+    clearTimeout(
+      (button as HTMLButtonElement & { _copyPermalinkFeedbackTimer?: number })
+        ._copyPermalinkFeedbackTimer,
+    );
+    (
+      button as HTMLButtonElement & { _copyPermalinkFeedbackTimer?: number }
+    )._copyPermalinkFeedbackTimer = setTimeout(() => {
       button.textContent = original;
       button.disabled = false;
-    }, 1200);
+    }, 1200) as unknown as number;
     showToast(`Copied permalink for ${findingId}`);
     setStatus(`Copied permalink for ${findingId}`);
   } else {
@@ -467,10 +473,16 @@ async function copyFindingAsMarkdownToClipboard(
     const original = button.textContent;
     button.textContent = "✓ Copied";
     button.disabled = true;
-    setTimeout(() => {
+    clearTimeout(
+      (button as HTMLButtonElement & { _copyMarkdownFeedbackTimer?: number })
+        ._copyMarkdownFeedbackTimer,
+    );
+    (
+      button as HTMLButtonElement & { _copyMarkdownFeedbackTimer?: number }
+    )._copyMarkdownFeedbackTimer = setTimeout(() => {
       button.textContent = original;
       button.disabled = false;
-    }, 1200);
+    }, 1200) as unknown as number;
     showToast("Copied as Markdown");
     setStatus("Copied as Markdown");
   } else {
@@ -1704,10 +1716,15 @@ async function copyBranchNameToClipboard(button: HTMLButtonElement): Promise<voi
     const label = t("toolbar.copyBranch.label");
     button.textContent = `✓ ${label}`;
     button.disabled = true;
-    setTimeout(() => {
-      button.textContent = original || label;
-      button.disabled = false;
-    }, 1200);
+    clearTimeout(
+      (button as HTMLButtonElement & { _copyBranchFeedbackTimer?: number })
+        ._copyBranchFeedbackTimer,
+    );
+    (button as HTMLButtonElement & { _copyBranchFeedbackTimer?: number })._copyBranchFeedbackTimer =
+      setTimeout(() => {
+        button.textContent = original || label;
+        button.disabled = false;
+      }, 1200) as unknown as number;
     showToast(t("status.copiedBranch", { name: branch }));
   } else {
     showToast(t("status.copyBranchBlocked"), { error: true });
