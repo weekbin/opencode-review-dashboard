@@ -1,0 +1,1 @@
+R56 single-file deletion. references/ now empty (4 files removed across R48-R56: v5-prompts.md, pre-commit-audit-spec.md, sync-spec.md, phase-prompts.md, loop-decision.md, environment-setup.md — 2604 lines total). v6 SKILL.md self-contained.
