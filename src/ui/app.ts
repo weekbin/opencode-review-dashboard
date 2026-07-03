@@ -401,7 +401,7 @@ async function copyFindingPermalinkToClipboard(
     )._copyPermalinkFeedbackTimer = setTimeout(() => {
       button.textContent = original;
       button.disabled = false;
-    }, 1200) as unknown as number;
+    }, COPY_FEEDBACK_MS) as unknown as number;
     showToast(`Copied permalink for ${findingId}`);
     setStatus(`Copied permalink for ${findingId}`);
   } else {
@@ -482,7 +482,7 @@ async function copyFindingAsMarkdownToClipboard(
     )._copyMarkdownFeedbackTimer = setTimeout(() => {
       button.textContent = original;
       button.disabled = false;
-    }, 1200) as unknown as number;
+    }, COPY_FEEDBACK_MS) as unknown as number;
     showToast("Copied as Markdown");
     setStatus("Copied as Markdown");
   } else {
@@ -502,7 +502,7 @@ function flashFindingPermaHighlight(findingId: string): boolean {
   clearTimeout(wEl._findingPermaFlashTimer);
   wEl._findingPermaFlashTimer = setTimeout(() => {
     el.classList.remove("finding-permalink-flash");
-  }, 1600) as unknown as number;
+  }, PERMALINK_FLASH_MS) as unknown as number;
   return true;
 }
 
@@ -670,7 +670,8 @@ window.addEventListener("focusout", () => updateNavHint());
 const DIFF_SEARCH_KEY = "diff-review:diff-search-query";
 const DIFF_SEARCH_MAX_MATCHES = 100;
 const DIFF_SEARCH_FLASH_MS = 1500;
-
+const COPY_FEEDBACK_MS = 1200;
+const PERMALINK_FLASH_MS = 1600;
 type DiffSearchState = {
   query: string;
   matchElements: HTMLElement[];
@@ -1730,7 +1731,7 @@ async function copyBranchNameToClipboard(button: HTMLButtonElement): Promise<voi
       setTimeout(() => {
         button.textContent = original || label;
         button.disabled = false;
-      }, 1200) as unknown as number;
+      }, COPY_FEEDBACK_MS) as unknown as number;
     showToast(t("status.copiedBranch", { name: branch }));
   } else {
     showToast(t("status.copyBranchBlocked"), { error: true });
