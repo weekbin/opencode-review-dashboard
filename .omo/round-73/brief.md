@@ -1,5 +1,12 @@
 # R73 Brief
 
-**Scope**: Fix stale-timer race in 3 copy-button handlers (app.ts:388-405, 463-480, 1705-1716). Per-button timer ID + clearTimeout before new setTimeout.
+**Scope**: Fix stale-timer race in 3 copy-button handlers in `src/ui/app.ts`.
 
-**Acceptance**: 3 tests pass; bash .husky/pre-commit → 8/8 PASS; 696/696 tests.
+**Bug**: `setTimeout(1200)` for button textContent revert has no `clearTimeout`. Rapid clicks cause stale timer to overwrite fresh feedback text.
+
+**Fix**: Per-button timer ID stored on DOM element (`_copyPermalinkFeedbackTimer`, `_copyMarkdownFeedbackTimer`, `_copyBranchFeedbackTimer`). Clear before each new `setTimeout`.
+
+**Acceptance**:
+- 3 regression tests pass (1 per site)
+- bash .husky/pre-commit → 8/8 PASS
+- 696/696 total tests
