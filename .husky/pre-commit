@@ -1,16 +1,86 @@
 #!/usr/bin/env bash
-# R44 Fix-5: husky pre-commit gate (per SG.R30.0 + memory 442 R30 retrofit incomplete)
+# v6 pre-commit gate — absorbs v5 SG.R44.1 8 mechanical commands + lint/test/plugin-load
 #
-# Runs:
-#   1. bun run check   (TypeScript + ESLint, no format/emit)
-#   2. bun test        (full unit suite, includes e2e harness tests)
+# Mechanical checks (v5 SG.R44.1 commands 1-8 minus user-facing ones):
+#   1. git status --porcelain  (working tree status; informational only)
+#   2. find .opencode/ newer than SKILL.md  (catch drift)
+#   3. stale backup/tmp files (*.backup-*, *.swp, *.orig)
+#   4. Husky configuration present and wired
+#   5. Orphan pm-manager-approved GH issues (informational)
+#   6. scripts/verify-plugin-load.mjs (4-gate runtime probe)
 #
-# Failure of either command blocks the commit.
+# Existing checks (kept from R44):
+#   7. bun run check   (TypeScript + ESLint + format check)
+#   8. bun test        (full unit suite)
+#
+# Failure of any check blocks the commit.
 # Use `git commit --no-verify` to skip (escape hatch for lead-direct emergencies).
 set -e
 cd "$(git rev-parse --show-toplevel)"
-echo "🔍 R44 pre-commit: bun run check..."
-bun run check || { echo "❌ bun run check failed"; exit 1; }
-echo "🔍 R44 pre-commit: bun test..."
-bun test || { echo "❌ bun test failed"; exit 1; }
-echo "✅ R44 pre-commit: ALL PASS"
+
+echo "🔍 v6 pre-commit: mechanical hygiene..."
+echo ""
+
+# 1. git status (informational only — dirty working tree is fine if it's the round's work)
+echo "[1/8] git status --porcelain"
+git status --porcelain | head -20 || true
+echo ""
+
+# 2. SKILL.md drift check (find .opencode/ .md newer than SKILL.md)
+echo "[2/8] SKILL.md drift (newer files in .opencode/skills/)"
+NEWER=$(find .opencode/skills/ -name '*.md' -newer .opencode/skills/team-dev-loop/SKILL.md 2>/dev/null || true)
+if [ -n "$NEWER" ]; then
+  echo "  ⚠️  Files newer than SKILL.md:"
+  echo "$NEWER"
+  echo "  (Informational — may indicate drift between SKILL.md and other skill docs)"
+fi
+echo ""
+
+# 3. Stale backup/tmp files
+echo "[3/8] stale backup/tmp files"
+STALE=$(find . -maxdepth 4 \( -name '*.backup-*' -o -name '*.swp' -o -name '*.orig' -o -name '*.tmp.*' \) 2>/dev/null | grep -v node_modules | grep -v .git || true)
+if [ -n "$STALE" ]; then
+  echo "  ❌ Stale files found:"
+  echo "$STALE"
+  exit 1
+fi
+echo "  ✓ no stale files"
+echo ""
+
+# 4. Husky configuration
+echo "[4/8] Husky configuration"
+[ -f .husky/pre-commit ] || { echo "  ❌ .husky/pre-commit missing"; exit 1; }
+[ -d node_modules/husky ] || { echo "  ❌ node_modules/husky missing"; exit 1; }
+HOOKS_PATH=$(git config --get core.hooksPath)
+[ "$HOOKS_PATH" = ".husky" ] || { echo "  ❌ core.hooksPath != .husky (got: $HOOKS_PATH)"; exit 1; }
+echo "  ✓ husky configured"
+echo ""
+
+# 5. Orphan pm-manager-approved GH issues (informational only — not blocking)
+echo "[5/8] Orphan pm-manager-approved GH issues (informational)"
+ORPHANS=$(gh issue list --label pm-manager-approved --state open --limit 50 2>/dev/null || echo "")
+if [ -n "$ORPHANS" ]; then
+  echo "  ⚠️  Open pm-manager-approved issues:"
+  echo "$ORPHANS"
+fi
+echo ""
+
+# 6. Plugin load verification (4-gate runtime probe)
+echo "[6/8] verify-plugin-load.mjs"
+node scripts/verify-plugin-load.mjs >/dev/null || { echo "  ❌ plugin load FAIL"; exit 1; }
+echo "  ✓ plugin load PASS"
+echo ""
+
+# 7. Static checks (lint + format + typecheck)
+echo "[7/8] bun run check"
+bun run check || { echo "  ❌ bun run check failed"; exit 1; }
+echo "  ✓ check PASS"
+echo ""
+
+# 8. Test suite
+echo "[8/8] bun test"
+bun test || { echo "  ❌ bun test failed"; exit 1; }
+echo "  ✓ test PASS"
+echo ""
+
+echo "✅ v6 pre-commit: ALL 8 CHECKS PASS"
