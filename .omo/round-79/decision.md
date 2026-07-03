@@ -1,0 +1,1 @@
+SHIP — 8 setStatus status-bar messages i18n complete (zh-CN users see localized status feedback).

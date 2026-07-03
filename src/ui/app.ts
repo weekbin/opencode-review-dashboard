@@ -406,7 +406,7 @@ async function copyFindingPermalinkToClipboard(
     setStatus(`Copied permalink for ${findingId}`);
   } else {
     showToast("Could not copy permalink — clipboard blocked", { error: true });
-    setStatus("Could not copy permalink — clipboard blocked", true);
+    setStatus(t("status.copyPermalinkBlocked"), true);
   }
 }
 
@@ -484,10 +484,10 @@ async function copyFindingAsMarkdownToClipboard(
       button.disabled = false;
     }, COPY_FEEDBACK_MS) as unknown as number;
     showToast("Copied as Markdown");
-    setStatus("Copied as Markdown");
+    setStatus(t("status.copiedAsMarkdown"));
   } else {
     showToast("Could not copy markdown — clipboard blocked", { error: true });
-    setStatus("Could not copy markdown — clipboard blocked", true);
+    setStatus(t("status.copyMarkdownBlocked"), true);
   }
 }
 
@@ -3938,7 +3938,7 @@ function showExportModal(): void {
       const data = state.data;
       if (!data) {
         close();
-        setStatus("No review data to export", true);
+        setStatus(t("status.noReviewData"), true);
         return;
       }
       const ts = Date.now();
@@ -4274,7 +4274,7 @@ function renderConversationPanel(root: HTMLElement) {
       if (fields.severity !== entry.severity) patch.severity = fields.severity;
       if (fields.comment !== entry.comment) patch.comment = fields.comment;
       if (Object.keys(patch).length === 0) {
-        setStatus("No changes to save");
+        setStatus(t("status.noChangesToSave"));
         return;
       }
       await editFinding(entry.id, patch);
@@ -5273,7 +5273,7 @@ async function reopenFinding(id: string, reason = "", opts: { manually_reopened?
 async function addComment(id: string, text: string) {
   if (!text.trim()) return;
   if (text.length > 500) {
-    setStatus("Comment exceeds 500 characters", true);
+    setStatus(t("status.commentTooLong"), true);
     return;
   }
   const response = await fetch(endpoint("/comment"), {
@@ -5283,7 +5283,7 @@ async function addComment(id: string, text: string) {
   }).catch(() => undefined);
 
   if (!response?.ok) {
-    setStatus("Failed to add comment", true);
+    setStatus(t("status.failedAddComment"), true);
     return;
   }
 
@@ -5304,7 +5304,7 @@ async function addComment(id: string, text: string) {
     }
   }
   renderConversationPane();
-  setStatus("Comment added");
+  setStatus(t("status.commentAdded"));
 }
 
 async function editFinding(
@@ -5925,7 +5925,7 @@ submitButton.addEventListener("click", () => {
 });
 exportButton?.addEventListener("click", () => {
   if (!state.data) {
-    setStatus("No review data to export", true);
+    setStatus(t("status.noReviewData"), true);
     return;
   }
   showExportModal();

@@ -351,11 +351,11 @@ describe("AC10 — Uses existing navigator.clipboard + fallbackCopy pattern", ()
 });
 
 describe("AC11 — setStatus('Copied as Markdown')", () => {
-  it("T16.11a success path calls setStatus with 'Copied as Markdown'", async () => {
+  it("T16.11a success path calls setStatus with i18n key for 'Copied as Markdown' (R79)", async () => {
     const src = await readSource(APP_TS);
     const block = src.match(/function\s+copyFindingAsMarkdownToClipboard\s*\([\s\S]*?\n\}/);
     expect(block).toBeTruthy();
-    expect(block![0]).toMatch(/setStatus\(\s*"Copied as Markdown"\s*\)/);
+    expect(block![0]).toMatch(/setStatus\(t\("status\.copiedAsMarkdown"\)/);
   });
 
   it("T16.11b failure path calls setStatus with error:true", async () => {
