@@ -102,6 +102,52 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "editFinding.severityLabel": { en: "Severity", "zh-CN": "严重程度" },
   "editFinding.commentLabel": { en: "Comment", "zh-CN": "评论" },
   "editFinding.save": { en: "Save", "zh-CN": "保存" },
+  "help.modal.title": { en: "Keyboard shortcuts", "zh-CN": "键盘快捷键" },
+  "help.modal.intro": {
+    en: "Quick reference for the most common shortcuts. Press ? or Esc to close.",
+    "zh-CN": "最常用快捷键速查表。按 ? 或 Esc 关闭。",
+  },
+  "help.shortcut.nextFinding": {
+    en: "Jump to next finding (Conversation tab)",
+    "zh-CN": "跳到下一个审查项（对话标签）",
+  },
+  "help.shortcut.prevFinding": {
+    en: "Jump to previous finding (Conversation tab)",
+    "zh-CN": "跳到上一个审查项（对话标签）",
+  },
+  "help.shortcut.findInDiff": {
+    en: "Find text inside the loaded diff",
+    "zh-CN": "在加载的 diff 中查找文本",
+  },
+  "help.shortcut.findInDiffAlt": {
+    en: "Find in diffs (alternative, no modifier)",
+    "zh-CN": "在 diff 中查找（备用，无需修饰键）",
+  },
+  "help.shortcut.fileJump": {
+    en: "Open the file quick-jump palette",
+    "zh-CN": "打开文件快速跳转面板",
+  },
+  "help.shortcut.help": {
+    en: "Open this help overlay",
+    "zh-CN": "打开此帮助浮层",
+  },
+  "help.shortcut.submit": {
+    en: "Submit finding (when comment is focused)",
+    "zh-CN": "提交审查项（焦点在评论框时）",
+  },
+  "help.shortcut.close": {
+    en: "Close any open modal, palette, or search bar",
+    "zh-CN": "关闭任何已打开的浮层、面板或搜索栏",
+  },
+  "help.shortcut.tabFocus": {
+    en: "Move focus inside forms (works in every input)",
+    "zh-CN": "在表单内移动焦点（适用于所有输入框）",
+  },
+  "help.shortcut.helpAlt": {
+    en: "Open this help overlay (alternative to Cmd+/)",
+    "zh-CN": "打开此帮助浮层（Cmd+/ 的备用）",
+  },
+  "help.modal.close": { en: "Close", "zh-CN": "关闭" },
   "export.modal.title": { en: "Export review", "zh-CN": "导出审查" },
   "export.modal.body": {
     en: "Choose a format. The file is generated client-side from the current round state.",

@@ -270,9 +270,9 @@ describe("AC2 — Modal shows 10 keyboard shortcuts in clean grid", () => {
     expect(html).toMatch(/\.help-grid\s*\{[^}]*grid-template-columns:\s*1fr 1fr/s);
   });
 
-  it("T36.2c modal title reads 'Keyboard shortcuts'", async () => {
+  it("T36.2c modal title uses i18n key 'help.modal.title' (R77: string moved to STRINGS table)", async () => {
     const src = await readSource(APP_TS);
-    expect(src).toContain("Keyboard shortcuts");
+    expect(src).toMatch(/t\("help\.modal\.title"\)/);
   });
 });
 
