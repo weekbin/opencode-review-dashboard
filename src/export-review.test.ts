@@ -93,8 +93,6 @@ describe("AC4.1 / AC4.2 — UI Export button + modal", () => {
     expect(src).toMatch(/function\s+showExportModal\s*\(\s*\)/);
     const block = src.match(/function\s+showExportModal[\s\S]*?\n\}/);
     expect(block).toBeTruthy();
-    // R76: assert on stable data-format attributes + i18n key presence,
-    // not literal English card titles (which are now localized).
     expect(block![0]).toMatch(/data-format="md"/);
     expect(block![0]).toMatch(/data-format="patch"/);
     expect(block![0]).toMatch(/generateMarkdownSummary/);
