@@ -3184,8 +3184,11 @@ function renderTreeSidebar(root: TreeNode) {
       const folder = document.createElement("div");
       folder.className = "sidebar-folder";
       folder.dataset.depth = String(depth);
+      folder.setAttribute("role", "button");
+      folder.setAttribute("tabindex", "0");
       const collapsed = state.collapsedFolders.has(child.path);
       if (collapsed) folder.dataset.collapsed = "";
+      folder.setAttribute("aria-expanded", collapsed ? "false" : "true");
 
       const chevron = document.createElement("span");
       chevron.className = "folder-chevron";
@@ -3223,6 +3226,13 @@ function renderTreeSidebar(root: TreeNode) {
           folderIcon.innerHTML = FOLDER_OPEN_ICON_SVG;
         }
         if (childrenContainer) childrenContainer.style.display = isCollapsed ? "" : "none";
+        folder.setAttribute("aria-expanded", isCollapsed ? "true" : "false");
+      });
+      folder.addEventListener("keydown", (e: KeyboardEvent) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          folder.click();
+        }
       });
       container.appendChild(folder);
 
