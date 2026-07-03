@@ -1,14 +1,16 @@
 # R71 Discovery
 
-R70 carry-over: round-notes textarea + submit modal body text + edit-finding modal placeholders.
+R70 carry-over: round-notes textarea + edit-finding modal placeholders.
 
-Fresh scan findings (5+i18n sites in submit modal alone):
-- Submit modal h3 "Submit review?"
-- Submit modal p "You're about to submit your review."
-- Submit modal p "open finding N will be submitted."
-- Submit modal label "Round notes (appear in next round's 'Previously discussed' panel)"
-- Submit modal placeholder "Optional global notes for this round"
-- Submit modal Cancel button (hardcoded English)
-- Submit modal Submit button (hardcoded English)
+Fresh scan found submit modal (app.ts:5874) has 7 hardcoded English strings in a single innerHTML template literal:
+1. `<h3>Submit review?</h3>`
+2. `<p>You're about to submit your review.</p>`
+3. `<p>open finding N will be submitted.</p>`
+4. `<label>Round notes (appear in next round's "Previously discussed" panel)</label>`
+5. `placeholder="Optional global notes for this round"`
+6. `<button>Cancel</button>`
+7. `<button>Submit</button>`
 
-Selected scope: 7 strings in 1 modal. Single dialog.innerHTML template (app.ts:5874). TDD-strict (5 tests).
+This is the highest-impact modal — shown right before user submits review. zh-CN users see all-English UI.
+
+Selected scope: 1 round, 7 strings, 4 new i18n keys (pre-existing keys modal.submit.title / modal.submit.confirm / modal.cancel already exist).

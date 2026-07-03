@@ -1,13 +1,16 @@
 # R71 Research
 
-All 7 strings inside a single `dialog.innerHTML = ` template literal. Wrapping each in `${escapeHtml(t("key"))}` keeps the structure intact.
+Pre-existing i18n keys (already in STRINGS table at app.ts:i18n.ts:240-245):
+- `modal.submit.title`: "Submit review?"
+- `modal.submit.confirm`: "Submit"
+- `modal.cancel`: "Cancel"
 
-i18n keys:
-- Pre-existing (L240-245): `modal.submit.title`, `modal.submit.confirm`, `modal.cancel`
-- New: `submit.modal.body`, `submit.modal.findingCount`, `submit.modal.roundNotes.label`, `submit.modal.roundNotes.placeholder`
+New keys needed:
+- `submit.modal.body`: "You're about to submit your review."
+- `submit.modal.findingCount`: "{count} open finding(s) will be submitted."
+- `submit.modal.roundNotes.label`: "Round notes (appear in next round's...)"
+- `submit.modal.roundNotes.placeholder`: "Optional global notes for this round"
 
-Naming note: pre-existing keys use `modal.X.Y`; new keys use `submit.modal.Y` to match the test's regex anchor. Two conventions coexist — minor inconsistency, not a blocker.
+Pattern matches R57-R67 (innerHTML → t() with escapeHtml). `t()` interpolation supports `{count}` placeholder.
 
-R17-feature test at src/r17-features.test.ts:109 had to be updated to anchor on "submit-confirm-modal" (stable class) instead of literal `<h3>Submit review?</h3>` text (which no longer exists). Same for subsequent indexOf calls — they now match on tag name only.
-
-1 test broken by R71, 1 test fixed: T32.6a (modal HTML order).
+Side effect: `src/r17-features.test.ts:111-115` (R17 T32.6a) was asserting literal hardcoded English. Updated to use stable HTML element markers (`<h3>`, `<p>`, `class="finding-count"`, etc.) instead — preserves order-check intent without coupling to English copy.
