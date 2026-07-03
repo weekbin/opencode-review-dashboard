@@ -3561,11 +3561,30 @@ function renderCommitsPanel(root: HTMLElement) {
       });
       filesContainer.appendChild(row);
     }
+    const chevron = document.createElement("span");
+    chevron.className = "commit-card-chevron";
+    chevron.setAttribute("aria-hidden", "true");
+    chevron.innerHTML = CHEVRON_SVG;
+    head.appendChild(chevron);
     head.addEventListener("click", () => {
       const isCollapsed = filesContainer.hasAttribute("data-collapsed");
-      if (isCollapsed) filesContainer.removeAttribute("data-collapsed");
-      else filesContainer.setAttribute("data-collapsed", "");
+      if (isCollapsed) {
+        filesContainer.removeAttribute("data-collapsed");
+        head.removeAttribute("data-files-collapsed");
+        head.setAttribute("aria-expanded", "true");
+      } else {
+        filesContainer.setAttribute("data-collapsed", "");
+        head.setAttribute("data-files-collapsed", "");
+        head.setAttribute("aria-expanded", "false");
+      }
     });
+    head.setAttribute("aria-expanded", "true");
+    head.setAttribute("role", "button");
+    head.setAttribute("tabindex", "0");
+    head.setAttribute(
+      "aria-label",
+      (typeof t === "function" && t("commits.toggle.ariaLabel")) || "Toggle commit files",
+    );
 
     card.appendChild(head);
     card.appendChild(filesContainer);

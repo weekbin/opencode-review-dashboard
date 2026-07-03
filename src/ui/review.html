@@ -593,7 +593,8 @@
         flex-direction: column;
       }
       .commit-card-head {
-        padding: 18px 20px;
+        position: relative;
+        padding: 18px 44px 18px 20px;
         background: light-dark(#fafafa, #161616);
         cursor: pointer;
         display: flex;
@@ -602,6 +603,20 @@
       }
       .commit-card-head:hover {
         background: light-dark(#f0f0f0, #3a3a3a);
+      }
+      .commit-card-chevron {
+        position: absolute;
+        right: 16px;
+        top: 50%;
+        transform: translateY(-50%) rotate(0deg);
+        width: 16px;
+        height: 16px;
+        color: light-dark(#999, #555);
+        transition: transform 150ms;
+        pointer-events: none;
+      }
+      .commit-card-head[data-files-collapsed] .commit-card-chevron {
+        transform: translateY(-50%) rotate(-90deg);
       }
       .commit-card-title {
         display: flex;

@@ -66,6 +66,10 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   },
   "sidebar.files": { en: "Files changed", "zh-CN": "变更文件" },
   "sidebar.commits": { en: "Commits", "zh-CN": "提交" },
+  "commits.toggle.ariaLabel": {
+    en: "Toggle commit files",
+    "zh-CN": "切换提交文件显示",
+  },
   "sidebar.conversation": { en: "Conversation", "zh-CN": "会话" },
   "sidebar.previously": { en: "Previously discussed", "zh-CN": "历史讨论" },
   "sidebar.tree": { en: "Tree", "zh-CN": "树状" },
