@@ -178,3 +178,4 @@
 {"round":74,"scope":"product-bugfix","commits":1,"files":2,"lines_added":20,"lines_removed":2,"net":18,"tests":"698/698 PASS (696 + 2 R74 new)","duration_min":4,"subagent_dispatched":0,"carry_over":["L3869 URL.revokeObjectURL race — different element type"]}
 {"round":74,"scope":"product-bugfix","commits":1,"files":2,"lines_added":9,"lines_removed":4,"net":5,"tests":"698/698 PASS (696 + 2 R74 new)","duration_min":5,"subagent_dispatched":0,"carry_over":[]}
 {"round":75,"scope":"refactor","commits":1,"files":2,"lines_added":13,"lines_removed":4,"net":9,"tests":"702/702 PASS (698 + 4 R75 new)","duration_min":5,"subagent_dispatched":0,"carry_over":[]}
+{"round":75,"scope":"product-refactor","commits":1,"files":2,"lines_added":11,"lines_removed":4,"net":7,"tests":"702/702 PASS (698 + 4 R75 new)","duration_min":5,"subagent_dispatched":0,"carry_over":[]}

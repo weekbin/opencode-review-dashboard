@@ -1,1 +1,1 @@
-SHIP — magic timeout values extracted into named constants.
+SHIP — constants extracted.
