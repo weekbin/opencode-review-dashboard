@@ -1,14 +1,13 @@
 # R63 Discovery
 
-R62 retro: 10-round arc complete. v6 self-driving; user asked "有做什么新功能吗" (did you ship any new features?). Pivoting back to product work for the next 20-round arc.
+## Backlog scan
+- GH issues open: 0
+- R62 carry-over: empty (10-round arc complete; new 20-round arc R63-R82 starts)
+- Source scan found hardcoded English in 2 spots + 4 related buttons queued for R64-R67
 
-Scan results (R63 Capability 1):
-- 2 places with hardcoded `title="File-level findings"`: app.ts:3135 (sidebar) + app.ts:5060 (diff panel card)
-- 1 place with hardcoded `title="Copy current branch name to clipboard"`: review.html:3184 (copy-branch button)
-- 1 place with hardcoded `aria-label="Settings"`: review.html:3242 (settings-btn)
-- 1 place with hardcoded `title="Export review as Markdown or patch"`: review.html:3273 (export button)
-- 0 places with i18n on drawer-toggle button
-- 0 console.log / inline style=" leftovers
-- 0 hardcoded magic numbers in critical paths
+## Selected scope (small, TDD-strict)
+R19 introduced i18n but missed dynamic fileComments/fileCommentsBadge creation paths.
+- app.ts:3135 (sidebar): `fileComments.title = "File-level findings"`
+- app.ts:5060 (diff panel): `fileCommentsBadge.title = "File-level findings"`
 
-Selected scope: add 6 i18n keys + replace 2 hardcoded English titles in app.ts + add 3 data-i18n-* attributes to review.html.
+Both spots are dynamic (createElement), so they need `t("key")` calls rather than `data-i18n-*` attributes (which only work for static HTML).

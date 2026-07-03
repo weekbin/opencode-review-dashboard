@@ -1,9 +1,7 @@
 # R63 Brief
 
-**Scope**: 6 i18n keys + 2 hardcoded English titles → t() calls + 3 data-i18n-* attributes.
+**Scope**: i18n for "File-level findings" tooltips. Add fileFinding.title key + replace 2 hardcoded English strings with t("fileFinding.title") calls.
 
-**Why**: zh-CN users see English tooltips in multiple places (file-level findings, copy branch, settings, export). Per R19 i18n mandate, all user-facing strings should be localized.
+**Risk**: Tiny. Pure i18n scope, no behavior change.
 
-**Risk**: < 10 lines per file change. Pure i18n scope, no behavior change.
-
-**Acceptance**: 3 tests pass (fileFinding.title key, sidebar uses t(), diff panel uses t()). 8/8 pre-commit.
+**Acceptance**: 3 tests pass; bash .husky/pre-commit → 8/8 PASS; 664/664 tests (661 + 3).

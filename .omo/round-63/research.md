@@ -1,10 +1,20 @@
 # R63 Research
 
-ApplyLanguage pipeline already supports `data-i18n-*` attributes (data-i18n-title + data-i18n-aria-label are wired by registerUITranslator, per i18n.ts:293-310). For dynamic `title = ...` assignments in JS (cannot use HTML attributes), need `t("key")` directly.
+## Source files
+- src/ui/app.ts:3135 (sidebar fileComments.title) and src/ui/app.ts:5060 (diff panel fileCommentsBadge.title)
+- src/ui/i18n.ts (add fileFinding.title key)
 
-Changes:
-1. i18n.ts: +6 keys (toolbar.copyBranch.title, toolbar.export.title, drawer.toggle.ariaLabel, settings.btn.ariaLabel, fileComments.tooltip + fileFinding.title)
-2. app.ts: replace `fileComments.title = "File-level findings"` with `fileComments.title = t("fileFinding.title")` × 2 (sidebar + diff panel)
-3. review.html: replace `title="..."` with `data-i18n-title="..."` × 2, replace `aria-label="Settings"` with `data-i18n-aria-label="settings.btn.ariaLabel"`
+## Existing patterns (preserved)
+- t() helper for in-code translation (i18n.ts exports t(key) → translated string)
+- data-i18n-* attributes on static HTML elements (won't work here — these are dynamic createElement spans)
+- STRINGS table flat object with `en` + `zh-CN` per entry
 
-Test: 3 assertions covering i18n key existence + 2 places where title uses t().
+## Simplest change
+- Add fileFinding.title to STRINGS table (en + zh-CN)
+- Replace 2 hardcoded strings with t("fileFinding.title")
+
+## Risk
+- Tiny scope (1 src/ file, 1 i18n file, ~10 LOC)
+- Zero data structure changes
+- No new dependencies
+- No public-API changes
