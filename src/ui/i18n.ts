@@ -148,6 +148,21 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     "zh-CN": "打开此帮助浮层（Cmd+/ 的备用）",
   },
   "help.modal.close": { en: "Close", "zh-CN": "关闭" },
+  "palette.cmdP.noResults": {
+    en: 'No files match "{query}"',
+    "zh-CN": '没有匹配 "{query}" 的文件',
+  },
+  "palette.cmdP.empty": { en: "No files available", "zh-CN": "没有可用文件" },
+  "save.indicator.idle": { en: "All changes saved", "zh-CN": "所有更改已保存" },
+  "commits.empty.noResults": {
+    en: 'No commits match "{query}".',
+    "zh-CN": '没有匹配 "{query}" 的提交。',
+  },
+  "commits.empty.empty": { en: "No commits in range.", "zh-CN": "当前范围内没有提交。" },
+  "conversation.empty.noResults": {
+    en: 'No findings match "{query}".',
+    "zh-CN": '没有匹配 "{query}" 的审查项。',
+  },
   "export.modal.title": { en: "Export review", "zh-CN": "导出审查" },
   "export.modal.body": {
     en: "Choose a format. The file is generated client-side from the current round state.",

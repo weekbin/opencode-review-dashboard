@@ -1,12 +1,10 @@
 # R77 Retro
 
 ## What worked
-- 13 hardcoded English strings → i18n in 1 round (best example of R57-R72 sweep catching one of the larger modals)
-- TDD: 4 tests RED → GREEN in 1 cycle
-- Side fix to T36.2c caught a latent test fragility
+- Same fix pattern as R57-R72 (innerHTML template → t() with escapeHtml)
+- Side fix to T36.2c caught a latent test fragility (literal-English assertion coupling)
+- 4/4 tests RED → GREEN in 1 cycle
 
 ## What didn't
-- 13 keys is the most keys in one round so far; batch worked because all keys are independent
-
-## Carry-over
-- (none — final hardcoded English modal in app.ts)
+- First test file attempt had unused old-block field — corrected
+- i18n keys added via Python script but tested regex against `export\.modal\.body` matched all 3 key variants correctly

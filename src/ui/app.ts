@@ -1165,7 +1165,9 @@ function openCmdPPalette(): void {
     if (filtered.length === 0) {
       const empty = document.createElement("div");
       empty.className = "cmd-p-empty";
-      empty.textContent = query ? `No files match "${query}"` : "No files available";
+      empty.textContent = query
+        ? escapeHtml(t("palette.cmdP.noResults", { query }))
+        : escapeHtml(t("palette.cmdP.empty"));
       results.appendChild(empty);
       return;
     }
@@ -2305,13 +2307,13 @@ function updateSaveIndicator() {
   if (!el) return;
   const stamp = state.draftLastSavedAt;
   if (!stamp) {
-    el.textContent = "All changes saved";
+    el.textContent = t("save.indicator.idle");
     el.dataset.state = "idle";
     return;
   }
   const elapsed = Date.now() - stamp;
   if (elapsed >= SAVE_INDICATOR_HIDE_AFTER_MS) {
-    el.textContent = "All changes saved";
+    el.textContent = t("save.indicator.idle");
     el.dataset.state = "idle";
     return;
   }
@@ -3504,8 +3506,8 @@ function renderCommitsPanel(root: HTMLElement) {
     const empty = document.createElement("div");
     empty.className = "conversation-empty";
     empty.textContent = currentSearchQuery.trim()
-      ? `No commits match "${currentSearchQuery.trim()}".`
-      : "No commits in range.";
+      ? t("commits.empty.noResults", { query: currentSearchQuery.trim() })
+      : t("commits.empty.empty");
     root.appendChild(empty);
     return;
   }
@@ -4024,7 +4026,7 @@ function renderConversationPanel(root: HTMLElement) {
     const empty = document.createElement("div");
     empty.className = "conversation-empty";
     if (currentSearchQuery.trim()) {
-      empty.textContent = `No findings match "${currentSearchQuery.trim()}".`;
+      empty.textContent = t("conversation.empty.noResults", { query: currentSearchQuery.trim() });
     } else {
       empty.textContent =
         state.conversationFilter === "open"
