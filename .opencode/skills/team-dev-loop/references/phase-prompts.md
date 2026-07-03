@@ -290,7 +290,7 @@ The plan MUST call out which ACs are multi-round and what unit test design exerc
 
 If trivial (single file, <30 lines, no architectural decision) — write a 1-paragraph plan directly. No need for the full 7-section structure.
 
-**STRINGS_USAGE_PLAN for i18n features** (NEW R19 retro SG.R19.3, MANDATORY when scope includes language toggle / translation / i18n refactor): Plan MUST include an explicit `## STRINGS_USAGE_PLAN` section that lists every hardcoded user-visible string that needs `t('key')` wrapping, with:
+**STRINGS_USAGE_PLAN for i18n features** ([R19 retro] i18n STRINGS_USAGE_PLAN, MANDATORY when scope includes language toggle / translation / i18n refactor): Plan MUST include an explicit `## STRINGS_USAGE_PLAN` section that lists every hardcoded user-visible string that needs `t('key')` wrapping, with:
 - `file:line` evidence for the hardcoded string in current code
 - The `STRINGS` table key it maps to (`"toolbar.layout.unified"`, etc.)
 - The locale the key exists in (both `en` AND `zh-CN` — verify before declaring complete)
@@ -332,7 +332,7 @@ PLAN: `.omo/round-N/plan.md`
 ROUND: <round number>
 WORKTREE: per the SKILL.md "worktree path" note. Default: `mkdir -p $HOME/.worktrees && git worktree add $HOME/.worktrees/team-dev-loop-round-<N> -b team-dev-loop-round-<N>-<short-slug>`. The `$HOME` env var works on macOS, Linux, WSL — fixes the Round 3 `/Users/yangweibin/...` portability bug. **Commit strategy** (also per SKILL.md): use worktree for `feature` / `architecture` profiles, commit direct to `main` for `bugfix` profile (small fixes don't need isolation).
 
-**MANDATORY WORKDIR VERIFICATION** (NEW R19 retro SG.R19.4): Before any `git add` / `git commit`, lead-direct verifies you are in the worktree, NOT in main:
+**MANDATORY WORKDIR VERIFICATION** ([R19 retro] WORKDIR verification): Before any `git add` / `git commit`, lead-direct verifies you are in the worktree, NOT in main:
 
 ```bash
 cd "$HOME/.worktrees/team-dev-loop-round-<N>" || { echo "WORKTREE_MISSING"; exit 1; }
@@ -1199,7 +1199,7 @@ Steps:
      - Usage example (CLI command, code snippet, or workflow)
 4. Optionally: update README.zh-CN.md (Chinese translation)
 5. Verify the README is now a complete product catalog: "what can this product do?" is fully answered
-6. **PRE-COMMIT verify (SG.R25.1)**: For each NEW section added, run `grep -c` counts on README.md AND README.zh-CN.md BEFORE git commit:
+6. **PRE-COMMIT verify ([R25 retro] (pre-commit README verify))**: For each NEW section added, run `grep -c` counts on README.md AND README.zh-CN.md BEFORE git commit:
    ```bash
    # Example for a new section:
    NEW_SECTION="Bulk delete in Conversation tab"
