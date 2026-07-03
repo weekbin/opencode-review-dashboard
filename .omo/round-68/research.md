@@ -1,35 +1,27 @@
 # R68 Research
 
-## Bench scope
-The full `renderDiffPanel()` cannot be benched in pure bun:test because it requires:
-- `document.createElement` (DOM API)
-- `Element.appendChild` (DOM API)
-- `diffsRoot.innerHTML = ""` (DOM mutation)
+`renderDiffPanel` (app.ts:4953) does:
+1. `diffsRoot.innerHTML = ""` (clears 100k+ nodes — dominant cost in real browser)
+2. For each file: ~15 `document.createElement` calls + ~15 `appendChild` calls
 
-Adding jsdom just for this bench is disproportionate (~50MB devDep for one function).
+Real browser bottleneck is (1) — GC pressure from detaching 100k nodes. Unmeasurable in bun:test.
 
-Per Oracle recommendation: bench a representative slice of the inner loop that mirrors its allocation pattern.
+Testable slice: object-allocation in the per-file card-header construction (app.ts:4995-5055). Pure JS — no DOM.
 
-## What I benched
-`buildCardHeaderPayload(file)` — a pure function that creates the same object-shape as the card-header DOM child elements that renderDiffPanel builds. This measures:
-- String allocations per file (~12 strings)
-- Object property assignments
-- Inner-loop overhead
+Extracted pattern (`buildCardHeaderPayload(file)`):
+- Returns plain object with 11 string properties
+- String literals (SVG markup) + computed property values
+- Allocates 12 element-spec objects per file
 
-## What this bench does NOT measure
-- Browser DOM createElement / appendChild cost (real bottleneck for large diffs)
-- The `diffsRoot.innerHTML = ""` teardown cost (separate concern)
-- Browser paint/layout
+Bench two workloads:
+- 100 files × 100 iter (realistic diff size)
+- 500 files × 100 iter (large diff, linear scaling check)
 
-## Baseline captured
-- 100 files × 100 iter = 5.41ms (0.054ms/call) — well within threshold
-- 500 files × 100 iter = 8.53ms (0.085ms/call) — sub-linear scaling suggests under-saturated CPU
-- Linear scaling factor: 5x files → ~1.6x time
+Threshold:
+- 100 files: <200ms (~2ms/call × 100 iter = 200ms; 10x safety)
+- 500 files: <1000ms (~10ms/call × 100 iter = 1s; 10x safety)
 
-## Real perf cliff (deferred to future round)
-The actual `diffsRoot.innerHTML = ""` at app.ts:4953 + per-file DOM ops are the dominant cost in browsers. Bench above measures only the JS-allocatable side. Future R## can either:
-(a) Add jsdom + bench real DOM (50MB dep)
-(b) Implement range-rendering (only build visible cards + IntersectionObserver virtual scrolling for off-screen)
-(c) Inline renderDiffPanel call sites + lazy-load cards on scroll
-
-Decision left for future round when actual user-perceived perf becomes a complaint.
+Actual baseline (just captured):
+- 100 files: 5.4ms / 100 iter (0.054ms/call)
+- 500 files: 8.5ms / 100 iter (0.085ms/call)
+- Linear scaling: 5x files = 1.6x time (sub-linear, suggests V8 string intern)

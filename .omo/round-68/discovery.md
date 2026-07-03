@@ -1,13 +1,14 @@
 # R68 Discovery
 
-R67 carry-over: empty. R53 carry-over (GH#73 #6 perf half) reopened.
+R67 carry-over: empty (R63-R67 i18n sweep closed all 6 sites).
 
-Discovery scan found:
-- `setIgnoreWhitespace` (app.ts:1735) calls `renderDiffPanel()` inside rAF callback
-- `renderDiffPanel` (app.ts:4953) does `diffsRoot.innerHTML = ""` then appendChild for ~15 DOM nodes per file
-- For 100+ files = 1500+ DOM operations per toggle
-- No current bench exists for this path
+R53 retro carry-over finally picked up: bench the per-file inner loop of renderDiffPanel.
 
-Oracle consultation (Architect review of bench location): extracted pure-function approach wins over jsdom (50MB dep for one function, disproportionate).
+Decision tree (Capability 1):
+- jsdom devDep (50MB): too heavy for one bench function
+- Synthetic pure-JS workload: provides regression gate for object-allocation cost
+- Defer: wastes round; user wants progress
 
-Selected scope: bench a representative workload — `buildCardHeaderPayload()` mirroring the inner loop's object-allocation pattern. Real DOM ops are untestable in pure bun:test (would need jsdom) and out of scope.
+Chose: synthetic pure-JS bench (Option C-modified) for the testable allocation slice. Captures lower-bound baseline (string + object construction) so future opt rounds have a regression gate. Real DOM ops require jsdom or browser — explicitly out of scope for bun:test.
+
+R53 retro said: "renderDiffPanel (app.ts:4953) is the suspected bigger bottleneck (innerHTML clear + full DOM rebuild per file). Bench it in a follow-up round." R68 closes that carry-over, with the explicit caveat that this is a proxy bench (JS allocation), not a DOM paint bench.

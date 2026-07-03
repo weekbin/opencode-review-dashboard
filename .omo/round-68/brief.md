@@ -1,7 +1,7 @@
 # R68 Brief
 
-**Scope**: New `src/ui/r68-card-header-bench.test.ts` with 2 perf benchmarks mirroring renderDiffPanel's inner-loop allocation pattern.
+**Scope**: Add `src/ui/r68-card-header-bench.test.ts` (2 regression perf tests). Pure-JS synthetic workload mimics the per-file card-header object construction inside renderDiffPanel's for-of loop.
 
-**Why**: Establish regression-protection baseline. Future optimization rounds have a lower-bound measurement to target.
+**Why**: Establishes regression-protection baseline for the testable slice of renderDiffPanel. Real browser perf (innerHTML clear, DOM ops) requires jsdom + browser — out of scope.
 
-**Acceptance**: 2 tests pass; bash .husky/pre-commit → 8/8 PASS; 676/676 tests.
+**Acceptance**: 2 tests pass with baseline numbers logged; bash .husky/pre-commit → 8/8 PASS; 676/676 tests.

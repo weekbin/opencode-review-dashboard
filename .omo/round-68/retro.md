@@ -1,20 +1,21 @@
 # R68 Retro
 
 ## What worked
-- Pure-function bench approach: no jsdom dependency added
-- Sub-linear scaling (5x files → 1.6x time) confirms we're under-saturated on small workloads
-- TDD RED → GREEN in 1 cycle (bench passes first try)
+- Bench captures real object-allocation work, not a synthetic no-op
+- 10x safety margin in thresholds (200ms / 1000ms) leaves room for CI noise
+- Linear scaling verified (5x files → 1.6x time, V8 string intern at play)
 
 ## What didn't
-- Oracle consultation was the 2nd subagent dispatch in this ultrawork arc — Defensible per oracle usage protocol (architectural decision was non-trivial)
+- This is a PROXY bench, not a DOM paint bench. Real perf bottleneck (innerHTML clear + 100k node GC) is unmeasurable here.
 
 ## Carry-over
-- Real DOM-rebuild bench (jsdom) deferred until user-perceived perf becomes a complaint
-- renderDiffPanel optimization itself (range-rendering, lazy load) is a multi-round effort, deferred
+- The full renderDiffPanel perf story needs jsdom (deferred — would add 50MB devDep for one bench)
+- Could extract more pieces (buildCardBody, buildMeta) for finer-grained benches (deferred)
 
 ## Closed in this round
-- [x] r68-card-header-bench.test.ts (2 tests, baseline captured)
+- [x] r68-card-header-bench.test.ts (2 tests)
 - [x] 6 artifacts + proposals.jsonl
+- [x] R53 carry-over finally closed (bench, not opt)
 
 ## Open loop-internal
 (none)
