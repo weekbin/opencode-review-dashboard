@@ -36,7 +36,7 @@
     "prepare": "husky",
     "lint": "oxlint src/",
     "format": "oxfmt --write src/",
-    "format:check": "oxfmt src/",
+    "format:check": "oxfmt --check src/",
     "typecheck": "tsc --noEmit",
     "check": "bun run format:check && bun run lint && bun run typecheck",
     "test:unit": "bun test src/",

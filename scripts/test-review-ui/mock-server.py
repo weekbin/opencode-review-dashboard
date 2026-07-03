@@ -94,6 +94,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if path.startswith("/api/review/"):
             if path.endswith("/prior-notes"):
                 self.serve_prior_notes()
+            elif path.endswith("/state"):
+                # R44 Fix-4: stateful mock for state-aware Playwright.
+                self.serve_mock_state()
             else:
                 self.serve_mock()
             return
@@ -168,6 +171,80 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 {"round": 1, "notes": "Fix the auth middleware"},
                 {"round": 2, "notes": "And add unit tests for the middleware"},
             ]
+        }
+        body = json.dumps(payload).encode()
+        self.send_response(200)
+        self.send_header("content-type", "application/json")
+        self.send_header("cache-control", "no-cache")
+        self.send_header("content-length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def serve_mock_state(self):
+        # R44 Fix-4: stateful mock for state-aware Playwright walkthroughs.
+        #
+        # Returns a state.json-shaped payload with:
+        #   - 2 conversation findings: one open, one resolved with
+        #     resolution_kind="duplicate"
+        #   - 1 prior-round note to exercise the previously-discussed panel
+        #
+        # Why this exists: R43 AC2 ("mark-as-duplicated → drawer not
+        # updated") couldn't be visually verified via Playwright because
+        # the default mock returned empty existing_findings, leaving no
+        # state. With this endpoint, walkthrough scripts can do:
+        #
+        #   1. Open /review/test?token=test
+        #   2. eval(`fetch('/api/review/test/state').then(r=>r.json()).then(s=>window.__setState(s))`)
+        #   3. Click "Mark as duplicate" → verify drawer entry disappears
+        #
+        # Schema mirrors what src/index.ts:Launch sends, plus state.json
+        # fields the dashboard reads (existing, fresh, resolution_kind, etc.).
+        payload = {
+            "round": 2,
+            "files": [
+                {
+                    "path": "src/feature.ts",
+                    "status": "modified",
+                    "additions": 3,
+                    "deletions": 0,
+                    "before": "",
+                    "after": "export const x = 1;\nexport const y = 2;\nexport const z = 3;\n",
+                }
+            ],
+            "existing_findings": [
+                {
+                    "id": "F-MOCK-DUP",
+                    "round": 1,
+                    "file": "src/feature.ts",
+                    "start_line": 1,
+                    "end_line": 3,
+                    "category": "bug",
+                    "severity": "medium",
+                    "comment": "Mock finding for state-aware walkthroughs",
+                    "status": "resolved",
+                    "resolution_kind": "duplicate",
+                    "resolution_reason": "duplicate of F-MOCK-OPEN (R43 AC2 regression test)",
+                    "resolved_at": 1720000000,
+                },
+                {
+                    "id": "F-MOCK-OPEN",
+                    "round": 2,
+                    "file": "src/feature.ts",
+                    "start_line": 1,
+                    "end_line": 3,
+                    "category": "bug",
+                    "severity": "high",
+                    "comment": "Mock open finding — exercise conversation panel",
+                    "status": "open",
+                },
+            ],
+            "draft": {"notes": "", "new_findings": []},
+            "prior_notes": [
+                {
+                    "round": 1,
+                    "notes": "Round 1 mock note (R44 Fix-4 test data)",
+                }
+            ],
         }
         body = json.dumps(payload).encode()
         self.send_response(200)

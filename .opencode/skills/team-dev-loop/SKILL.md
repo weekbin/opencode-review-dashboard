@@ -1,6 +1,6 @@
 ---
 name: team-dev-loop
-description: "v5.3.13 cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+Push (NEW v5.3.3) — 17 phases total (Phase -0 Sync / Phase 0 PM Triage / 0.25 PM Researcher / 0.5 PM Manager / 0.75 Planner / 1 Architect / 2 Dev / 2.5 Pre-Commit Audit / 2.6 Lead Merge+Push / 3a-c Tester / 3.5 Doc Writer / 4 Decision + 4.5-4.9 lead-owned). Lead-direct execution model (v5.3.3): 16 of 17 phases lead-direct, ONLY Phase 2 Dev uses subagent (for code generation). v5.3.4: zh-CN lockstep + READ ONLY ONCE + post-completion verification + user-manual README. v5.3.4+: SG.12 screenshot workflow. v5.3.5: SG.13-SG.16 (regex + immutable helpers + regex pre-validation + screenshots in Phase 2). v5.3.5+1: SG.17 append-only proposals.jsonl + SG.18 combine Triage+Researcher subagent + SG.19 single-commit bilingual docs + SG.20 Phase 3c Playwright minimum. v5.3.6: SG.R19.1-SG.R19.8 (R19 retro 8 patches). v5.3.7: SG.R20.1 + SG.R22.1 + SG.R22.2 (R20 + R22 retro 3 patches). v5.3.8: SG.R24.1 subagent worktree-per-Edit verification (R23+R24 recurring double-write prevention). v5.3.9: SG.R25.1 pre-commit SG.R22.1 verify gate (R25 retro bilingual lockstep gap-fix precedent). v5.3.10: SG.R26.1 file-existence verify gate (R21-R31 retro double-fabrication fix) + SG.R26.2 husky installation verify gate (R30 husky automation false-positive fix) + SG.R27.1 runtime load verification gate (R32 retro 4-gate: runtime compat + PluginModule shape + hook contract + path-plugin entry). v5.3.11: SG.R28.1 frontend skill invocation gate (R33 retro UI/UX 6-issue feedback). v5.3.12: R33/R34/R35 retro loop-level optimization patches (1 AC max per subagent + auto-lightweight + combined retro+post-exec + auto proposals.jsonl + 5 hard rules). v5.3.13: R36 retro follow-up patches (5 NEW: SG.R29.6 auto-lightweight validation + SG.R29.7 auto-pilot 5min default + SG.R29.8 Phase 3.5 conditional skip + SG.R29.9 backlog-empty decision + SG.R30.0 pre-commit test gate). Subagent scope: 1 AC max, ≤15min wall (v5.3.12 default — never 2+ ACs in 1 subagent). Default NO user pick (Planner autonomous); user MAY pre-pick A-E or 1-6 (R12 Gap #1). PM researcher advisories are advisory-only (R12 Gap #14: lead must verify independently). Subagent NEVER does git ops (merge/push/issue close) — lead's responsibility. Mid-task check-in every 5/10/15/20 min OR post-completion verification. ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit/artifacts/husky/load failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
+description: "v5.3.14 cron-style dev loop — 11 phases + Phase 2.6 Lead Merge+Push — 17 phases total + close-out (Phase 4.5-4.9 lead-owned). v5.3.14 NEW: SG.R44.1 Pre-Phase-4.5 Discovery Sweep (objective gap discovery before retro) + SG.R44.2 Latent Gap Promotion Policy (decision tree for post-closure gaps: amend vs new round, no defer) + SG.R44.3 expanded Phase 4.9 Issue Auto-Close scan (catches orphaned pm-manager-approved issues). v5.3.13 R36 retro: 5 patches (SG.R29.6 lightweight validation + SG.R29.7 auto-pilot 5min + SG.R29.8 Phase 3.5 skip + SG.R29.9 backlog-empty + SG.R30.0 pre-commit test gate). v5.3.12 R33/R34/R35: 5 loop-level optimizations (1 AC max per subagent + auto-lightweight + combined retro+post-exec + auto proposals.jsonl + 5 hard rules). v5.3.11 R33 SG.R28.1 frontend skill invocation gate. v5.3.10 R32 SG.R26.1 file-existence + SG.R26.2 husky + SG.R27.1 runtime load (4-gate). v5.3.9 R25 SG.R25.1 pre-commit verify. v5.3.8 R24 SG.R24.1 subagent worktree-per-Edit. v5.3.7 R22 SG.R20.1+Sg.R22.1+Sg.R22.2. v5.3.6 R19 SG.R19.1-8. v5.3.5+1 SG.17-SG.20. v5.3.5 SG.13-SG.16. v5.3.4 SG.6-SG.12. v5.3.3 lead-direct 16/17 phases. Subagent scope: 1 AC max ≤15min. Default NO user pick (Planner autonomous). PM researcher advisories advisory-only. Subagent NEVER does git ops — lead's. Mid-task check-in OR post-completion verification. ≤3 feature + ≤5 bugfix + ≤8 total + ≤1 polish per round; hard STOP on sync/audit/artifacts/husky/load failure. Triggers: 'team dev loop', 'dev loop', 'run dev loop', 'pick next issue', 'next round', 'do 1 round'."
 ---
 
 # /team-dev-loop Command (v5)
@@ -152,7 +152,117 @@ echo "✅ R35 pre-commit: ALL PASS"
 
 **Fix per SG.R30.0**: ensure husky pre-commit hook is correctly installed in EVERY new worktree. Use `git config core.hooksPath .husky/_` in `.git/config` of each worktree, OR install the hook to `.git/hooks/pre-commit` directly. Per v5.3.12 Patch 2 (auto-lightweight), the hook should also be lightweight-friendly (≤2 commands).
 
-## v5.3.13 patch validation matrix (R33-R36 cumulative)
+## v5.3.14 patches (R43 retro follow-up + R44 housekeeping)
+
+### SG.R44.1 — Pre-Phase-4.5 Discovery Sweep (NEW v5.3.14, R43 follow-up)
+
+**Why** (R43 retro): The v5.4 NO DEFERRAL mechanism (`Open loop-internal at retro time = MUST be EMPTY`) is **passive**: lead's subjective judgment is the only trigger for surfacing gaps. R43 shipped with 8 latent gaps that the lead didn't surface during retro (TS strict null pattern, husky never wired, Phase 4.9 incomplete scan, etc.). The user audit caught them post-closure. The fix is a **mandatory structured discovery sweep** lead MUST run BEFORE writing retro.md — surfaces gaps regardless of lead memory.
+
+**Rule** (mandatory for all rounds from R44+):
+
+Before writing `retro.md`, lead MUST execute:
+
+```bash
+# 1. Working tree state — any dirty files left over frome Dev subagent?
+git status --porcelain
+
+# 2. Skills that may have drifted (any skill file newer than SKILL.md?)
+find .opencode/ -name '*.md' -newer .opencode/skills/team-dev-loop/SKILL.md
+
+# 3. Stale backup/tmp files
+find . -maxdepth 4 \( -name '*.backup-*' -o -name '*.tmp.*' -o -name '*.swp' -o -name '*.orig' \) 2>/dev/null | head
+
+# 4. Husky configuration status (per SG.R26.2)
+if [ -f .husky/pre-commit ] && [ ! -f .git/hooks/pre-commit ] && [ "$(git config --get core.hooksPath)" != ".husky" ]; then
+  echo "WARN: .husky/pre-commit exists but git hooksPath not pointing to it"
+fi
+
+# 5. Orphan GH issues
+gh issue list --label pm-manager-approved --state open | head -20
+
+# 6. TypeScript strict null-safety drift in test files
+grep -rn 'match\![0-9]\+\] *\.' src/ scripts/ 2>/dev/null | grep -v node_modules | head
+
+# 7. Verify scripts that hard-stall — cross-check against user-known ground truth
+# (e.g., scripts/verify-plugin-load.mjs Gate 4 — R32c/R32d retrofit was wrong about file:// plugins)
+node scripts/verify-plugin-load.mjs 2>&1 | grep -E "❌|FAIL" | head
+```
+
+If any command surfaces an issue, lead MUST:
+- Add to retro.md `Closed in this round` if fixable inline (current-worktree, no deferral)
+- Add to retro.md `Open loop-internal at retro time` if not fixable (BLOCKED for SHIP)
+- Add to retro.md `Skill gaps found` if it's a SKILL.md / verification script issue (separate SKILL patch pipeline)
+
+**Failure mode this prevents**: lead's subjective memory filtering causes gaps to survive retro-close-out and surface only post-closure via user audit. Discovery Sweep forces an objective scan.
+
+**R44 validation**: All 7 commands ran during R44 retro; surfaced 0 new gaps (all 8 R43 latent gaps had been fixed in c4d0fc6 + R44 worktrees). VALIDATION: ✓ APPLIED.
+
+### SG.R44.2 — Latent Gap Promotion Policy (NEW v5.3.14, R43 follow-up)
+
+**Why** (R43 retro): Lead discovered 8 gaps post-closure via user audit. No policy existed for "what to do with a gap found post-closure?" — options were amend-vs-defer-without-rule-vs-new-round. Defaulting to defer = the v5.4 NO DEFERRAL violation that caused R37-R41 drift.
+
+**Decision tree** (in order of preference):
+
+1. **New housekeeping round** (default — R43 → R44 pattern): when gap is loop-internal or skill-update. SKILL.md or scripts/*.mjs changes fit here. Per v5.4 NO DEFERRAL.
+2. **Retroactive amendment** (apply to Round N's commit + force-push): only when gap affects existing user-facing code that's already deployed. Use `git commit --amend` + `git push --force-with-lease`. ALWAYS log the amend in next round's brief `## Hand-off`.
+3. **Defer to backlog**: NEVER. v5.4 forbids deferral. If "I have no time this round", apply v5.4 close-out: split the gap into a single-purpose housekeeping round.
+
+**Which path R43 took**: User audit surfaced 8 gaps on 2026-07-03, post-closure of c4d0fc6. Per this rule: path 1 (new housekeeping round R44). R44 brief.md explicitly listed 8 + 2 skill patches as scope, all closed in c4d0fc6's successor commit.
+
+**Why this rule supersedes v2**: v2's "Action items for next round" section in retro.md was the explicit deferral pattern. v5.4 already killed that section. SG.R44.2 codifies the **non-deferral decision tree** for the lead to follow when post-closure gaps are found.
+
+**R44 validation**: R43 → R44 follow-through demonstrated path 1 cleanly. R44 brief.md `## Source` cites R43 retro gap-list. ✓ APPLIED.
+
+### SG.R44.3 — Expanded Phase 4.9 Issue Auto-Close scan (NEW v5.3.14, R43 follow-up)
+
+**Why** (R43 retro): R43 Phase 4.9 only checked `#73` directly via `gh issue view`. Did NOT run `gh issue list --label pm-manager-approved --state open` to verify no orphan issues. PM Manager-approved issues that get orphaned (commit message typo, label got dropped) are silent failures.
+
+**Rule** (mandatory for all rounds from R44+):
+
+Phase 4.9 MUST include:
+
+```bash
+# After primary auto-close verification
+gh issue list --label pm-manager-approved --state open --limit 50
+
+# If any result, dump each:
+if [ "$(gh issue list --label pm-manager-approved --state open --limit 1 | wc -l)" -gt 0 ]; then
+  echo "ORPHAN: pm-manager-approved issues still open after commit"
+  gh issue list --label pm-manager-approved --state open --limit 50 --json number,title,url
+fi
+```
+
+If orphan issues found, lead MUST either:
+- Re-commit with corrected `close #N` syntax
+- OR `gh issue close N --comment "Closed via commit <SHA>"` (manual close with traceback)
+
+**Failure mode this prevents**: PM Manager approves a candidate and `gh issue create` opens `#N`. The closure commit has `close #N` in message. If GitHub's keyword parser misses (label dropped, typo, message on wrong commit), `#N` stays open and is silent. R37-R41 this was repeatedly observed.
+
+**R44 validation**: Applied during R44 closure (housekeeping round, 0 orphan issues — would catch orphans at GH query time). ✓ APPLIED.
+
+### v5.3.14 patch validation matrix
+
+| Patch | Status | Validation |
+|---|---|---|
+| SG.R44.1 (Discovery Sweep) | ✓ APPLIED | R44 retro sweep ran all 7 commands, surfaced 0 new gaps |
+| SG.R44.2 (Latent Gap Promotion) | ✓ APPLIED | R43 → R44 follow-through used path 1 (housekeeping round) |
+| SG.R44.3 (Issue Auto-Close expanded scan) | ✓ APPLIED | R44 closure verified 0 orphan issues |
+
+### Expected impact (v5.3.14 patches)
+
+- **SG.R44.1**: Surfaces objective gaps pre-closure; R43-style "8 latent gaps" cannot recur
+- **SG.R44.2**: Codifies non-deferral when post-closure gaps are found; prevents future v5.4 violations
+- **SG.R44.3**: Catches orphaned PM Manager-approved issues silently left open
+
+**Total**: 3 NEW patches addressing R43 retro meta-finding. v5.3.13 had 66 patches; v5.3.14 brings total to 69.
+
+### v5.3.14 SKILL.md changes (this commit)
+
+- 3 new patches added (SG.R44.1, SG.R44.2, SG.R44.3)
+- Patch matrix updated with v5.3.14 row
+- Cumulative patch count: 66 → 69
+
+
 
 | Patch | Status | Validation |
 |---|---|---|

@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# R44 Fix-5: husky pre-commit gate (per SG.R30.0 + memory 442 R30 retrofit incomplete)
+#
+# Runs:
+#   1. bun run check   (TypeScript + ESLint, no format/emit)
+#   2. bun test        (full unit suite, includes e2e harness tests)
+#
+# Failure of either command blocks the commit.
+# Use `git commit --no-verify` to skip (escape hatch for lead-direct emergencies).
+set -e
+cd "$(git rev-parse --show-toplevel)"
+echo "🔍 R44 pre-commit: bun run check..."
+bun run check || { echo "❌ bun run check failed"; exit 1; }
+echo "🔍 R44 pre-commit: bun test..."
+bun test || { echo "❌ bun test failed"; exit 1; }
+echo "✅ R44 pre-commit: ALL PASS"
