@@ -3901,20 +3901,20 @@ function showExportModal(): void {
   dialog.setAttribute("role", "dialog");
   dialog.setAttribute("aria-modal", "true");
   dialog.innerHTML = `
-    <h3>Export review</h3>
-    <p>Choose a format. The file is generated client-side from the current round state.</p>
+    <h3>${escapeHtml(t("export.modal.title"))}</h3>
+    <p>${escapeHtml(t("export.modal.body"))}</p>
     <div class="export-cards">
       <button class="export-card" data-format="md" type="button">
-        <strong>Markdown summary (.md)</strong>
-        <span class="export-card-desc">Round summary + findings table + notes — paste into Notion / Slack / email.</span>
+        <strong>${escapeHtml(t("export.card.md.title"))}</strong>
+        <span class="export-card-desc">${escapeHtml(t("export.card.md.desc"))}</span>
       </button>
       <button class="export-card" data-format="patch" type="button">
-        <strong>Patch file (.patch)</strong>
-        <span class="export-card-desc">Unified diff with // REVIEW (&lt;id&gt;) annotations — attach to a bug report.</span>
+        <strong>${escapeHtml(t("export.card.patch.title"))}</strong>
+        <span class="export-card-desc">${escapeHtml(t("export.card.patch.desc"))}</span>
       </button>
     </div>
     <div class="modal-actions">
-      <button id="export-cancel" type="button">Cancel</button>
+      <button id="export-cancel" type="button">${escapeHtml(t("modal.cancel"))}</button>
     </div>
   `;
   overlay.appendChild(dialog);

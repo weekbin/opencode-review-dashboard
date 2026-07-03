@@ -102,6 +102,21 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "editFinding.severityLabel": { en: "Severity", "zh-CN": "严重程度" },
   "editFinding.commentLabel": { en: "Comment", "zh-CN": "评论" },
   "editFinding.save": { en: "Save", "zh-CN": "保存" },
+  "export.modal.title": { en: "Export review", "zh-CN": "导出审查" },
+  "export.modal.body": {
+    en: "Choose a format. The file is generated client-side from the current round state.",
+    "zh-CN": "选择一种格式。文件由当前轮状态在客户端生成。",
+  },
+  "export.card.md.title": { en: "Markdown summary (.md)", "zh-CN": "Markdown 摘要 (.md)" },
+  "export.card.md.desc": {
+    en: "Round summary + findings table + notes — paste into Notion / Slack / email.",
+    "zh-CN": "本轮摘要 + 审查项表格 + 笔记——可粘贴到 Notion / Slack / 邮件。",
+  },
+  "export.card.patch.title": { en: "Patch file (.patch)", "zh-CN": "补丁文件 (.patch)" },
+  "export.card.patch.desc": {
+    en: "Unified diff with // REVIEW (<id>) annotations — attach to a bug report.",
+    "zh-CN": "带 // REVIEW (<id>) 注释的统一差异——可附在 bug 报告中。",
+  },
   "modal.reopenReason.placeholder": {
     en: "e.g., 'The previous fix removed the symptom but the root cause is still there'",
     "zh-CN": "例如：「上一次修复只消除了症状，但根本原因还在」",
