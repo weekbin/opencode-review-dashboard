@@ -1,7 +1,12 @@
 # R74 Discovery
 
-R73 carry-over: "finding-permalink-flash (L490, 1600ms) and diff-search-flash (L741, DIFF_SEARCH_FLASH_MS) — same race?"
+R73 carry-over:
+- Other 1200ms / 1600ms setTimeout patterns in app.ts (L490 finding-permalink-flash, L729 diff-search-flash) — same race? Verify in future round
 
-Both functions use the **force-reflow trick** (`void el.offsetWidth` + remove + add class) to restart the CSS animation on rapid re-triggers. But the `setTimeout(() => el.classList.remove(...), 1600)` has no clearTimeout on rapid calls — stale timer fires and removes the class while a fresh flash is still in progress.
+Fresh re-check confirmed: `flashFindingPermaHighlight` (app.ts:494) and `flashDiffSearchMatch` (app.ts:737) both use `setTimeout` to remove the flash class after a fixed duration.
 
-Selected scope: extend R73's timer-cancel pattern to these 2 functions. 1 round, 2 sites.
+The force-reflow trick (`el.classList.remove(...)` + `void el.offsetWidth` + `el.classList.add(...)`) already protects against re-triggering the CSS animation, BUT the old setTimeout from the previous call still fires and removes the class — causing the new flash to terminate early.
+
+User-visible bug: rapid double-click on permalink = flash flickers (visible only on rapid re-click before animation completes).
+
+Selected scope: 2 functions, same pattern as R73.

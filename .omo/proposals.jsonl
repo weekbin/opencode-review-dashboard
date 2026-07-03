@@ -176,3 +176,4 @@
 {"round":72,"scope":"product-i18n-fix","commits":1,"files":3,"lines_added":42,"lines_removed":11,"net":31,"tests":"693/693 PASS (688 + 5 R72 new)","duration_min":9,"subagent_dispatched":0,"carry_over":[]}
 {"round":73,"scope":"product-bugfix","commits":1,"files":2,"lines_added":15,"lines_removed":6,"net":9,"tests":"696/696 PASS (693 + 3 R73 new)","duration_min":9,"subagent_dispatched":0,"carry_over":["finding-permalink-flash 1600ms race (app.ts:490)","diff-search-flash race (app.ts:729)"]}
 {"round":74,"scope":"product-bugfix","commits":1,"files":2,"lines_added":20,"lines_removed":2,"net":18,"tests":"698/698 PASS (696 + 2 R74 new)","duration_min":4,"subagent_dispatched":0,"carry_over":["L3869 URL.revokeObjectURL race — different element type"]}
+{"round":74,"scope":"product-bugfix","commits":1,"files":2,"lines_added":9,"lines_removed":4,"net":5,"tests":"698/698 PASS (696 + 2 R74 new)","duration_min":5,"subagent_dispatched":0,"carry_over":[]}
