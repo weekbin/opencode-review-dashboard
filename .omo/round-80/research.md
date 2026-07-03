@@ -11,12 +11,14 @@
 No source code changes. Pure verification round — the 20-round ultrawork arc closes here.
 
 ## Baseline reference (R53 SHIPped start of arc 2)
+
 - SKILL.md: 230 lines
 - pre-commit: 8 checks
 - i18n keys: ~30
 - proposals.jsonl: arc 1 had old format (R1-R22)
 
 ## End-of-arc state (R80 final)
+
 - SKILL.md: unchanged (230 lines)
 - pre-commit: unchanged (8 checks)
 - i18n keys: ~110+ (added ~70 across R57-R79)

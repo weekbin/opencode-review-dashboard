@@ -220,6 +220,19 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   },
   "sidebar.conversation": { en: "Conversation", "zh-CN": "会话" },
   "sidebar.previously": { en: "Previously discussed", "zh-CN": "历史讨论" },
+  "sidebar.files.tooltip": { en: "Files changed", "zh-CN": "变更文件" },
+  "sidebar.commits.tooltip": {
+    en: "Commits in this review",
+    "zh-CN": "本次审查中的提交",
+  },
+  "sidebar.conversation.tooltip": {
+    en: "Conversation (all findings)",
+    "zh-CN": "会话（所有审查项）",
+  },
+  "sidebar.previously.tooltip": {
+    en: "Previously discussed (prior round notes + comment threads)",
+    "zh-CN": "历史讨论（上一轮笔记 + 评论线程）",
+  },
   "sidebar.tree": { en: "Tree", "zh-CN": "树状" },
   "sidebar.flat": { en: "Flat", "zh-CN": "平铺" },
   "sidebar.reviewProgress": {

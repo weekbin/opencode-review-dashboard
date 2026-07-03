@@ -3295,11 +3295,21 @@
     </header>
 
     <nav class="navbar-tabs" id="navbar-tabs" role="tablist" aria-label="Sidebar sections">
-      <button data-tab="files" role="tab" aria-pressed="true" title="Files changed">
+      <button
+        data-tab="files"
+        role="tab"
+        aria-pressed="true"
+        data-i18n-title="sidebar.files.tooltip"
+      >
         <span data-i18n="sidebar.files">Files changed</span>
         <span class="navbar-count" id="files-count" hidden>0</span>
       </button>
-      <button data-tab="commits" role="tab" aria-pressed="false" title="Commits in this review">
+      <button
+        data-tab="commits"
+        role="tab"
+        aria-pressed="false"
+        data-i18n-title="sidebar.commits.tooltip"
+      >
         <span data-i18n="sidebar.commits">Commits</span>
         <span class="navbar-count" id="commits-count" hidden>0</span>
       </button>
@@ -3307,7 +3317,7 @@
         data-tab="conversation"
         role="tab"
         aria-pressed="false"
-        title="Conversation (all findings)"
+        data-i18n-title="sidebar.conversation.tooltip"
       >
         <span data-i18n="sidebar.conversation">Conversation</span>
         <span class="navbar-count" id="conversation-count" hidden>0</span>
@@ -3316,7 +3326,7 @@
         data-tab="previously"
         role="tab"
         aria-pressed="false"
-        title="Previously discussed (prior round notes + comment threads)"
+        data-i18n-title="sidebar.previously.tooltip"
       >
         <span data-i18n="sidebar.previously">Previously discussed</span>
         <span class="navbar-count" id="previously-count" hidden>0</span>

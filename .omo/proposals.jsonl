@@ -185,3 +185,4 @@
 {"round":78,"scope":"product-i18n-fix","commits":1,"files":3,"lines_added":10,"lines_removed":4,"net":6,"tests":"716/716 PASS (712 + 4 R78 new)","duration_min":7,"subagent_dispatched":0,"carry_over":[]}
 {"round":79,"scope":"product-i18n-fix","commits":1,"files":4,"lines_added":19,"lines_removed":5,"net":14,"tests":"722/722 PASS (716 + 5 R79 new + 1 T16.11a fixed)","duration_min":9,"subagent_dispatched":0,"carry_over":[]}
 {"round":80,"scope":"meta-validation","commits":1,"files":2,"lines_added":64,"lines_removed":0,"net":64,"tests":"727/727 PASS (722 + 5 R80 new)","duration_min":3,"subagent_dispatched":0,"milestone":"final validation round of 20-round ultrawork arc (R63-R80)"}
+{"round":81,"scope":"product-i18n-fix","commits":1,"files":3,"lines_added":36,"lines_removed":4,"net":32,"tests":"731/731 PASS (727 + 4 R81 new)","duration_min":5,"subagent_dispatched":0,"carry_over":["Other hardcoded English `title=` attributes in review.html (search for more)"]}

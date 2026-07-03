@@ -1,9 +1,11 @@
 # R80 Verify
 
 ## Pre-commit
+
 8/8 PASS. 1929 expect() calls across 727 tests in 63 files (4s).
 
 ## Tests
+
 - 727/727 pass (722 R79 baseline + 5 R80 new)
 - src/ui/r80-arc-validation.test.ts: 5 tests
   - SKILL.md integrity
