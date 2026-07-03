@@ -80,10 +80,12 @@ describe("AC1.2 — translate() returns expected string per language", () => {
     expect(translate("nope.not.a.key", "en")).toBe("nope.not.a.key");
   });
 
-  it("unsupported lang falls back to English", () => {
+  it("unsupported lang falls back to default (R43 AC5: zh-CN)", () => {
     // Cast lang — TypeScript types keep the API surface small; the
     // runtime path is the fallback we want to verify.
-    expect(translate("app.title", "fr" as unknown as "en")).toBe("Review Dashboard");
+    // R43 AC5 changed DEFAULT_LANGUAGE from "en" to "zh-CN", so the
+    // fallback now resolves to the zh-CN string instead of English.
+    expect(translate("app.title", "fr" as unknown as "en")).toBe("代码审查面板");
   });
 
   it("{token} placeholders are filled from params map", () => {
@@ -431,7 +433,7 @@ describe("AC1.2 — toggle re-renders static-HTML labels via registerUITranslato
     expect(html.includes('id="copy-branch"')).toBe(true);
     expect(html.includes('data-i18n="toolbar.copyBranch.label"')).toBe(true);
     expect(src.includes('registerUITranslator("toolbar.copyBranch.label"')).toBe(true);
-    expect(src.includes('navigator.clipboard.writeText')).toBe(true);
-    expect(src.includes('state.data?.auto_worktree_branch')).toBe(true);
+    expect(src.includes("navigator.clipboard.writeText")).toBe(true);
+    expect(src.includes("state.data?.auto_worktree_branch")).toBe(true);
   });
 });

@@ -109,29 +109,34 @@ async function checkIn(runtimeHint) {
     return false;
   }
 
-  // Gate 4: path-plugin entry shape — for `file://` plugins, the
-  // `<plugin>/opencode.json` must carry an `id` field (R32c / R32d
-  // lessons). npm-name plugins get their id from the registry, but
-  // path plugins need an explicit `id` in the on-disk opencode.json
-  // for the 1.17.12 strict loader. If the plugin doesn't have a
-  // local opencode.json (e.g. it's a CLI tool, not a path plugin),
-  // this gate is skipped silently.
+  // Gate 4: path-plugin entry shape — DISABLED per user directive (R43 retro).
+  //
+  // The R32c/R32d retrofit asserted that `file://` path plugins need an
+  // explicit `id` field in their on-disk `<plugin>/opencode.json` for the
+  // OpenCode 1.17.12 strict loader. User audit (R43) confirmed this is
+  // WRONG: including `id` in opencode.json for file:// plugins CAUSES
+  // the OpenCode loader to throw at plugin-load time. The correct
+  // schema for path plugins is `{ "$schema": "...", "plugin": ["file:."] }`
+  // — no top-level `id` field. (npm-name plugins get their id from the
+  // registry; path plugins do NOT need one.)
+  //
+  // The check below is preserved as informational PASS-through only —
+  // it never gates the overall verdict. If opencode.json exists,
+  // it just records whether `id` is present. Future R+ rounds that
+  // see this gate "fail" should treat it as expected behavior.
   const opencodeJsonPath = path.join(PLUGIN_ROOT, "opencode.json");
   if (existsSync(opencodeJsonPath)) {
     try {
       const txt = await readFile(opencodeJsonPath, "utf8");
       const cfg = JSON.parse(txt);
-      const pathId = cfg?.id;
-      const idOk = typeof pathId === "string" && pathId.length > 0;
-      const sameAsModule = idOk && pathId === id;
+      const hasPathId = typeof cfg?.id === "string" && cfg.id.length > 0;
       log(
         runtimeHint,
         "path-plugin-entry",
-        idOk,
-        `opencode.json.id=${idOk ? JSON.stringify(pathId) : typeof pathId}` +
-          (idOk && id ? (sameAsModule ? " (matches default.id ✓)" : ` (default.id=${JSON.stringify(id)} mismatch)`) : ""),
+        true,
+        `opencode.json present (id field ${hasPathId ? "present (${JSON.stringify(cfg.id)})" : "absent (correct for file:// plugins per R43 user directive)"})`,
       );
-      if (!idOk) return false;
+      // NO `return false` — Gate 4 is informational only.
     } catch (err) {
       log(runtimeHint, "path-plugin-entry", false, `opencode.json parse failed: ${err.message}`);
       return false;

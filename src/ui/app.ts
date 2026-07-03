@@ -1668,8 +1668,7 @@ layoutToggle.addEventListener("click", (event) => {
 // first, then falls back to current_branch, so it works for both the
 // worktree (per-branch session) and the main-repo (single-branch) layouts.
 async function copyBranchNameToClipboard(button: HTMLButtonElement): Promise<void> {
-  const branch =
-    state.data?.auto_worktree_branch || state.data?.current_branch || "";
+  const branch = state.data?.auto_worktree_branch || state.data?.current_branch || "";
   if (!branch) {
     showToast(t("status.copyBranchEmpty"), { error: true });
     return;
@@ -4067,6 +4066,32 @@ function renderConversationPanel(root: HTMLElement) {
     statusBadge.dataset.status = entry.status;
     statusBadge.textContent = entry.status === "closed_auto" ? "stale" : entry.status;
     headLeft.appendChild(statusBadge);
+
+    // R43 AC2: surface the resolution_kind (wontfix / out_of_scope / false_positive /
+    // duplicate) as a dedicated badge so the user can distinguish "I resolved this
+    // because it was a duplicate" from a plain Resolve. Previously the
+    // resolution_kind was stored on the entry but not rendered, leaving the
+    // user confused when they marked a finding as duplicate and still saw the
+    // entry in the list (the entry's `status` became "resolved" but no visual
+    // cue explained why). Now resolution_kind=duplicate gets a "duplicate"
+    // badge adjacent to the status badge.
+    if (entry.resolution_kind) {
+      const kindBadge = document.createElement("span");
+      kindBadge.className = `conversation-resolution-kind resolution-kind-${entry.resolution_kind}`;
+      kindBadge.dataset.resolutionKind = entry.resolution_kind;
+      // i18n-friendly short labels; reuse existing keys where they exist.
+      const kindLabel: Record<string, string> = {
+        wontfix: "wontfix",
+        out_of_scope: "out of scope",
+        false_positive: "false positive",
+        duplicate: "duplicate",
+      };
+      kindBadge.textContent = kindLabel[entry.resolution_kind] ?? entry.resolution_kind;
+      kindBadge.title = entry.resolution_reason
+        ? `${kindLabel[entry.resolution_kind] ?? entry.resolution_kind}: ${entry.resolution_reason}`
+        : (kindLabel[entry.resolution_kind] ?? entry.resolution_kind);
+      headLeft.appendChild(kindBadge);
+    }
 
     // R34 AC3: prominent type + severity badges in the conversation head.
     // entry.kind is "file" (whole-file finding) vs "line" (line-anchored).

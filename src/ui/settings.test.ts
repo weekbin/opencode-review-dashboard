@@ -12,10 +12,9 @@ async function readSource(path: string): Promise<string> {
 }
 
 describe("AC4.1 — settings button exists in header", () => {
-  it("review.html contains #settings-btn with data-i18n=toolbar.settings", async () => {
+  it("review.html contains #settings-btn", async () => {
     const html = await readSource(HTML);
     expect(html.includes('id="settings-btn"')).toBe(true);
-    expect(html.includes('data-i18n="toolbar.settings"')).toBe(true);
   });
 
   it("settings button is inside the header-right element", async () => {
@@ -24,6 +23,24 @@ describe("AC4.1 — settings button exists in header", () => {
     expect(headerRightMatch).not.toBeNull();
     const content = headerRightMatch![1] ?? "";
     expect(content.includes("settings-btn")).toBe(true);
+  });
+
+  // R43 AC3 regression: settings button must NOT have data-i18n anymore
+  // (applyLanguage sets textContent which overrode the gear icon and
+  // overflowed the 26px-wide btn-icon). Use a real SVG icon instead.
+  it("R43 AC3: settings button has NO data-i18n (icon-only button)", async () => {
+    const html = await readSource(HTML);
+    const match = html.match(/<button[^>]*id="settings-btn"[^>]*>/);
+    expect(match).not.toBeNull();
+    expect(match![0].includes("data-i18n")).toBe(false);
+  });
+
+  it("R43 AC3: settings button contains an SVG icon", async () => {
+    const html = await readSource(HTML);
+    const match = html.match(/<button[^>]*id="settings-btn"[^>]*>([\s\S]*?)<\/button>/);
+    expect(match).not.toBeNull();
+    const inner = match![1] ?? "";
+    expect(inner.includes("<svg")).toBe(true);
   });
 });
 

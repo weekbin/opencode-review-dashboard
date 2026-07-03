@@ -23,7 +23,19 @@
 
 export type Lang = "en" | "zh-CN";
 export const LANGUAGE_KEY = "diff-review:language";
-export const DEFAULT_LANGUAGE: Lang = "en";
+/**
+ * R43 AC5: default locale is now `zh-CN` (previously `en`).
+ *
+ * Reason: GH #73 user feedback requested default language = Chinese. Per the
+ * R43 brief, we change the DEFAULT_LANGUAGE export without changing the
+ * LANGUAGE_KEY (so existing user-set preferences still load). Users who
+ * already toggled to English will keep English; first-time visitors land
+ * on zh-CN.
+ *
+ * Test regression: i18n.test.ts asserts that on a fresh localStorage, the
+ * active language is `zh-CN` after `applyLanguage()`.
+ */
+export const DEFAULT_LANGUAGE: Lang = "zh-CN";
 const SUPPORTED: readonly Lang[] = ["en", "zh-CN"];
 
 export const STRINGS: Record<string, Record<Lang, string>> = {

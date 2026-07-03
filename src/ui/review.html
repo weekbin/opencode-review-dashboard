@@ -244,6 +244,14 @@
         align-items: center;
         gap: 10px;
         font-size: 14px;
+        /* R43 AC1: position: sticky + top: 50px keeps the banner visible during
+           scroll, just below the sticky header (z-index 50, height 50px) and
+           above the navbar-tabs (z-index 49, top: 50px). The banner sits at
+           z-index 48 in its own stacking context so it stays in view as the
+           diff scrolls. */
+        position: sticky;
+        top: 50px;
+        z-index: 48;
       }
       .range-banner .icon {
         flex-shrink: 0;
@@ -893,6 +901,14 @@
         display: flex;
         flex-direction: column;
         gap: 8px;
+        /* R43 AC4: establish a local stacking context so the badges and
+           action elements inside .previously-finding can't escape upward
+           and overlap the sticky header (z-index 50) or navbar-tabs
+           (z-index 49). Without this, on long previously-discussed lists,
+           action badges near the bottom of a card could "float through"
+           the header during scroll. */
+        position: relative;
+        z-index: 1;
       }
       .previously-finding[data-status="resolved"] {
         border-left-color: light-dark(#2ea043, #2ea043);
@@ -3189,9 +3205,27 @@
           class="btn-icon"
           title="Settings"
           aria-label="Settings"
-          data-i18n="toolbar.settings"
         >
-          ⚙
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.4"
+            aria-hidden="true"
+          >
+            <!-- R43 AC3: gear SVG icon, immune to textContent overwrites from
+                 data-i18n. Previously the button had data-i18n="toolbar.settings"
+                 which caused applyLanguage() (src/ui/i18n.ts:270) to set
+                 textContent = "Settings"/"设置", overflowing the 26px-wide
+                 btn-icon. Replacing with a fixed SVG icon resolves the visual
+                 bug while keeping the button 26px wide. -->
+            <circle cx="8" cy="8" r="2.2" />
+            <path
+              d="M8 1v2 M8 13v2 M1 8h2 M13 8h2 M3 3l1.4 1.4 M11.6 11.6 M3 13l1.4-1.4 M11.6 4.4"
+            />
+          </svg>
         </button>
         <button class="drawer-toggle" id="drawer-toggle" type="button">
           <span data-i18n="toolbar.review">Review</span>
