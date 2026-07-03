@@ -3132,7 +3132,7 @@ function makeSidebarItem(file: FileEntry, index: number, extraClass = ""): HTMLB
 
   const fileComments = document.createElement("span");
   fileComments.className = "sidebar-item-file-comments";
-  fileComments.title = "File-level findings";
+  fileComments.title = t("fileFinding.title");
   const fileCount = countFileLevelFindings(file.path);
   fileComments.textContent = `📄 ${fileCount}`;
   if (fileCount === 0) fileComments.style.display = "none";
@@ -5057,7 +5057,7 @@ function renderDiffPanel() {
     const fileCommentsBadge = document.createElement("span");
     fileCommentsBadge.className = "file-comments-badge";
     fileCommentsBadge.dataset.file = file.path;
-    fileCommentsBadge.title = "File-level findings";
+    fileCommentsBadge.title = t("fileFinding.title");
     const fileLevelCount = countFileLevelFindings(file.path);
     fileCommentsBadge.textContent = `📄 ${fileLevelCount}`;
     fileCommentsBadge.style.display = fileLevelCount === 0 ? "none" : "";

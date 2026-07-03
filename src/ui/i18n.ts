@@ -63,6 +63,27 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "toolbar.export": { en: "Export", "zh-CN": "导出" },
   "toolbar.submit": { en: "Submit Review", "zh-CN": "提交审查" },
   "toolbar.copyBranch.label": { en: "Copy branch", "zh-CN": "复制分支" },
+  "toolbar.copyBranch.title": {
+    en: "Copy current branch name to clipboard",
+    "zh-CN": "复制当前分支名到剪贴板",
+  },
+  "toolbar.export.title": {
+    en: "Export review as Markdown or patch",
+    "zh-CN": "导出审查为 Markdown 或 patch",
+  },
+  "drawer.toggle.ariaLabel": {
+    en: "Open review drawer",
+    "zh-CN": "打开审查抽屉",
+  },
+  "settings.btn.ariaLabel": { en: "Settings", "zh-CN": "设置" },
+  "fileComments.tooltip": {
+    en: "File-level findings",
+    "zh-CN": "文件级审查项",
+  },
+  "fileFinding.title": {
+    en: "File-level findings",
+    "zh-CN": "文件级审查项",
+  },
   "toolbar.lang.toggle": { en: "EN | 中文", "zh-CN": "中文 | EN" },
   "toolbar.lang.ariaLabel": {
     en: "Switch interface language",
