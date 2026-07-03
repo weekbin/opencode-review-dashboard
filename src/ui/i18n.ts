@@ -233,6 +233,29 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "Previously discussed (prior round notes + comment threads)",
     "zh-CN": "历史讨论（上一轮笔记 + 评论线程）",
   },
+  "saveIndicator.title": { en: "Auto-save status", "zh-CN": "自动保存状态" },
+  "toolbar.layout.unified.title": {
+    en: "Unified diff (stacked)",
+    "zh-CN": "合并 diff（堆叠）",
+  },
+  "toolbar.layout.split.title": {
+    en: "Split diff (side-by-side)",
+    "zh-CN": "分屏 diff（并排）",
+  },
+  "submitReview.title": {
+    en: "Submit this review round (your round notes are above)",
+    "zh-CN": "提交本轮审查（笔记在上方）",
+  },
+  "sidebar.mode.tree.title": { en: "Tree view", "zh-CN": "树状视图" },
+  "sidebar.mode.flat.title": { en: "Flat list", "zh-CN": "平铺列表" },
+  "conversation.sort.title": {
+    en: "Sort findings in this Conversation panel",
+    "zh-CN": "在对话面板中排序审查项",
+  },
+  "previously.filter.title": {
+    en: "Filter previously-discussed by round",
+    "zh-CN": "按轮次筛选历史讨论",
+  },
   "sidebar.tree": { en: "Tree", "zh-CN": "树状" },
   "sidebar.flat": { en: "Flat", "zh-CN": "平铺" },
   "sidebar.reviewProgress": {
