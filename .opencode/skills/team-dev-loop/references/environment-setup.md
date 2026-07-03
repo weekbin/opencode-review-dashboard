@@ -445,7 +445,7 @@ playwright-cli open https://example.com → "### Browser `default` opened with p
 
 - `references/sync-spec.md` — Phase -0 Sync protocol (add tool pre-flight step)
 - `references/v5-prompts.md` — *(removed in R48; v6 doesn't use PM/Planner subagents)*
-- `references/pre-commit-audit-spec.md` — Phase 2.5 (depends on `git`, `grep`)
+- `references/pre-commit-audit-spec.md` — *(removed in R49; v6 Capability 5 uses `.husky/pre-commit`)*
 - `.opencode/skills/review-dashboard-ui-test/SKILL.md` — UI test harness (depends on `playwright-cli`)
 
 ---
