@@ -126,6 +126,14 @@ type CommitInfo = {
   files: string[];
 };
 
+type RoundSystemNoteClient = {
+  id: string;
+  round: number;
+  kind: string;
+  text: string;
+  generated_at: number;
+};
+
 type Launch = {
   id: string;
   session_id: string;
@@ -150,6 +158,7 @@ type Launch = {
   diff_base?: DiffBase;
   previous_diff_base?: DiffBase;
   range_changed_from_last_round?: boolean;
+  roundSystemNotes?: RoundSystemNoteClient[];
 };
 
 type Meta = {
@@ -3528,7 +3537,26 @@ function renderConversationPane() {
   // R8 #1: search bar at top of the Conversation pane.
   conversationListRoot.appendChild(renderSearchInput("conversation"));
   updateConversationFilterCounts();
+  renderRoundSystemNotes(conversationListRoot);
   renderConversationPanel(conversationListRoot);
+}
+
+function renderRoundSystemNotes(root: HTMLElement): void {
+  const notes = state.data?.roundSystemNotes ?? [];
+  if (notes.length === 0) return;
+  const latest = notes[notes.length - 1];
+  if (!latest) return;
+  const wrapper = document.createElement("section");
+  wrapper.className = "round-system-note";
+  wrapper.setAttribute("aria-live", "polite");
+  const heading = document.createElement("h4");
+  heading.textContent = t("summary.silentRound.heading", { round: String(latest.round) });
+  wrapper.appendChild(heading);
+  const body = document.createElement("pre");
+  body.className = "round-system-note-text";
+  body.textContent = latest.text;
+  wrapper.appendChild(body);
+  root.appendChild(wrapper);
 }
 
 function updateConversationFilterCounts(): void {

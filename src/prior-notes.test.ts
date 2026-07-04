@@ -182,7 +182,8 @@ describe("AC9 — State + Finding type shapes are unchanged", () => {
     // Snapshot taken from src/index.ts at R4 baseline (870a507). Additive
     // type additions update the snapshot intentionally: R112 #76 extended
     // the `kind` union with "out_of_diff"; R113 #77 added "content_match"
-    // to close_reason for content-hash auto-resolve. Both are strict
+    // to close_reason for content-hash auto-resolve; R114 #82 added
+    // roundSystemNotes?: RoundSystemNote[] to State. All are strict
     // subset extensions — old state.json files continue to deserialize.
     const expectedState = [
       "type State = {",
@@ -192,6 +193,7 @@ describe("AC9 — State + Finding type shapes are unchanged", () => {
       "  draft?: Draft;",
       "  diff_base?: DiffBase;",
       "  previous_diff_base?: DiffBase;",
+      "  roundSystemNotes?: RoundSystemNote[];",
       "  updated_at: number;",
       "};",
     ].join("\n");

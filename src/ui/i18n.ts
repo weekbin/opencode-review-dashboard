@@ -98,6 +98,14 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     "zh-CN": "本轮的可选全局笔记",
   },
   "submit.footprint.heading": { en: "Expected apply footprint", "zh-CN": "预计影响范围" },
+  "summary.silentRound.heading": {
+    en: "Round {round} silent-round summary",
+    "zh-CN": "第 {round} 轮静默汇总",
+  },
+  "summary.silentRound.body": {
+    en: "0 new findings and 0 new notes were submitted this round. State is preserved with a template summary so future grep can trace what happened.",
+    "zh-CN": "本轮未提交新审查项与新笔记。系统生成模板汇总以便后续回溯。",
+  },
   "submit.footprint.body": {
     en: "Rough estimate of files and primary categories the agent will touch this round.",
     "zh-CN": "本轮 agent 将涉及的文件与主要类别的粗略估算。",

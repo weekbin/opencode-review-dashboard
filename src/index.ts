@@ -79,6 +79,21 @@ type FindingAuditRow = {
   by: string;
 };
 
+type RoundSystemNote = {
+  id: string;
+  round: number;
+  kind: "silent_round_summary";
+  text: string;
+  payload: {
+    files_changed: Array<{ file: string; add: number; del: number }>;
+    findings_resolved_in_round: Array<{ id: string; resolution_kind: string }>;
+    findings_closed_auto: Array<{ id: string; close_reason: string }>;
+    findings_carried_open: Array<{ id: string; file: string; line: number; summary: string }>;
+  };
+  generator_version: string;
+  generated_at: number;
+};
+
 type Finding = {
   id: string;
   round: number;
@@ -148,6 +163,7 @@ type State = {
   draft?: Draft;
   diff_base?: DiffBase;
   previous_diff_base?: DiffBase;
+  roundSystemNotes?: RoundSystemNote[];
   updated_at: number;
 };
 
@@ -215,6 +231,7 @@ type Launch = {
   diff_base?: DiffBase;
   previous_diff_base?: DiffBase;
   range_changed_from_last_round?: boolean;
+  roundSystemNotes?: RoundSystemNote[];
 };
 
 type Submit = {
@@ -656,6 +673,95 @@ async function readPriorNotesFromSession(
   }
   rounds.sort((a, b) => a.round - b.round);
   return { ok: true, rounds };
+}
+
+const ROUND_SYSTEM_NOTES_CAP = 50;
+const ROUND_SUMMARY_GENERATOR_VERSION = "v1";
+
+function detectSilentRound(opts: { freshCount: number; notes: string }): boolean {
+  return opts.freshCount === 0 && opts.notes.trim() === "";
+}
+
+function renderSilentRoundTemplate(opts: {
+  round: number;
+  filesChanged: Array<{ file: string; add: number; del: number }>;
+  resolved: Array<{ id: string; resolution_kind: string }>;
+  closedAuto: Array<{ id: string; close_reason: string }>;
+  carriedOpen: Array<{ id: string; file: string; line: number; summary: string }>;
+}): string {
+  const filesTable =
+    opts.filesChanged.length === 0
+      ? "_(no files changed)_"
+      : [
+          "| File | +Lines | -Lines |",
+          "|------|-------|--------|",
+          ...opts.filesChanged.map((f) => `| ${f.file} | +${f.add} | -${f.del} |`),
+        ].join("\n");
+  const lines = [
+    `## Round ${opts.round} auto-summary (silent round · 0 new findings · 0 new notes)`,
+    "",
+    "**Files changed since round N-1:**",
+    filesTable,
+    "",
+    "**Findings state transitions:**",
+    `- ${opts.resolved.length} resolved`,
+    `- ${opts.closedAuto.length} auto-closed`,
+    `- 0 manually reopened`,
+    "",
+    "**Open findings carried forward (N → N+1):**",
+    ...(opts.carriedOpen.length === 0
+      ? ["_(none)_"]
+      : opts.carriedOpen.map((f) => `- ${f.id} · ${f.file}:${f.line} · "${f.summary}"`)),
+    "",
+    `**Generator version:** ${ROUND_SUMMARY_GENERATOR_VERSION}`,
+  ];
+  return lines.join("\n");
+}
+
+function generateRoundSystemNote(opts: {
+  round: number;
+  previousFindings: Finding[];
+  nextFindings: Finding[];
+  filesChanged: Array<{ file: string; add: number; del: number }>;
+}): RoundSystemNote {
+  const previousIds = new Set(opts.previousFindings.map((f) => f.id));
+  const resolved = opts.nextFindings
+    .filter((f) => f.status === "resolved" && previousIds.has(f.id))
+    .map((f) => ({
+      id: f.id,
+      resolution_kind: f.resolution_kind ?? "manual",
+    }));
+  const closedAuto = opts.nextFindings
+    .filter((f) => f.status === "closed_auto" && previousIds.has(f.id))
+    .map((f) => ({ id: f.id, close_reason: f.close_reason ?? "anchor_missing" }));
+  const carriedOpen = opts.nextFindings
+    .filter((f) => f.status === "open")
+    .map((f) => ({
+      id: f.id,
+      file: f.file,
+      line: f.start_line,
+      summary: f.comment.slice(0, 80),
+    }));
+  return {
+    id: `sysnote_${opts.round}_${Date.now().toString(36)}`,
+    round: opts.round,
+    kind: "silent_round_summary",
+    text: renderSilentRoundTemplate({
+      round: opts.round,
+      filesChanged: opts.filesChanged,
+      resolved,
+      closedAuto,
+      carriedOpen,
+    }),
+    payload: {
+      files_changed: opts.filesChanged,
+      findings_resolved_in_round: resolved,
+      findings_closed_auto: closedAuto,
+      findings_carried_open: carriedOpen,
+    },
+    generator_version: ROUND_SUMMARY_GENERATOR_VERSION,
+    generated_at: Date.now(),
+  };
 }
 
 function markdown(input: {
@@ -1770,6 +1876,7 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
             diff_base: source.diffBase,
             previous_diff_base: priorDiffBase,
             range_changed_from_last_round,
+            roundSystemNotes: base.roundSystemNotes,
           };
 
           const map = new Map(files.map((item) => [item.path, item]));
@@ -2362,6 +2469,7 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
               const carry = base.findings.filter((item) => item.status === "open");
               const closed = base.findings.filter((item) => item.status !== "open");
               const findings = [...closed, ...carry, ...created];
+              const previousFindings = base.findings;
               const next: State = {
                 ...base,
                 round,
@@ -2371,6 +2479,25 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                 draft: undefined,
                 updated_at: Date.now(),
               };
+              if (detectSilentRound({ freshCount: created.length, notes })) {
+                const filesChanged = Object.values(map).map((file) => ({
+                  file: file.path,
+                  add: file.additions,
+                  del: file.deletions,
+                }));
+                const note = generateRoundSystemNote({
+                  round,
+                  previousFindings,
+                  nextFindings: findings,
+                  filesChanged,
+                });
+                const prior = next.roundSystemNotes ?? [];
+                const cap =
+                  prior.length >= ROUND_SYSTEM_NOTES_CAP
+                    ? prior.slice(prior.length - ROUND_SYSTEM_NOTES_CAP + 1)
+                    : prior;
+                next.roundSystemNotes = [...cap, note];
+              }
               await saveState(state_file, next);
 
               const stamp = String(round).padStart(3, "0");
