@@ -3700,6 +3700,7 @@ type ConversationEntry = {
   comment: string;
   status: string;
   kind?: string;
+  anchor?: { before: string; selected: string; after: string };
   origin: "existing" | "new";
   created_at: number;
   manually_reopened?: boolean;
@@ -4375,15 +4376,30 @@ function renderConversationPanel(root: HTMLElement) {
     const resolutionKindBadge = entry.resolution_kind
       ? `<span class="badge badge-resolution-${escapeHtml(entry.resolution_kind)}" title="${escapeHtml(t("badge.resolution.tooltip", { kind: entry.resolution_kind, reason: entry.resolution_reason ? ` — ${entry.resolution_reason}` : "" }))}">${escapeHtml(entry.resolution_kind)}</span>`
       : "";
+    const outOfDiffBadge =
+      entry.kind === "out_of_diff"
+        ? `<span class="badge badge-out-of-diff" title="${escapeHtml(t("conversation.outOfDiff"))}">${escapeHtml(t("conversation.outOfDiff"))}</span>`
+        : "";
     badgesRow.innerHTML = [
       `<span class="badge ${entry.severity}">${escapeHtml(entry.severity)}</span>`,
       `<span class="badge">${escapeHtml(entry.category)}</span>`,
       `<span class="badge">${escapeHtml(entry.kind ?? "line")}</span>`,
       editedBadge,
       resolutionKindBadge,
+      outOfDiffBadge,
     ].join("");
     subhead.appendChild(badgesRow);
     item.appendChild(subhead);
+
+    // R112 #80 — render anchor code snippet above comment body so reviewers
+    // can see what code each finding references without clicking jump.
+    const snippet = entry.anchor?.selected;
+    if (snippet && snippet.trim()) {
+      const snippetEl = document.createElement("pre");
+      snippetEl.className = "conversation-snippet";
+      snippetEl.textContent = snippet;
+      item.appendChild(snippetEl);
+    }
 
     const body = document.createElement("div");
     body.className = "conversation-body";
@@ -4638,12 +4654,12 @@ function renderConversationPanel(root: HTMLElement) {
   if (selectedFindings.size > 0) {
     const bulkToolbar = document.createElement("div");
     bulkToolbar.className = "conversation-bulk-toolbar";
-    const bulkBtn = document.createElement("button");
-    bulkBtn.className = "conversation-bulk-delete";
-    bulkBtn.setAttribute("data-i18n", "conversation.bulkDelete");
-    bulkBtn.textContent = `${t("conversation.bulkDelete")} (${selectedFindings.size})`;
-    bulkBtn.addEventListener("click", () => {
-      const toDelete = [...selectedFindings];
+
+    const bulkDeleteBtn = document.createElement("button");
+    bulkDeleteBtn.className = "conversation-bulk-delete";
+    bulkDeleteBtn.setAttribute("data-i18n", "conversation.bulkDelete");
+    bulkDeleteBtn.textContent = `${t("conversation.bulkDelete")} (${selectedFindings.size})`;
+    bulkDeleteBtn.addEventListener("click", () => {
       state.fresh = state.fresh.filter((f) => !selectedFindings.has(f.id));
       state.existing = state.existing.filter((f) => !selectedFindings.has(f.id));
       selectedFindings.clear();
@@ -4652,7 +4668,27 @@ function renderConversationPanel(root: HTMLElement) {
       syncAll();
       scheduleSave();
     });
-    bulkToolbar.appendChild(bulkBtn);
+    bulkToolbar.appendChild(bulkDeleteBtn);
+
+    // R112 #75 — mirror bulk-delete with bulk-resolve (parity gap with R26).
+    const bulkResolveBtn = document.createElement("button");
+    bulkResolveBtn.className = "conversation-bulk-resolve";
+    bulkResolveBtn.setAttribute("data-i18n", "conversation.bulkResolve");
+    bulkResolveBtn.textContent = `${t("conversation.bulkResolve")} (${selectedFindings.size})`;
+    bulkResolveBtn.addEventListener("click", async () => {
+      const ids = [...selectedFindings];
+      if (ids.length === 0) return;
+      const result = await showResolveReasonModal("");
+      if (result === null) return;
+      for (const id of ids) {
+        await resolveFinding(id, { reason: result.reason });
+      }
+      selectedFindings.clear();
+      renderConversationPane();
+      syncAll();
+    });
+    bulkToolbar.appendChild(bulkResolveBtn);
+
     root.appendChild(bulkToolbar);
   }
 }

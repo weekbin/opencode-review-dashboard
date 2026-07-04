@@ -91,7 +91,7 @@ type Finding = {
   comment: string;
   status: "open" | "closed_auto" | "resolved";
   anchor: Anchor;
-  kind: "line" | "file";
+  kind: "line" | "file" | "out_of_diff";
   created_at: number;
   updated_at: number;
   closed_at?: number;
@@ -120,7 +120,7 @@ type DraftFinding = {
   category: Category;
   severity: Severity;
   comment: string;
-  kind?: "line" | "file";
+  kind?: "line" | "file" | "out_of_diff";
 };
 
 type Draft = {
@@ -437,10 +437,11 @@ function sanitize(items: DraftFinding[], round: number, files: Map<string, Revie
     if (!isSeverity(item.severity)) return [];
     if (!Number.isFinite(item.start_line) || !Number.isFinite(item.end_line)) return [];
 
-    const file = files.get(item.file);
-    if (!file) return [];
+    const kind: "line" | "file" | "out_of_diff" =
+      item.kind === "file" ? "file" : item.kind === "out_of_diff" ? "out_of_diff" : "line";
 
-    const kind: "line" | "file" = item.kind === "file" ? "file" : "line";
+    const file = files.get(item.file);
+    if (!file && kind !== "out_of_diff") return [];
 
     const start_line =
       kind === "file" ? 0 : Math.max(1, Math.floor(Math.min(item.start_line, item.end_line)));
@@ -450,15 +451,17 @@ function sanitize(items: DraftFinding[], round: number, files: Map<string, Revie
         : Math.max(start_line, Math.floor(Math.max(item.start_line, item.end_line)));
 
     let next: Anchor;
-    if (kind === "file") {
-      const fullSource = file.after || file.before;
+    if (kind === "out_of_diff") {
+      next = { before: "", selected: "", after: "" };
+    } else if (kind === "file") {
+      const fullSource = file!.after || file!.before;
       next = {
         before: "",
         selected: fullSource.slice(0, Math.min(200, fullSource.length)),
         after: "",
       };
     } else {
-      const source = item.side === "deletions" ? file.before : file.after;
+      const source = item.side === "deletions" ? file!.before : file!.after;
       next = anchor(source, start_line, end_line);
       if (!next.selected.trim()) return [];
     }

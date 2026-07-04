@@ -272,6 +272,8 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   },
   "sidebar.files": { en: "Files changed", "zh-CN": "变更文件" },
   "sidebar.commits": { en: "Commits", "zh-CN": "提交" },
+  "sidebar.allFiles": { en: "All working-tree files", "zh-CN": "工作树全部文件" },
+  "conversation.outOfDiff": { en: "Out of diff", "zh-CN": "在 diff 外" },
   "commits.toggle.ariaLabel": {
     en: "Toggle commit files",
     "zh-CN": "切换提交文件显示",
@@ -371,6 +373,7 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "search.diff.next": { en: "Next match (Enter)", "zh-CN": "下一个匹配（Enter）" },
   "search.diff.close": { en: "Close (Escape)", "zh-CN": "关闭（Escape）" },
   "conversation.bulkDelete": { en: "Delete selected findings", "zh-CN": "删除选中的 finding" },
+  "conversation.bulkResolve": { en: "Resolve selected findings", "zh-CN": "解决选中的 finding" },
   "conversation.selected": { en: "Selected", "zh-CN": "已选" },
   "conversation.findings.selectAll.ariaLabel": {
     en: "Select all visible findings",

@@ -179,9 +179,11 @@ describe("readPriorNotesFromSession", () => {
 
 describe("AC9 — State + Finding type shapes are unchanged", () => {
   it("T5.1 State and Finding type declarations match the snapshot", async () => {
-    // Snapshot taken from src/index.ts at R4 baseline (870a507). If this
-    // test fails, the dev added a new field to the State or Finding type,
-    // which is forbidden by the audit-trail integrity rule.
+    // Snapshot taken from src/index.ts at R4 baseline (870a507). Additive
+    // type additions update the snapshot intentionally: R112 #76 extended
+    // the `kind` union with "out_of_diff" for non-diff file anchoring
+    // (existing "line" | "file" preserved, strict subset semantics — old
+    // state.json files continue to deserialize unchanged).
     const expectedState = [
       "type State = {",
       "  session_id: string;",
@@ -207,7 +209,7 @@ describe("AC9 — State + Finding type shapes are unchanged", () => {
       "  comment: string;",
       '  status: "open" | "closed_auto" | "resolved";',
       "  anchor: Anchor;",
-      '  kind: "line" | "file";',
+      '  kind: "line" | "file" | "out_of_diff";',
       "  created_at: number;",
       "  updated_at: number;",
       "  closed_at?: number;",
