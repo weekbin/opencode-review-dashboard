@@ -1,6 +1,6 @@
 {
-  "total": 775,
-  "at": "2026-07-04T13:40:00Z",
+  "total": 783,
+  "at": "2026-07-04T13:50:00Z",
   "regex": "\\b(?:it|test)\\(\\s*['\"]",
-  "note": "R106 baseline — gap #9 fix. 22 i18n rounds (R82-R101) + 4 gap-fix rounds (R102-R105) touched source. count must not regress."
+  "note": "R111 re-baseline. Walker covers src/**/*.test.ts only. Bun reports 807 (includes scripts/test-review-ui/state-endpoint.test.mjs which has 4 tests + scripts/test-review-ui/r110 has more). R106 walker IS the contract; bun count is informational."
 }
