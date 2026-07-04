@@ -256,6 +256,26 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "Filter previously-discussed by round",
     "zh-CN": "按轮次筛选历史讨论",
   },
+  "conversation.filter.open.title": {
+    en: "Show only unresolved",
+    "zh-CN": "仅显示未解决",
+  },
+  "conversation.filter.resolved.title": {
+    en: "Show only resolved",
+    "zh-CN": "仅显示已解决",
+  },
+  "conversation.filter.all.title": {
+    en: "Show all including resolved",
+    "zh-CN": "显示全部（含已解决）",
+  },
+  "conversation.filter.pinned.title": {
+    en: "Show only pinned findings",
+    "zh-CN": "仅显示置顶审查项",
+  },
+  "conversation.filter.reacted.title": {
+    en: "Show only reacted findings",
+    "zh-CN": "仅显示有表情反应的审查项",
+  },
   "sidebar.tree": { en: "Tree", "zh-CN": "树状" },
   "sidebar.flat": { en: "Flat", "zh-CN": "平铺" },
   "sidebar.reviewProgress": {
