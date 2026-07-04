@@ -1,0 +1,6 @@
+{
+  "total": 775,
+  "at": "2026-07-04T13:40:00Z",
+  "regex": "\\b(?:it|test)\\(\\s*['\"]",
+  "note": "R106 baseline — gap #9 fix. 22 i18n rounds (R82-R101) + 4 gap-fix rounds (R102-R105) touched source. count must not regress."
+}
