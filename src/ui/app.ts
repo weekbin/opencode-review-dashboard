@@ -5979,13 +5979,13 @@ async function init() {
 
   const response = await fetch(endpoint("")).catch(() => undefined);
   if (!response?.ok) {
-    setStatus("Failed to load review payload", true);
+    setStatus(t("status.loadFailed"), true);
     return;
   }
 
   const data = await response.json().catch(() => undefined);
   if (!data) {
-    setStatus("Invalid review payload", true);
+    setStatus(t("status.invalidPayload"), true);
     return;
   }
 

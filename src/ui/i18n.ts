@@ -477,6 +477,14 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "Invalid review URL",
     "zh-CN": "无效的审查 URL",
   },
+  "status.loadFailed": {
+    en: "Failed to load review payload",
+    "zh-CN": "加载审查数据失败",
+  },
+  "status.invalidPayload": {
+    en: "Invalid review payload",
+    "zh-CN": "无效的审查数据",
+  },
   "skipLink": { en: "Skip to main content", "zh-CN": "跳到主要内容" },
   "modal.submit.title": { en: "Submit review?", "zh-CN": "提交审查?" },
   "modal.submit.confirm": { en: "Submit", "zh-CN": "提交" },
