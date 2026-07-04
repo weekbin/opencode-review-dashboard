@@ -20,6 +20,7 @@ const sides = ["additions", "deletions"] as const;
 type Category = (typeof categories)[number];
 type Severity = (typeof severities)[number];
 type Side = (typeof sides)[number];
+type FindingStatus = "open" | "closed_auto" | "resolved";
 
 type Anchor = {
   before: string;
@@ -71,10 +72,17 @@ const RESOLUTION_KIND_WHITELIST: ReadonlySet<FindingResolutionKind> = new Set([
 function isFindingResolutionKind(input: unknown): input is FindingResolutionKind {
   return typeof input === "string" && RESOLUTION_KIND_WHITELIST.has(input as FindingResolutionKind);
 }
+function isFindingStatus(input: unknown): input is FindingStatus {
+  return input === "open" || input === "closed_auto" || input === "resolved";
+}
 
 type FindingAuditRow = {
   before: Pick<Finding, "category" | "severity" | "comment">;
   after: Pick<Finding, "category" | "severity" | "comment">;
+  before_anchor?: { file: string; start_line: number; end_line: number };
+  after_anchor?: { file: string; start_line: number; end_line: number };
+  before_status?: FindingStatus;
+  after_status?: FindingStatus;
   at: number;
   by: string;
 };
@@ -2244,11 +2252,34 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                 category?: string;
                 severity?: string;
                 comment?: string;
+                file?: string;
+                start_line?: number;
+                end_line?: number;
+                status?: FindingStatus;
               };
               const hasCategory = typeof input.category === "string";
               const hasSeverity = typeof input.severity === "string";
               const hasComment = typeof input.comment === "string";
-              if (!hasCategory && !hasSeverity && !hasComment) {
+              const hasFile = typeof input.file === "string" && (input.file as string).length > 0;
+              const hasStartLine =
+                typeof input.start_line === "number" &&
+                Number.isInteger(input.start_line) &&
+                (input.start_line as number) >= 0;
+              const hasEndLine =
+                typeof input.end_line === "number" &&
+                Number.isInteger(input.end_line) &&
+                (input.end_line as number) >= 0;
+              const hasStatus =
+                typeof input.status === "string" && isFindingStatus(input.status as string);
+              if (
+                !hasCategory &&
+                !hasSeverity &&
+                !hasComment &&
+                !hasFile &&
+                !hasStartLine &&
+                !hasEndLine &&
+                !hasStatus
+              ) {
                 return new Response(JSON.stringify({ error: "no fields to update" }), {
                   status: 400,
                   headers: { "content-type": "application/json" },
@@ -2272,6 +2303,22 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                   headers: { "content-type": "application/json" },
                 });
               }
+              if (
+                hasStartLine &&
+                hasEndLine &&
+                (input.end_line as number) < (input.start_line as number)
+              ) {
+                return new Response(JSON.stringify({ error: "end_line must be >= start_line" }), {
+                  status: 400,
+                  headers: { "content-type": "application/json" },
+                });
+              }
+              if (hasFile && !map.has(input.file as string)) {
+                return new Response(
+                  JSON.stringify({ error: `file not in current diff: ${input.file}` }),
+                  { status: 409, headers: { "content-type": "application/json" } },
+                );
+              }
               const target = base.findings.find((item) => item.id === findingId);
               if (!target) {
                 return new Response(JSON.stringify({ error: "finding not found" }), {
@@ -2284,6 +2331,12 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                 severity: target.severity,
                 comment: target.comment,
               };
+              const beforeAnchor = {
+                file: target.file,
+                start_line: target.start_line,
+                end_line: target.end_line,
+              };
+              const beforeStatus: FindingStatus = target.status;
               const changes: string[] = [];
               if (hasCategory && input.category !== target.category) {
                 changes.push(`category ${target.category}→${input.category}`);
@@ -2297,9 +2350,34 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                 changes.push("comment updated");
                 target.comment = input.comment as string;
               }
+              if (hasFile && input.file !== target.file) {
+                changes.push(`file ${target.file}→${input.file}`);
+                target.file = input.file as string;
+              }
+              if (hasStartLine && input.start_line !== target.start_line) {
+                changes.push(`start_line ${target.start_line}→${input.start_line}`);
+                target.start_line = input.start_line as number;
+              }
+              if (hasEndLine && input.end_line !== target.end_line) {
+                changes.push(`end_line ${target.end_line}→${input.end_line}`);
+                target.end_line = input.end_line as number;
+              }
+              if (hasStatus && input.status !== target.status) {
+                changes.push(`status ${target.status}→${input.status}`);
+                target.status = input.status as FindingStatus;
+              }
+              const anchorChanged = hasFile || hasStartLine || hasEndLine;
+              const statusChanged = hasStatus;
+              if (anchorChanged) {
+                target.kind = map.has(target.file)
+                  ? target.start_line > 0
+                    ? "line"
+                    : "file"
+                  : "out_of_diff";
+              }
               if (changes.length > 0) {
                 target.audit_log = target.audit_log ?? [];
-                target.audit_log.push({
+                const auditRow: FindingAuditRow = {
                   before,
                   after: {
                     category: target.category,
@@ -2308,7 +2386,20 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                   },
                   at: Date.now(),
                   by: "user",
-                });
+                };
+                if (anchorChanged) {
+                  auditRow.before_anchor = beforeAnchor;
+                  auditRow.after_anchor = {
+                    file: target.file,
+                    start_line: target.start_line,
+                    end_line: target.end_line,
+                  };
+                }
+                if (statusChanged) {
+                  auditRow.before_status = beforeStatus;
+                  auditRow.after_status = target.status;
+                }
+                target.audit_log.push(auditRow);
                 if (target.audit_log.length > 10) target.audit_log = target.audit_log.slice(-10);
               }
               target.manually_edited = true;

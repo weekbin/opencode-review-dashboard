@@ -54,6 +54,17 @@ type Reaction = {
 // R9/R10/R11/R12 additive field pattern. Old state.json payloads
 // (no `resolve_reason` / `resolution_kind`) load without errors.
 type FindingResolutionKind = "wontfix" | "out_of_scope" | "false_positive" | "duplicate";
+
+type AuditLogRow = {
+  before: Pick<Finding, "category" | "severity" | "comment">;
+  after: Pick<Finding, "category" | "severity" | "comment">;
+  before_anchor?: { file: string; start_line: number; end_line: number };
+  after_anchor?: { file: string; start_line: number; end_line: number };
+  before_status?: "open" | "closed_auto" | "resolved";
+  after_status?: "open" | "closed_auto" | "resolved";
+  at: number;
+  by: string;
+};
 const RESOLUTION_KIND_WHITELIST: ReadonlySet<FindingResolutionKind> = new Set([
   "wontfix",
   "out_of_scope",
@@ -3788,7 +3799,7 @@ type ConversationEntry = {
   resolved_at?: number;
   resolution_kind?: FindingResolutionKind;
   resolution_reason?: string;
-  audit_log?: { at: number; by: string }[];
+  audit_log?: AuditLogRow[];
 };
 
 function formatRelativeTime(ts: number): string {
@@ -4336,12 +4347,29 @@ function renderConversationPanel(root: HTMLElement) {
         category: entry.category,
         severity: entry.severity,
         comment: entry.comment,
+        file: entry.file,
+        start_line: entry.start_line,
+        end_line: entry.end_line,
+        status: entry.status,
       });
       if (!fields) return;
-      const patch: { category?: string; severity?: string; comment?: string } = {};
+      const patch: {
+        category?: string;
+        severity?: string;
+        comment?: string;
+        file?: string;
+        start_line?: number;
+        end_line?: number;
+        status?: "open" | "closed_auto" | "resolved";
+      } = {};
       if (fields.category !== entry.category) patch.category = fields.category;
       if (fields.severity !== entry.severity) patch.severity = fields.severity;
       if (fields.comment !== entry.comment) patch.comment = fields.comment;
+      if (fields.file !== entry.file) patch.file = fields.file;
+      if (fields.start_line !== entry.start_line) patch.start_line = fields.start_line;
+      if (fields.end_line !== entry.end_line) patch.end_line = fields.end_line;
+      if (fields.status !== entry.status)
+        patch.status = fields.status as "open" | "closed_auto" | "resolved";
       if (Object.keys(patch).length === 0) {
         setStatus(t("status.noChangesToSave"));
         return;
@@ -4473,6 +4501,10 @@ function renderConversationPanel(root: HTMLElement) {
     const body = document.createElement("div");
     body.className = "conversation-body";
     body.textContent = entry.comment;
+    body.title = t("editFinding.inlineEdit.hint");
+    body.addEventListener("click", () => {
+      if (entry.id) startInlineCommentEdit(entry.id, entry.comment, body);
+    });
     item.appendChild(body);
 
     if (entry.id) {
@@ -4537,14 +4569,7 @@ function renderConversationPanel(root: HTMLElement) {
       }
     }
 
-    const auditLog = (entry as any).audit_log as
-      | Array<{
-          before: { category: string; severity: string; comment: string };
-          after: { category: string; severity: string; comment: string };
-          at: number;
-          by: string;
-        }>
-      | undefined;
+    const auditLog = entry.audit_log;
     if (auditLog && auditLog.length > 0) {
       const auditDisclosure = document.createElement("details");
       auditDisclosure.className = "audit-disclosure";
@@ -4563,6 +4588,35 @@ function renderConversationPanel(root: HTMLElement) {
             t("audit.severity", { before: row.before.severity, after: row.after.severity }),
           );
         if (row.before.comment !== row.after.comment) changes.push(t("audit.commentUpdated"));
+        if (row.before_anchor && row.after_anchor) {
+          if (row.before_anchor.file !== row.after_anchor.file) {
+            changes.push(
+              t("audit.fileUpdated", {
+                before: row.before_anchor.file,
+                after: row.after_anchor.file,
+              }),
+            );
+          }
+          const beforeRange = `${row.before_anchor.start_line}-${row.before_anchor.end_line}`;
+          const afterRange = `${row.after_anchor.start_line}-${row.after_anchor.end_line}`;
+          if (beforeRange !== afterRange) {
+            changes.push(t("audit.lineUpdated", { before: beforeRange, after: afterRange }));
+          }
+        } else if (row.after_anchor && !row.before_anchor) {
+          changes.push(
+            t("audit.anchorUpdated", {
+              after: `${row.after_anchor.file}:${row.after_anchor.start_line}-${row.after_anchor.end_line}`,
+            }),
+          );
+        }
+        if (row.before_status && row.after_status && row.before_status !== row.after_status) {
+          changes.push(
+            t("audit.statusUpdated", {
+              before: row.before_status,
+              after: row.after_status,
+            }),
+          );
+        }
         const changeText = changes.length > 0 ? changes.join(", ") : t("audit.noChanges");
         const rowEl = document.createElement("div");
         rowEl.className = "audit-trail-row";
@@ -5414,7 +5468,15 @@ async function addComment(id: string, text: string) {
 
 async function editFinding(
   id: string,
-  fields: { category?: string; severity?: string; comment?: string },
+  fields: {
+    category?: string;
+    severity?: string;
+    comment?: string;
+    file?: string;
+    start_line?: number;
+    end_line?: number;
+    status?: "open" | "closed_auto" | "resolved";
+  },
 ): Promise<boolean> {
   const response = await fetch(endpoint(`/findings/${id}`), {
     method: "PATCH",
@@ -5442,6 +5504,62 @@ async function editFinding(
   syncAll();
   setStatus(t("status.findingEdited"));
   return true;
+}
+
+function startInlineCommentEdit(id: string, currentText: string, bodyEl: HTMLElement): void {
+  const textarea = document.createElement("textarea");
+  textarea.className = "inline-comment-edit";
+  textarea.value = currentText;
+  textarea.rows = Math.max(2, Math.ceil(currentText.length / 60));
+  textarea.maxLength = 2000;
+  const original = bodyEl.textContent ?? currentText;
+  bodyEl.replaceWith(textarea);
+  textarea.focus();
+  textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+
+  let committed = false;
+  const restore = (text: string) => {
+    bodyEl.textContent = text;
+    bodyEl.title = t("editFinding.inlineEdit.hint");
+    bodyEl.onclick = () => {
+      startInlineCommentEdit(id, text, bodyEl);
+    };
+    textarea.replaceWith(bodyEl);
+  };
+  const commit = async () => {
+    if (committed) return;
+    committed = true;
+    const next = textarea.value.trim();
+    if (next === original) {
+      restore(original);
+      return;
+    }
+    const ok = await editFinding(id, { comment: next });
+    if (!ok) {
+      restore(original);
+      return;
+    }
+    const item = state.existing.find((f) => f.id === id) ?? state.fresh.find((f) => f.id === id);
+    const finalText = item?.comment ?? next;
+    restore(finalText);
+    setStatus(t("editFinding.commentUpdated"));
+  };
+  const cancel = () => {
+    committed = true;
+    restore(original);
+  };
+  textarea.addEventListener("blur", () => {
+    void commit();
+  });
+  textarea.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      cancel();
+    } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      void commit();
+    }
+  });
 }
 
 async function pinFinding(id: string): Promise<void> {
@@ -5533,7 +5651,19 @@ function showEditFindingModal(finding: {
   category: string;
   severity: string;
   comment: string;
-}): Promise<{ category: string; severity: string; comment: string } | null> {
+  file: string;
+  start_line: number;
+  end_line: number;
+  status: string;
+}): Promise<{
+  category: string;
+  severity: string;
+  comment: string;
+  file: string;
+  start_line: number;
+  end_line: number;
+  status: string;
+} | null> {
   return new Promise((resolve) => {
     const categories = state.data?.taxonomy.categories ?? [];
     const severities = state.data?.taxonomy.severities ?? [];
@@ -5549,9 +5679,27 @@ function showEditFindingModal(finding: {
     const sevOptions = severities
       .map((s) => `<option value="${s}"${s === finding.severity ? " selected" : ""}>${s}</option>`)
       .join("");
+    const statusOptions = ["open", "closed_auto", "resolved"]
+      .map(
+        (s) =>
+          `<option value="${s}"${s === finding.status ? " selected" : ""}>${escapeHtml(s)}</option>`,
+      )
+      .join("");
     dialog.innerHTML = `
       <h3>${escapeHtml(t("editFinding.title"))}</h3>
       <p>${escapeHtml(t("editFinding.body"))}</p>
+      <div class="modal-field">
+        <label for="edit-file">${escapeHtml(t("editFinding.fileLabel"))}</label>
+        <input id="edit-file" type="text" value="${escapeHtml(finding.file)}" />
+      </div>
+      <div class="modal-field">
+        <label for="edit-start-line">${escapeHtml(t("editFinding.lineLabel"))} (start)</label>
+        <input id="edit-start-line" type="number" min="0" value="${finding.start_line}" />
+      </div>
+      <div class="modal-field">
+        <label for="edit-end-line">${escapeHtml(t("editFinding.lineLabel"))} (end)</label>
+        <input id="edit-end-line" type="number" min="0" value="${finding.end_line}" />
+      </div>
       <div class="modal-field">
         <label for="edit-category">${escapeHtml(t("editFinding.categoryLabel"))}</label>
         <select id="edit-category">${catOptions}</select>
@@ -5559,6 +5707,10 @@ function showEditFindingModal(finding: {
       <div class="modal-field">
         <label for="edit-severity">${escapeHtml(t("editFinding.severityLabel"))}</label>
         <select id="edit-severity">${sevOptions}</select>
+      </div>
+      <div class="modal-field">
+        <label for="edit-status">${escapeHtml(t("editFinding.statusLabel"))}</label>
+        <select id="edit-status">${statusOptions}</select>
       </div>
       <div class="modal-field">
         <label for="edit-comment">${escapeHtml(t("editFinding.commentLabel"))}</label>
@@ -5575,11 +5727,25 @@ function showEditFindingModal(finding: {
     const categoryEl = dialog.querySelector("#edit-category") as HTMLSelectElement | null;
     const severityEl = dialog.querySelector("#edit-severity") as HTMLSelectElement | null;
     const commentEl = dialog.querySelector("#edit-comment") as HTMLTextAreaElement | null;
+    const fileEl = dialog.querySelector("#edit-file") as HTMLInputElement | null;
+    const startLineEl = dialog.querySelector("#edit-start-line") as HTMLInputElement | null;
+    const endLineEl = dialog.querySelector("#edit-end-line") as HTMLInputElement | null;
+    const statusEl = dialog.querySelector("#edit-status") as HTMLSelectElement | null;
     const cancelBtn = dialog.querySelector("#edit-cancel") as HTMLButtonElement | null;
     const saveBtn = dialog.querySelector("#edit-save") as HTMLButtonElement | null;
     if (commentEl) commentEl.value = finding.comment;
 
-    const closeWith = (value: { category: string; severity: string; comment: string } | null) => {
+    const closeWith = (
+      value: {
+        category: string;
+        severity: string;
+        comment: string;
+        file: string;
+        start_line: number;
+        end_line: number;
+        status: string;
+      } | null,
+    ) => {
       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
       resolve(value);
     };
@@ -5600,10 +5766,16 @@ function showEditFindingModal(finding: {
     });
     saveBtn?.addEventListener("click", () => {
       document.removeEventListener("keydown", onKey);
+      const startLine = Number(startLineEl?.value ?? finding.start_line);
+      const endLine = Number(endLineEl?.value ?? finding.end_line);
       closeWith({
         category: categoryEl?.value ?? finding.category,
         severity: severityEl?.value ?? finding.severity,
         comment: commentEl?.value ?? finding.comment,
+        file: fileEl?.value ?? finding.file,
+        start_line: Number.isFinite(startLine) ? startLine : finding.start_line,
+        end_line: Number.isFinite(endLine) ? endLine : finding.end_line,
+        status: statusEl?.value ?? finding.status,
       });
     });
   });

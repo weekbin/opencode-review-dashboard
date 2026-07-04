@@ -45,7 +45,7 @@ async function readSource(path: string): Promise<string> {
 function patchBlock(src: string): string {
   const handlerIdx = src.indexOf('request.method === "PATCH" && editFindingPathnameMatch');
   if (handlerIdx < 0) return "";
-  return src.slice(handlerIdx, handlerIdx + 6000);
+  return src.slice(handlerIdx, handlerIdx + 9000);
 }
 
 describe("AC2.4 — Finding type + PATCH endpoint + URL pattern", () => {

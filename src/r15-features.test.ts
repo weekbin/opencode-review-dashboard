@@ -129,7 +129,7 @@ describe("AC6 — Audit trail trigger", () => {
 
   it("T15.6b editFinding pushes audit row when changes.length > 0", async () => {
     const src = await readSource(INDEX_TS);
-    expect(src).toMatch(/target\.audit_log\.push\(\{/);
+    expect(src).toMatch(/target\.audit_log\.push\(/);
   });
 });
 

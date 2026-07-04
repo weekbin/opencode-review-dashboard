@@ -136,13 +136,21 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   },
   "editFinding.title": { en: "Edit finding", "zh-CN": "编辑审查项" },
   "editFinding.body": {
-    en: "Update category, severity, or comment. Changes are audited and visible to the agent.",
-    "zh-CN": "更新类别、严重程度或评论。变更会被记录并对 agent 可见。",
+    en: "Update category, severity, comment, anchor, or status. Changes are audited and visible to the agent.",
+    "zh-CN": "更新类别、严重程度、评论、锚点或状态。变更会被记录并对 agent 可见。",
   },
   "editFinding.categoryLabel": { en: "Category", "zh-CN": "类别" },
   "editFinding.severityLabel": { en: "Severity", "zh-CN": "严重程度" },
   "editFinding.commentLabel": { en: "Comment", "zh-CN": "评论" },
+  "editFinding.fileLabel": { en: "File path", "zh-CN": "文件路径" },
+  "editFinding.lineLabel": { en: "Line number", "zh-CN": "行号" },
+  "editFinding.statusLabel": { en: "Status", "zh-CN": "状态" },
   "editFinding.save": { en: "Save", "zh-CN": "保存" },
+  "editFinding.inlineEdit.hint": {
+    en: "Click comment to edit",
+    "zh-CN": "点击评论以编辑",
+  },
+  "editFinding.commentUpdated": { en: "Comment updated", "zh-CN": "评论已更新" },
   "help.modal.title": { en: "Keyboard shortcuts", "zh-CN": "键盘快捷键" },
   "help.modal.intro": {
     en: "Quick reference for the most common shortcuts. Press ? or Esc to close.",
@@ -288,6 +296,22 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "audit.commentUpdated": {
     en: "comment updated",
     "zh-CN": "评论已更新",
+  },
+  "audit.fileUpdated": {
+    en: "file: {before} → {after}",
+    "zh-CN": "文件: {before} → {after}",
+  },
+  "audit.lineUpdated": {
+    en: "lines: {before} → {after}",
+    "zh-CN": "行: {before} → {after}",
+  },
+  "audit.statusUpdated": {
+    en: "status: {before} → {after}",
+    "zh-CN": "状态: {before} → {after}",
+  },
+  "audit.anchorUpdated": {
+    en: "anchor moved to {after}",
+    "zh-CN": "锚点已移动至 {after}",
   },
   "audit.noChanges": {
     en: "no field changes",
