@@ -4191,7 +4191,7 @@ function renderConversationPanel(root: HTMLElement) {
     if (isFresh) {
       const removeBtn = document.createElement("button");
       removeBtn.className = "primary";
-      removeBtn.textContent = "Remove";
+      removeBtn.textContent = t("action.remove");
       removeBtn.addEventListener("click", (event) => {
         event.stopPropagation();
         state.fresh = state.fresh.filter((item) => item.id !== entry.id);
@@ -4204,7 +4204,7 @@ function renderConversationPanel(root: HTMLElement) {
     } else if (isOpen) {
       const resolveBtn = document.createElement("button");
       resolveBtn.className = "primary";
-      resolveBtn.textContent = "Resolve";
+      resolveBtn.textContent = t("action.resolve");
       resolveBtn.addEventListener("click", async (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -4258,7 +4258,7 @@ function renderConversationPanel(root: HTMLElement) {
     }
 
     const editBtn = document.createElement("button");
-    editBtn.textContent = "Edit";
+    editBtn.textContent = t("action.edit");
     editBtn.title = "Edit category / severity / comment in-place";
     editBtn.addEventListener("click", async (event) => {
       event.stopPropagation();
@@ -4282,7 +4282,7 @@ function renderConversationPanel(root: HTMLElement) {
     actions.appendChild(editBtn);
 
     const jumpBtn = document.createElement("button");
-    jumpBtn.textContent = "Jump";
+    jumpBtn.textContent = t("action.jump");
     jumpBtn.addEventListener("click", (event) => {
       event.stopPropagation();
       jumpToFile(entry.file);
