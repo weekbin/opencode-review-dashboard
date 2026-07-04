@@ -4552,7 +4552,7 @@ function renderConversationPanel(root: HTMLElement) {
         e.stopPropagation();
         const body = textarea.value.trim();
         if (!body) {
-          setStatus("Comment box is empty — write the template body first", true);
+          setStatus(t("status.commentBoxEmpty"), true);
           return;
         }
         const name =
@@ -5335,7 +5335,7 @@ async function editFinding(
   renderFindings();
   renderConversationPane();
   syncAll();
-  setStatus("Finding edited");
+  setStatus(t("status.findingEdited"));
   return true;
 }
 
@@ -5367,7 +5367,7 @@ async function pinFinding(id: string): Promise<void> {
   }
   renderConversationPane();
   updateConversationTabBadge();
-  setStatus("Pinned — will revisit this finding");
+  setStatus(t("status.pinned"));
 }
 
 async function unpinFinding(id: string): Promise<void> {
@@ -5394,7 +5394,7 @@ async function unpinFinding(id: string): Promise<void> {
   }
   renderConversationPane();
   updateConversationTabBadge();
-  setStatus("Unpinned");
+  setStatus(t("status.unpinned"));
 }
 
 async function toggleReaction(id: string, emoji: ReactionEmoji): Promise<void> {
@@ -5683,7 +5683,7 @@ async function saveDraft() {
   }).catch(() => undefined);
 
   if (!response?.ok) {
-    setStatus("Failed to save draft", true);
+    setStatus(t("status.draftSaveFailed"), true);
     return;
   }
 
@@ -5732,7 +5732,7 @@ function installImeSafeInputListener(
 function addFinding() {
   const comment = commentRoot.value.trim();
   if (!comment) {
-    setStatus("Comment is required", true);
+    setStatus(t("status.commentRequired"), true);
     return;
   }
 
@@ -5759,7 +5759,7 @@ function addFinding() {
   }
 
   if (!state.selection) {
-    setStatus("Select lines before adding a finding", true);
+    setStatus(t("status.selectLines"), true);
     return;
   }
 
@@ -5800,7 +5800,7 @@ function clearSelection() {
 
 async function submit() {
   submitButton.disabled = true;
-  setStatus("Submitting review...");
+  setStatus(t("status.submitting"));
 
   const response = await fetch(endpoint("/submit"), {
     method: "POST",
@@ -5812,7 +5812,7 @@ async function submit() {
 
   if (!response) {
     submitButton.disabled = false;
-    setStatus("Submit failed: request was interrupted", true);
+    setStatus(t("status.submitInterrupted"), true);
     return;
   }
 
@@ -5973,7 +5973,7 @@ async function init() {
   applyLayout();
 
   if (!token || !reviewID) {
-    setStatus("Invalid review URL", true);
+    setStatus(t("status.invalidReviewUrl"), true);
     return;
   }
 

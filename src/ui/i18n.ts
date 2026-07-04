@@ -436,6 +436,32 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   },
   "status.expandedAll": { en: "Expanded all files", "zh-CN": "已展开所有文件" },
   "status.collapsedAll": { en: "Collapsed all files", "zh-CN": "已折叠所有文件" },
+  "status.commentBoxEmpty": {
+    en: "Comment box is empty — write the template body first",
+    "zh-CN": "评论框为空 — 请先填写模板内容",
+  },
+  "status.findingEdited": { en: "Finding edited", "zh-CN": "审查项已编辑" },
+  "status.pinned": {
+    en: "Pinned — will revisit this finding",
+    "zh-CN": "已置顶 — 稍后再看此审查项",
+  },
+  "status.unpinned": { en: "Unpinned", "zh-CN": "已取消置顶" },
+  "status.draftSaveFailed": {
+    en: "Failed to save draft",
+    "zh-CN": "保存草稿失败",
+  },
+  "status.submitting": {
+    en: "Submitting review...",
+    "zh-CN": "正在提交审查…",
+  },
+  "status.submitInterrupted": {
+    en: "Submit failed: request was interrupted",
+    "zh-CN": "提交失败：请求被中断",
+  },
+  "status.invalidReviewUrl": {
+    en: "Invalid review URL",
+    "zh-CN": "无效的审查 URL",
+  },
   "skipLink": { en: "Skip to main content", "zh-CN": "跳到主要内容" },
   "modal.submit.title": { en: "Submit review?", "zh-CN": "提交审查?" },
   "modal.submit.confirm": { en: "Submit", "zh-CN": "提交" },
