@@ -2502,12 +2502,12 @@ function showMarkAsWontfixModal(_findingId: string): Promise<MarkAsWontfixResult
     ).join("");
     dialog.innerHTML = `
       <h3>${escapeHtml(t("modal.wontfix.title"))}</h3>
-      <p>Why is this finding not actionable? Pick a category and add an optional reason.</p>
+      <p>${escapeHtml(t("modal.wontfix.body"))}</p>
       <div class="wontfix-radios" id="wontfix-radios">${radios}</div>
       <textarea id="wontfix-reason" rows="3" placeholder="${escapeHtml(t("modal.wontfixReason.placeholder"))}"></textarea>
       <div class="modal-actions">
-        <button id="wontfix-cancel" type="button">Cancel</button>
-        <button id="wontfix-submit" class="primary" type="button">Mark as wontfix</button>
+        <button id="wontfix-cancel" type="button">${escapeHtml(t("modal.cancel"))}</button>
+        <button id="wontfix-submit" class="primary" type="button">${escapeHtml(t("action.mark"))}</button>
       </div>
     `;
     overlay.appendChild(dialog);

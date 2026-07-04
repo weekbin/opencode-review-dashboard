@@ -494,6 +494,10 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "modal.submit.confirm": { en: "Submit", "zh-CN": "提交" },
   "modal.resolve.title": { en: "Resolve Finding", "zh-CN": "解决审查项" },
   "modal.wontfix.title": { en: "Mark as wontfix", "zh-CN": "标记为不修复" },
+  "modal.wontfix.body": {
+    en: "Why is this finding not actionable? Pick a category and add an optional reason.",
+    "zh-CN": "为什么此审查项无需操作？请选择类别并添加可选原因。",
+  },
   "modal.reopen.title": { en: "Force Reopen Finding", "zh-CN": "强制重新打开审查项" },
   "modal.cancel": { en: "Cancel", "zh-CN": "取消" },
   "resolve.reason.fixedInRound": { en: "fixed in this round", "zh-CN": "本轮已修复" },
