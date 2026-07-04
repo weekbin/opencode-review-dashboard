@@ -533,6 +533,46 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "action.reopen": { en: "Re-open", "zh-CN": "重新打开" },
   "action.mark": { en: "Mark as wontfix", "zh-CN": "标记为不修复" },
   "action.remove": { en: "Remove", "zh-CN": "删除" },
+  "action.mark.title": {
+    en: "Mark this finding as wontfix / out_of_scope / false_positive / duplicate",
+    "zh-CN": "将此审查项标记为不修复 / 超出范围 / 误报 / 重复",
+  },
+  "action.edit.title": {
+    en: "Edit category / severity / comment in-place",
+    "zh-CN": "就地编辑类别 / 严重程度 / 评论",
+  },
+  "action.addFile.title": {
+    en: "Add file-level finding",
+    "zh-CN": "添加文件级审查项",
+  },
+  "action.pin.title": {
+    en: "Pin this finding to revisit it later",
+    "zh-CN": "置顶此审查项以便稍后查看",
+  },
+  "action.copyMarkdown.title": {
+    en: "Copy finding as a Markdown snippet (round, file:line, permalink, comment, audit count, reactions)",
+    "zh-CN": "将审查项复制为 Markdown 代码段（轮次、文件:行、定位链接、评论、审计计数、表情反应）",
+  },
+  "status.templateSaveFailed": {
+    en: "Failed to save template",
+    "zh-CN": "保存模板失败",
+  },
+  "status.resolveFailed": {
+    en: "Failed to resolve finding",
+    "zh-CN": "解决审查项失败",
+  },
+  "status.reopenFailed": {
+    en: "Cannot reopen (code may have changed)",
+    "zh-CN": "无法重新打开（代码可能已变更）",
+  },
+  "status.editFailed": {
+    en: "Failed to edit finding",
+    "zh-CN": "编辑审查项失败",
+  },
+  "status.findingForceReopened": {
+    en: "Finding force-reopened — will be re-applied in the next round",
+    "zh-CN": "审查项已强制重新打开 — 将在下一轮重新应用",
+  },
   "action.markAsRead": { en: "Mark as read", "zh-CN": "标记为已读" },
   "wontfix.kind.wontfix": { en: "Wontfix", "zh-CN": "不修复" },
   "wontfix.kind.outOfScope": { en: "Out of scope", "zh-CN": "超出范围" },

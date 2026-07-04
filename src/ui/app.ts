@@ -4224,8 +4224,7 @@ function renderConversationPanel(root: HTMLElement) {
       wontfixBtn.type = "button";
       wontfixBtn.className = "finding-wontfix";
       wontfixBtn.textContent = t("action.mark");
-      wontfixBtn.title =
-        "Mark this finding as wontfix / out_of_scope / false_positive / duplicate (R13 #21)";
+      wontfixBtn.title = t("action.mark.title");
       wontfixBtn.addEventListener("click", async (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -4259,7 +4258,7 @@ function renderConversationPanel(root: HTMLElement) {
 
     const editBtn = document.createElement("button");
     editBtn.textContent = t("action.edit");
-    editBtn.title = "Edit category / severity / comment in-place";
+    editBtn.title = t("action.edit.title");
     editBtn.addEventListener("click", async (event) => {
       event.stopPropagation();
       const fields = await showEditFindingModal({
@@ -4308,8 +4307,7 @@ function renderConversationPanel(root: HTMLElement) {
       copyMdBtn.type = "button";
       copyMdBtn.className = "finding-copy-md";
       copyMdBtn.textContent = t("action.copyMarkdown");
-      copyMdBtn.title =
-        "Copy finding as a Markdown snippet (round, file:line, permalink, comment, audit count, reactions)";
+      copyMdBtn.title = t("action.copyMarkdown.title");
       copyMdBtn.addEventListener("click", (event) => {
         event.stopPropagation();
         void copyFindingAsMarkdownToClipboard(entry, entry.round ?? 0, copyMdBtn);
@@ -4325,7 +4323,7 @@ function renderConversationPanel(root: HTMLElement) {
       starBtn.textContent = isPinned ? "★" : "☆";
       starBtn.title = isPinned
         ? `Pinned for revisit (${formatRelativeTime(entry.pinned?.at ?? 0)}) — click to unpin`
-        : "Pin this finding to revisit it later";
+        : t("action.pin.title");
       starBtn.setAttribute("aria-pressed", isPinned ? "true" : "false");
       starBtn.addEventListener("click", (event) => {
         event.stopPropagation();
@@ -4566,7 +4564,7 @@ function renderConversationPanel(root: HTMLElement) {
         if (name === null) return;
         const result = addSavedReply(name, body);
         if (!result.ok) {
-          setStatus(result.error ?? "Failed to save template", true);
+          setStatus(result.error ?? t("status.templateSaveFailed"), true);
           return;
         }
         setStatus(`Saved template "${name.trim()}"`);
@@ -5106,7 +5104,7 @@ function renderDiffPanel() {
     const addFileBtn = document.createElement("button");
     addFileBtn.type = "button";
     addFileBtn.className = "btn-icon";
-    addFileBtn.title = "Add file-level finding";
+    addFileBtn.title = t("action.addFile.title");
     addFileBtn.dataset.action = "add-file-finding";
     addFileBtn.dataset.file = file.path;
     addFileBtn.textContent = "+";
@@ -5214,7 +5212,7 @@ async function resolveFinding(
 
   if (!response?.ok) {
     const data = await response?.json().catch(() => undefined);
-    setStatus(data?.error ?? "Failed to resolve finding", true);
+    setStatus(data?.error ?? t("status.resolveFailed"), true);
     return;
   }
 
@@ -5252,7 +5250,7 @@ async function reopenFinding(id: string, reason = "", opts: { manually_reopened?
 
   if (!response?.ok) {
     const data = await response?.json().catch(() => undefined);
-    setStatus(data?.error ?? "Cannot reopen (code may have changed)", true);
+    setStatus(data?.error ?? t("status.reopenFailed"), true);
     return;
   }
 
@@ -5268,9 +5266,7 @@ async function reopenFinding(id: string, reason = "", opts: { manually_reopened?
   renderConversationPane();
   syncAll();
   setStatus(
-    opts.manually_reopened
-      ? "Finding force-reopened — will be re-applied in the next round"
-      : t("status.findingReopened"),
+    opts.manually_reopened ? t("status.findingForceReopened") : t("status.findingReopened"),
   );
 }
 
@@ -5322,7 +5318,7 @@ async function editFinding(
   }).catch(() => undefined);
   if (!response?.ok) {
     const data = await response?.json().catch(() => undefined);
-    setStatus(data?.error ?? "Failed to edit finding", true);
+    setStatus(data?.error ?? t("status.editFailed"), true);
     return false;
   }
   const payload = (await response.json().catch(() => undefined)) as

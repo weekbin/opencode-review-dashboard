@@ -208,7 +208,7 @@ describe("AC7 — Copy as MD button rendered in finding actions", () => {
 
   it("T16.7d button has descriptive title tooltip", async () => {
     const src = await readSource(APP_TS);
-    expect(src).toMatch(/title\s*=\s*"Copy finding as a Markdown snippet/);
+    expect(src).toMatch(/title\s*=\s*t\("action\.copyMarkdown\.title"\)/);
   });
 
   it("T16.7e button click calls copyFindingAsMarkdownToClipboard", async () => {
