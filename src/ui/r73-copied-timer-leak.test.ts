@@ -27,7 +27,7 @@ describe("R73 — copy-button timers do not leak across rapid clicks", () => {
 
   it("copyAsMarkdown clears previous setTimeout before starting a new one", async () => {
     const ts = await loadTs();
-    const block = getBlockNearMarker(ts, "Copied as Markdown");
+    const block = getBlockNearMarker(ts, 't("status.copiedMarkdown")');
     expect(block).toContain("_copyMarkdownFeedbackTimer");
     expect(block).toMatch(/clearTimeout[\s\S]*?\._copyMarkdownFeedbackTimer/);
     expect(block).toMatch(/_copyMarkdownFeedbackTimer\s*=\s*setTimeout/);

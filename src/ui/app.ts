@@ -405,7 +405,7 @@ async function copyFindingPermalinkToClipboard(
     showToast(`Copied permalink for ${findingId}`);
     setStatus(`Copied permalink for ${findingId}`);
   } else {
-    showToast("Could not copy permalink — clipboard blocked", { error: true });
+    showToast(t("status.copyPermalinkBlocked"), { error: true });
     setStatus(t("status.copyPermalinkBlocked"), true);
   }
 }
@@ -483,10 +483,10 @@ async function copyFindingAsMarkdownToClipboard(
       button.textContent = original;
       button.disabled = false;
     }, COPY_FEEDBACK_MS) as unknown as number;
-    showToast("Copied as Markdown");
+    showToast(t("status.copiedMarkdown"));
     setStatus(t("status.copiedAsMarkdown"));
   } else {
-    showToast("Could not copy markdown — clipboard blocked", { error: true });
+    showToast(t("status.copyBlocked"), { error: true });
     setStatus(t("status.copyMarkdownBlocked"), true);
   }
 }
@@ -1138,7 +1138,7 @@ function openCmdPPalette(): void {
   const palette = document.createElement("div");
   palette.className = "cmd-p-palette";
   palette.setAttribute("role", "dialog");
-  palette.setAttribute("aria-label", "File jumper");
+  palette.setAttribute("aria-label", t("palette.fileJumper.ariaLabel"));
   const inputWrap = document.createElement("div");
   inputWrap.className = "cmd-p-input-wrap";
   inputWrap.innerHTML = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M11 11l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><input class="cmd-p-input" type="text" placeholder="${escapeHtml(t("palette.cmdP.placeholder"))}" autocomplete="off" autocorrect="off" spellcheck="false"/>`;
@@ -2159,10 +2159,10 @@ function renderSearchInput(paneId: string): HTMLElement {
   input.type = "search";
   input.id = "search-input";
   input.className = "search-input";
-  input.placeholder = "Search panel…";
+  input.placeholder = t("palette.searchPanel.placeholder");
   input.value = currentSearchQuery;
   input.dataset.pane = paneId;
-  input.setAttribute("aria-label", "Search current panel");
+  input.setAttribute("aria-label", t("palette.searchPanel.ariaLabel"));
   installImeSafeInputListener(input, (value) => {
     currentSearchQuery = value;
     renderActivePane();
@@ -4059,7 +4059,7 @@ function renderConversationPanel(root: HTMLElement) {
     if (allSelected && sorted.length > 0) selectAllRow.setAttribute("data-active", "");
     const selectAllCb = document.createElement("input");
     selectAllCb.type = "checkbox";
-    selectAllCb.setAttribute("aria-label", "Select all visible findings");
+    selectAllCb.setAttribute("aria-label", t("conversation.findings.selectAll.ariaLabel"));
     selectAllCb.checked = allSelected;
     const selectAllText = document.createElement("span");
     selectAllText.textContent = `Select all visible (${sorted.length})`;
@@ -4489,7 +4489,7 @@ function renderConversationPanel(root: HTMLElement) {
     inputRow.className = "conversation-comment-input-row";
     const textarea = document.createElement("textarea");
     textarea.className = "conversation-comment-input";
-    textarea.placeholder = "Add a comment (max 500 chars)";
+    textarea.placeholder = t("finding.comment.placeholder");
     textarea.maxLength = 500;
     textarea.rows = 2;
     const counter = document.createElement("span");
@@ -5782,7 +5782,7 @@ function addFinding() {
   renderFindings();
   syncAll();
   scheduleSave();
-  showToast("Finding added");
+  showToast(t("status.findingAdded"));
 }
 
 function addFileFinding(filePath: string) {

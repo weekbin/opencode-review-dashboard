@@ -153,6 +153,12 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     "zh-CN": '没有匹配 "{query}" 的文件',
   },
   "palette.cmdP.empty": { en: "No files available", "zh-CN": "没有可用文件" },
+  "palette.fileJumper.ariaLabel": { en: "File jumper", "zh-CN": "文件跳转" },
+  "palette.searchPanel.placeholder": { en: "Search panel…", "zh-CN": "搜索面板…" },
+  "palette.searchPanel.ariaLabel": {
+    en: "Search current panel",
+    "zh-CN": "搜索当前面板",
+  },
   "save.indicator.idle": { en: "All changes saved", "zh-CN": "所有更改已保存" },
   "commits.empty.noResults": {
     en: 'No commits match "{query}".',
@@ -305,6 +311,14 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "search.diff.close": { en: "Close (Escape)", "zh-CN": "关闭（Escape）" },
   "conversation.bulkDelete": { en: "Delete selected findings", "zh-CN": "删除选中的 finding" },
   "conversation.selected": { en: "Selected", "zh-CN": "已选" },
+  "conversation.findings.selectAll.ariaLabel": {
+    en: "Select all visible findings",
+    "zh-CN": "选择所有可见审查项",
+  },
+  "finding.comment.placeholder": {
+    en: "Add a comment (max 500 chars)",
+    "zh-CN": "添加评论（最多 500 字符）",
+  },
   "toolbar.settings": { en: "Settings", "zh-CN": "设置" },
   "settings.title": { en: "Settings", "zh-CN": "设置" },
   "settings.section.appearance": { en: "Appearance", "zh-CN": "外观" },
@@ -341,6 +355,10 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "status.copyBlocked": {
     en: "Could not copy markdown — clipboard blocked",
     "zh-CN": "复制失败 — 剪贴板被阻止",
+  },
+  "status.copyPermalinkBlocked": {
+    en: "Could not copy permalink — clipboard blocked",
+    "zh-CN": "复制定位链接失败 — 剪贴板被阻止",
   },
   "status.copiedPermalink": {
     en: "Copied permalink for {id}",
