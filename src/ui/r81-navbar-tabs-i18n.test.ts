@@ -12,7 +12,7 @@ const I18N_TS_PATH = "src/ui/i18n.ts";
 describe("R81 — navbar tab title attributes use i18n", () => {
   it("all 4 navbar tab buttons have data-i18n-title attribute", async () => {
     const html = await Bun.file(REVIEW_HTML_PATH).text();
-    const nav = html.match(/<nav class="navbar-tabs"[\s\S]*?<\/nav>/);
+    const nav = html.match(/<nav[\s\S]*?class="navbar-tabs"[\s\S]*?<\/nav>/);
     expect(nav).not.toBeNull();
     expect(nav![0]).toMatch(/data-tab="files"[\s\S]*?data-i18n-title=/);
     expect(nav![0]).toMatch(/data-tab="commits"[\s\S]*?data-i18n-title=/);
@@ -22,7 +22,7 @@ describe("R81 — navbar tab title attributes use i18n", () => {
 
   it("navbar tab buttons have NO hardcoded English title", async () => {
     const html = await Bun.file(REVIEW_HTML_PATH).text();
-    const nav = html.match(/<nav class="navbar-tabs"[\s\S]*?<\/nav>/);
+    const nav = html.match(/<nav[\s\S]*?class="navbar-tabs"[\s\S]*?<\/nav>/);
     expect(nav).not.toBeNull();
     expect(nav![0]).not.toMatch(/title="Files changed"/);
     expect(nav![0]).not.toMatch(/title="Commits in this review"/);

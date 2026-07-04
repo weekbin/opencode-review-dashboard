@@ -75,6 +75,10 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "Open review drawer",
     "zh-CN": "打开审查抽屉",
   },
+  "drawer.close.ariaLabel": { en: "Close review drawer", "zh-CN": "关闭审查抽屉" },
+  "navbar.tabs.ariaLabel": { en: "Sidebar sections", "zh-CN": "侧边栏分区" },
+  "sidebar.resize.ariaLabel": { en: "Resize sidebar", "zh-CN": "调整侧边栏宽度" },
+  "settings.close.ariaLabel": { en: "Close settings", "zh-CN": "关闭设置" },
   "close.ariaLabel": { en: "Dismiss", "zh-CN": "关闭" },
   "palette.cmdP.placeholder": { en: "Jump to file…", "zh-CN": "跳转到文件…" },
   "submit.modal.body": {

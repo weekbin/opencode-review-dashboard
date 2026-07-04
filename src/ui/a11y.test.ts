@@ -27,7 +27,7 @@ describe("AC3.1 — Sidebar tabs role=tablist, tabs carry role=tab + aria-select
   it("review.html: navbar container has role=tablist + aria-label", async () => {
     const html = await readSource(HTML);
     expect(html).toMatch(
-      /<nav[^>]*class="navbar-tabs"[^>]*id="navbar-tabs"[^>]*role="tablist"[^>]*aria-label="Sidebar sections"/,
+      /<nav[^>]*class="navbar-tabs"[^>]*id="navbar-tabs"[^>]*role="tablist"[^>]*data-i18n-aria-label="navbar\.tabs\.ariaLabel"/,
     );
   });
 

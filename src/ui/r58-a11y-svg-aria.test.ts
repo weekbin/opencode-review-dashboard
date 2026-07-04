@@ -20,7 +20,7 @@ describe("R58 — a11y aria-hidden on decorative SVGs + drawer-close aria-label"
     const html = await Bun.file(REVIEW_HTML_PATH).text();
     const drawerBtn = html.match(/<button[^>]*id="drawer-close"[^>]*>[\s\S]*?<\/button>/);
     expect(drawerBtn).not.toBeNull();
-    expect(drawerBtn![0]).toContain('aria-label="Close review drawer"');
+    expect(drawerBtn![0]).toContain('data-i18n-aria-label="drawer.close.ariaLabel"');
     expect(drawerBtn![0]).toContain("<svg");
     expect(drawerBtn![0]).toContain('aria-hidden="true"');
   });
