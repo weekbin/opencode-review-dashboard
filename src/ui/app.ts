@@ -4948,7 +4948,7 @@ function setAllExpanded(expand: boolean) {
     });
     view.instance.rerender();
   }
-  setStatus(expand ? "Expanded all files" : "Collapsed all files");
+  setStatus(expand ? t("status.expandedAll") : t("status.collapsedAll"));
 }
 
 function injectHunkCollapseButtons(

@@ -469,7 +469,7 @@ describe("AC17 — setStatus feedback", () => {
     const block = src.match(/function\s+setAllExpanded\s*\([\s\S]*?\n\}/);
     expect(block).toBeTruthy();
     expect(block![0]).toMatch(
-      /setStatus\(\s*expand\s*\?\s*"Expanded all files"\s*:\s*"Collapsed all files"\s*\)/,
+      /setStatus\(\s*expand\s*\?\s*t\("status\.expandedAll"\)\s*:\s*t\("status\.collapsedAll"\)\s*\)/,
     );
   });
 
@@ -477,8 +477,8 @@ describe("AC17 — setStatus feedback", () => {
     const src = await readSource(APP_TS);
     const block = src.match(/function\s+setAllExpanded\s*\([\s\S]*?\n\}/);
     expect(block).toBeTruthy();
-    expect(block![0]).toMatch(/"Expanded all files"/);
-    expect(block![0]).toMatch(/"Collapsed all files"/);
+    expect(block![0]).toMatch(/t\("status\.expandedAll"\)/);
+    expect(block![0]).toMatch(/t\("status\.collapsedAll"\)/);
   });
 });
 
