@@ -1,17 +1,24 @@
 #!/usr/bin/env bash
 # v6 pre-commit gate — absorbs v5 SG.R44.1 8 mechanical commands + lint/test/plugin-load
 #
-# Mechanical checks (v5 SG.R44.1 commands 1-8 minus user-facing ones):
+# Gap #1 fix (R102): previous sequence ran `bun run check` (oxfmt --check) BEFORE
+# bun test, then `bun run format` (oxfmt --write) could run separately. This is
+# structurally fragile: oxfmt --write can mutate source files and break tests
+# (anchor drift, comment removal, etc.) but the gate PASSED because bun test ran
+# before the reformat.
+#
+# New sequence: format --write FIRST (mutate any drift), re-stage, then bun test
+# (verify tests still pass). This catches anchor drift deterministically.
+#
+# Mechanical checks (v5 SG.R44.1 commands 1-8):
 #   1. git status --porcelain  (working tree status; informational only)
-#   2. find .opencode/ newer than SKILL.md  (catch drift)
+#   2. SKILL.md drift (files newer than SKILL.md)
 #   3. stale backup/tmp files (*.backup-*, *.swp, *.orig)
 #   4. Husky configuration present and wired
 #   5. Orphan pm-manager-approved GH issues (informational)
 #   6. scripts/verify-plugin-load.mjs (4-gate runtime probe)
-#
-# Existing checks (kept from R44):
-#   7. bun run check   (TypeScript + ESLint + format check)
-#   8. bun test        (full unit suite)
+#   7. format --write + re-stage + bun test (anchor drift check)
+#   8. bun run lint + bun run typecheck
 #
 # Failure of any check blocks the commit.
 # Use `git commit --no-verify` to skip (escape hatch for lead-direct emergencies).
@@ -71,16 +78,21 @@ node scripts/verify-plugin-load.mjs >/dev/null || { echo "  ❌ plugin load FAIL
 echo "  ✓ plugin load PASS"
 echo ""
 
-# 7. Static checks (lint + format + typecheck)
-echo "[7/8] bun run check"
-bun run check || { echo "  ❌ bun run check failed"; exit 1; }
-echo "  ✓ check PASS"
+# 7. Gap #1 fix: format --write FIRST, re-stage, then bun test
+echo "[7/8] format --write + re-stage + bun test (anchor drift check)"
+echo "  Running oxfmt --write src/ to auto-format any drift..."
+bunx oxfmt --write src/ >/dev/null 2>&1 || true
+git add -u src/ || true
+bun test >/dev/null 2>&1 || { echo "  ❌ bun test FAILED after format --write (anchor drift?)"; bun test 2>&1 | tail -40; exit 1; }
+echo "  ✓ test PASS (no anchor drift after format --write)"
 echo ""
 
-# 8. Test suite
-echo "[8/8] bun test"
-bun test || { echo "  ❌ bun test failed"; exit 1; }
-echo "  ✓ test PASS"
+# 8. lint + typecheck (without format — already done in #7)
+echo "[8/8] bun run lint + typecheck"
+bun run lint >/dev/null 2>&1 || { echo "  ❌ bun run lint failed"; bun run lint 2>&1 | tail -40; exit 1; }
+echo "  ✓ lint PASS"
+bun run typecheck >/dev/null 2>&1 || { echo "  ❌ bun run typecheck failed"; bun run typecheck 2>&1 | tail -40; exit 1; }
+echo "  ✓ typecheck PASS"
 echo ""
 
 echo "✅ v6 pre-commit: ALL 8 CHECKS PASS"
