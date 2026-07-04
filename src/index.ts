@@ -95,7 +95,7 @@ type Finding = {
   created_at: number;
   updated_at: number;
   closed_at?: number;
-  close_reason?: "file_removed" | "anchor_missing";
+  close_reason?: "file_removed" | "anchor_missing" | "content_match";
   manually_reopened?: boolean;
   manually_edited?: boolean;
   edited_at?: number;
@@ -376,6 +376,28 @@ function anchor(content: string, start: number, end: number): Anchor {
   };
 }
 
+function fnv1a(input: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+function contextHash(anchor: Anchor | undefined): string | undefined {
+  if (!anchor) return undefined;
+  return fnv1a(`${anchor.before}\u0000${anchor.selected}\u0000${anchor.after}`);
+}
+
+function contentMatches(prev: Anchor, next: Anchor): boolean {
+  return (
+    fnv1a(prev.selected) === fnv1a(next.selected) &&
+    fnv1a(prev.before) === fnv1a(next.before) &&
+    fnv1a(prev.after) === fnv1a(next.after)
+  );
+}
+
 function remap(item: Finding, file: ReviewFile) {
   const text = item.side === "deletions" ? file.before : file.after;
   if (!item.anchor.selected) return undefined;
@@ -414,6 +436,17 @@ function reconcile(files: ReviewFile[], findings: Finding[]) {
         ...item,
         status: "closed_auto" as const,
         close_reason: "anchor_missing" as const,
+        closed_at: now,
+        updated_at: now,
+      };
+    }
+    if (item.anchor.selected.length > 0 && contentMatches(item.anchor, item.anchor)) {
+      return {
+        ...item,
+        start_line: next.start_line,
+        end_line: next.end_line,
+        status: "closed_auto" as const,
+        close_reason: "content_match" as const,
         closed_at: now,
         updated_at: now,
       };

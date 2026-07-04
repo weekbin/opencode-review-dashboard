@@ -189,6 +189,8 @@ const SORT_FINDINGS_KEY = "diff-review:sort-findings-by";
 const SIDEBAR_FILTER_UNREAD_KEY = "diff-review:filter-unread";
 // R21 #44: search history max items persisted to localStorage.
 const SEARCH_HISTORY_MAX_KEY = "diff-review:search-history-max";
+// R113 #78: submit-dialog apply-footprint preview toggle (default off).
+const SUBMIT_FOOTPRINT_KEY = "diff-review:submit-footprint";
 
 function readStored<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   try {
@@ -1505,6 +1507,7 @@ const state = {
   // R20 #41: "show only unread" toggle — persisted under
   // diff-review:filter-unread. Default false (show all files).
   filterUnread: readStoredFilterUnread(),
+  submitFootprint: readStored<"on" | "off">(SUBMIT_FOOTPRINT_KEY, ["on", "off"], "off") === "on",
   activeTab: readStored<"files" | "commits" | "conversation" | "previously">(
     ACTIVE_TAB_KEY,
     ["files", "commits", "conversation", "previously"],
@@ -2396,6 +2399,48 @@ function showReopenReasonModal(_findingId: string): Promise<string | null> {
 // POST /api/review/{id}/resolve endpoint, which now accepts
 // `reason?` (≤200 chars).
 type ResolveReasonModalResult = { reason: string } | null;
+
+function confirmDeleteDraft(draftId: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    const dialog = document.createElement("div");
+    dialog.className = "modal-dialog confirm-delete-draft";
+    dialog.setAttribute("role", "dialog");
+    dialog.setAttribute("aria-modal", "true");
+    dialog.innerHTML = `
+      <h3>${escapeHtml(t("confirm.deleteDraft.title"))}</h3>
+      <p>${escapeHtml(t("confirm.deleteDraft.body"))}</p>
+      <div class="modal-actions">
+        <button id="confirm-delete-cancel" type="button">${escapeHtml(t("confirm.deleteDraft.cancel"))}</button>
+        <button id="confirm-delete-ok" class="primary" type="button">${escapeHtml(t("confirm.deleteDraft.delete"))}</button>
+      </div>
+    `;
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    const closeWith = (ok: boolean) => {
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      resolve(ok);
+    };
+    const cancelBtn = dialog.querySelector("#confirm-delete-cancel") as HTMLButtonElement | null;
+    const okBtn = dialog.querySelector("#confirm-delete-ok") as HTMLButtonElement | null;
+    installModalA11y(dialog, () => closeWith(false));
+    cancelBtn?.addEventListener("click", () => closeWith(false));
+    okBtn?.addEventListener("click", () => {
+      state.fresh = state.fresh.filter((item) => item.id !== draftId);
+      renderConversationPane();
+      renderFindings();
+      syncAll();
+      scheduleSave();
+      closeWith(true);
+    });
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) closeWith(false);
+    });
+    okBtn?.focus();
+  });
+}
+
 function showResolveReasonModal(_findingId: string): Promise<ResolveReasonModalResult> {
   return new Promise((resolve) => {
     const overlay = document.createElement("div");
@@ -4192,14 +4237,10 @@ function renderConversationPanel(root: HTMLElement) {
     if (isFresh) {
       const removeBtn = document.createElement("button");
       removeBtn.className = "primary";
-      removeBtn.textContent = t("action.remove");
+      removeBtn.textContent = t("action.deleteDraft");
       removeBtn.addEventListener("click", (event) => {
         event.stopPropagation();
-        state.fresh = state.fresh.filter((item) => item.id !== entry.id);
-        renderConversationPane();
-        renderFindings();
-        syncAll();
-        scheduleSave();
+        void confirmDeleteDraft(entry.id);
       });
       actions.appendChild(removeBtn);
     } else if (isOpen) {
@@ -5933,7 +5974,38 @@ submitButton.addEventListener("click", () => {
   dialog.className = "modal-dialog submit-confirm-modal";
   dialog.setAttribute("role", "dialog");
   dialog.setAttribute("aria-modal", "true");
-  dialog.innerHTML = `<h3>${escapeHtml(t("modal.submit.title"))}</h3><p>${escapeHtml(t("submit.modal.body"))}</p><div class="finding-count">${openCount}</div><p style="text-align:center;font-size:13px;color:light-dark(#666,#aaa);margin-bottom:0">${escapeHtml(t("submit.modal.findingCount", { count: openCount }))}</p><label for="round-notes" class="round-notes-label">${escapeHtml(t("submit.modal.roundNotes.label"))}</label><textarea id="round-notes" data-testid="round-notes-textarea" class="round-notes-textarea" placeholder="${escapeHtml(t("submit.modal.roundNotes.placeholder"))}" rows="5"></textarea><div class="modal-actions"><button id="submit-confirm-cancel" type="button">${escapeHtml(t("modal.cancel"))}</button><button id="submit-confirm-ok" class="primary" type="button">${escapeHtml(t("modal.submit.confirm"))}</button></div>`;
+  const submitFootprintHtml = state.submitFootprint
+    ? (() => {
+        const openFindings = state.fresh
+          .concat(state.existing)
+          .filter((f) => f.status === "open" || f.status === "closed_auto");
+        const fpFiles = new Set(
+          openFindings.map((f) => f.file).filter((p): p is string => Boolean(p)),
+        );
+        const fpCats = new Map<string, number>();
+        for (const f of openFindings) {
+          fpCats.set(f.category, (fpCats.get(f.category) ?? 0) + 1);
+        }
+        const topCats = [...fpCats.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3)
+          .map(([c]) => c);
+        return (
+          '<div class="submit-footprint" aria-live="polite"><h4>' +
+          escapeHtml(t("submit.footprint.heading")) +
+          '</h4><p class="submit-footprint-body">' +
+          escapeHtml(t("submit.modal.body")) +
+          '</p><ul class="submit-footprint-list"><li>' +
+          escapeHtml(t("submit.footprint.openFindings", { count: String(openFindings.length) })) +
+          "</li><li>" +
+          escapeHtml(t("submit.footprint.files", { count: String(fpFiles.size) })) +
+          "</li><li>" +
+          escapeHtml(t("submit.footprint.categories", { categories: topCats.join(", ") || "—" })) +
+          "</li></ul></div>"
+        );
+      })()
+    : "";
+  dialog.innerHTML = `<h3>${escapeHtml(t("modal.submit.title"))}</h3><p>${escapeHtml(t("submit.modal.body"))}</p>${submitFootprintHtml}<div class="finding-count">${openCount}</div><p style="text-align:center;font-size:13px;color:light-dark(#666,#aaa);margin-bottom:0">${escapeHtml(t("submit.modal.findingCount", { count: openCount }))}</p><label for="round-notes" class="round-notes-label">${escapeHtml(t("submit.modal.roundNotes.label"))}</label><textarea id="round-notes" data-testid="round-notes-textarea" class="round-notes-textarea" placeholder="${escapeHtml(t("submit.modal.roundNotes.placeholder"))}" rows="5"></textarea><div class="modal-actions"><button id="submit-confirm-cancel" type="button">${escapeHtml(t("modal.cancel"))}</button><button id="submit-confirm-ok" class="primary" type="button">${escapeHtml(t("modal.submit.confirm"))}</button></div>`;
   overlay.appendChild(dialog);
   document.body.appendChild(overlay);
   const close = () => {

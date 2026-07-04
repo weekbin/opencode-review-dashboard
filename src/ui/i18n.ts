@@ -97,6 +97,35 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "Optional global notes for this round",
     "zh-CN": "本轮的可选全局笔记",
   },
+  "submit.footprint.heading": { en: "Expected apply footprint", "zh-CN": "预计影响范围" },
+  "submit.footprint.body": {
+    en: "Rough estimate of files and primary categories the agent will touch this round.",
+    "zh-CN": "本轮 agent 将涉及的文件与主要类别的粗略估算。",
+  },
+  "submit.footprint.openFindings": {
+    en: "{count} open findings",
+    "zh-CN": "{count} 个未关闭审查项",
+  },
+  "submit.footprint.files": {
+    en: "~{count} file(s) affected",
+    "zh-CN": "预计涉及 ~{count} 个文件",
+  },
+  "submit.footprint.categories": {
+    en: "Primary categories: {categories}",
+    "zh-CN": "主要类别：{categories}",
+  },
+  "submit.footprint.noFindings": {
+    en: "No open findings to estimate.",
+    "zh-CN": "当前没有待提交的审查项。",
+  },
+  "settings.submitFootprint.label": {
+    en: "Show apply footprint in submit dialog",
+    "zh-CN": "在提交对话框中显示影响范围估算",
+  },
+  "settings.submitFootprint.description": {
+    en: "Off by default; estimates may mislead if read as exact predictions.",
+    "zh-CN": "默认关闭；估算值如被当作精确预测阅读可能误导。",
+  },
   "editFinding.title": { en: "Edit finding", "zh-CN": "编辑审查项" },
   "editFinding.body": {
     en: "Update category, severity, or comment. Changes are audited and visible to the agent.",
@@ -561,6 +590,17 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "action.reopen": { en: "Re-open", "zh-CN": "重新打开" },
   "action.mark": { en: "Mark as wontfix", "zh-CN": "标记为不修复" },
   "action.remove": { en: "Remove", "zh-CN": "删除" },
+  "action.deleteDraft": { en: "Delete draft", "zh-CN": "删除草稿" },
+  "confirm.deleteDraft.title": {
+    en: "Delete this draft finding?",
+    "zh-CN": "删除这条草稿审查项？",
+  },
+  "confirm.deleteDraft.body": {
+    en: "You won't be able to recover it once deleted.",
+    "zh-CN": "删除后无法恢复。",
+  },
+  "confirm.deleteDraft.delete": { en: "Delete draft", "zh-CN": "确认删除" },
+  "confirm.deleteDraft.cancel": { en: "Cancel", "zh-CN": "取消" },
   "action.mark.title": {
     en: "Mark this finding as wontfix / out_of_scope / false_positive / duplicate",
     "zh-CN": "将此审查项标记为不修复 / 超出范围 / 误报 / 重复",

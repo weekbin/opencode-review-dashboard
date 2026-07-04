@@ -181,9 +181,9 @@ describe("AC9 — State + Finding type shapes are unchanged", () => {
   it("T5.1 State and Finding type declarations match the snapshot", async () => {
     // Snapshot taken from src/index.ts at R4 baseline (870a507). Additive
     // type additions update the snapshot intentionally: R112 #76 extended
-    // the `kind` union with "out_of_diff" for non-diff file anchoring
-    // (existing "line" | "file" preserved, strict subset semantics — old
-    // state.json files continue to deserialize unchanged).
+    // the `kind` union with "out_of_diff"; R113 #77 added "content_match"
+    // to close_reason for content-hash auto-resolve. Both are strict
+    // subset extensions — old state.json files continue to deserialize.
     const expectedState = [
       "type State = {",
       "  session_id: string;",
@@ -213,7 +213,7 @@ describe("AC9 — State + Finding type shapes are unchanged", () => {
       "  created_at: number;",
       "  updated_at: number;",
       "  closed_at?: number;",
-      '  close_reason?: "file_removed" | "anchor_missing";',
+      '  close_reason?: "file_removed" | "anchor_missing" | "content_match";',
       "  manually_reopened?: boolean;",
       "  manually_edited?: boolean;",
       "  edited_at?: number;",
