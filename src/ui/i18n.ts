@@ -496,6 +496,19 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "modal.wontfix.title": { en: "Mark as wontfix", "zh-CN": "标记为不修复" },
   "modal.reopen.title": { en: "Force Reopen Finding", "zh-CN": "强制重新打开审查项" },
   "modal.cancel": { en: "Cancel", "zh-CN": "取消" },
+  "resolve.reason.fixedInRound": { en: "fixed in this round", "zh-CN": "本轮已修复" },
+  "resolve.reason.noLongerApplies": {
+    en: "no longer applies",
+    "zh-CN": "不再适用",
+  },
+  "resolve.reason.followUp": {
+    en: "will fix in follow-up",
+    "zh-CN": "将在后续修复",
+  },
+  "resolve.reason.falseAlarm": {
+    en: "false alarm — keep the code",
+    "zh-CN": "误报 — 保留代码",
+  },
   "action.undo": { en: "Undo", "zh-CN": "撤销" },
   "action.reopen": { en: "Re-open", "zh-CN": "重新打开" },
   "action.mark": { en: "Mark as wontfix", "zh-CN": "标记为不修复" },

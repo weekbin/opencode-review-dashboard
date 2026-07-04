@@ -2408,15 +2408,15 @@ function showResolveReasonModal(_findingId: string): Promise<ResolveReasonModalR
       <h3>${escapeHtml(t("modal.resolve.title"))}</h3>
       <p>${escapeHtml(t("modal.resolve.body"))}</p>
       <div class="resolve-reason-chips" id="resolve-reason-chips">
-        <button type="button" class="resolve-reason-chip" data-reason="fixed in this round">fixed in this round</button>
-        <button type="button" class="resolve-reason-chip" data-reason="no longer applies">no longer applies</button>
-        <button type="button" class="resolve-reason-chip" data-reason="will fix in follow-up">will fix in follow-up</button>
-        <button type="button" class="resolve-reason-chip" data-reason="false alarm — keep the code">false alarm — keep the code</button>
+        <button type="button" class="resolve-reason-chip" data-reason="fixed in this round">${escapeHtml(t("resolve.reason.fixedInRound"))}</button>
+        <button type="button" class="resolve-reason-chip" data-reason="no longer applies">${escapeHtml(t("resolve.reason.noLongerApplies"))}</button>
+        <button type="button" class="resolve-reason-chip" data-reason="will fix in follow-up">${escapeHtml(t("resolve.reason.followUp"))}</button>
+        <button type="button" class="resolve-reason-chip" data-reason="false alarm — keep the code">${escapeHtml(t("resolve.reason.falseAlarm"))}</button>
       </div>
       <textarea id="resolve-reason" rows="3" placeholder="${escapeHtml(t("modal.resolveReason.placeholder"))}"></textarea>
       <div class="modal-actions">
-        <button id="resolve-cancel" type="button">Cancel</button>
-        <button id="resolve-submit" class="primary" type="button">Resolve</button>
+        <button id="resolve-cancel" type="button">${escapeHtml(t("modal.cancel"))}</button>
+        <button id="resolve-submit" class="primary" type="button">${escapeHtml(t("action.resolve"))}</button>
       </div>
     `;
     overlay.appendChild(dialog);
