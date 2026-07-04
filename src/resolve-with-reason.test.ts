@@ -111,7 +111,7 @@ describe("AC11 — FindingResolutionKind shared union (no src/constants.ts)", ()
   it("T13.20.R11a FindingResolutionKind defined inline in src/index.ts", async () => {
     const src = await readSource(INDEX_TS);
     expect(src).toMatch(
-      /type\s+FindingResolutionKind\s*=\s*"wontfix"\s*\|\s*"out_of_scope"\s*\|\s*"false_positive"\s*\|\s*"duplicate"/,
+      /type\s+FindingResolutionKind\s*=[\s\S]*?"wontfix"[\s\S]*?"out_of_scope"[\s\S]*?"false_positive"[\s\S]*?"duplicate"(?:[\s\S]*?"approved")?[\s\S]*?;/,
     );
   });
 

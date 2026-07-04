@@ -62,16 +62,33 @@ type FindingPin = {
 // unknown value, mirrors EMOJI_WHITELIST pattern at :40-42). Both #20
 // and #21 import this type from the same source of truth (no
 // `src/constants.ts` per R12 style).
-type FindingResolutionKind = "wontfix" | "out_of_scope" | "false_positive" | "duplicate";
+type FindingResolutionKind =
+  | "wontfix"
+  | "out_of_scope"
+  | "false_positive"
+  | "duplicate"
+  | "approved";
 const RESOLUTION_KIND_WHITELIST: ReadonlySet<FindingResolutionKind> = new Set([
   "wontfix",
   "out_of_scope",
   "false_positive",
   "duplicate",
+  "approved",
 ]);
 function isFindingResolutionKind(input: unknown): input is FindingResolutionKind {
   return typeof input === "string" && RESOLUTION_KIND_WHITELIST.has(input as FindingResolutionKind);
 }
+
+type SubmitIntent = "request_changes" | "approve";
+function isSubmitIntent(input: unknown): input is SubmitIntent {
+  return input === "request_changes" || input === "approve";
+}
+
+type Approval = {
+  round: number;
+  notes: string;
+  at: number;
+};
 function isFindingStatus(input: unknown): input is FindingStatus {
   return input === "open" || input === "closed_auto" || input === "resolved";
 }
@@ -172,6 +189,7 @@ type State = {
   diff_base?: DiffBase;
   previous_diff_base?: DiffBase;
   roundSystemNotes?: RoundSystemNote[];
+  approvals?: Approval[];
   updated_at: number;
 };
 
@@ -245,10 +263,8 @@ type Launch = {
 type Submit = {
   notes?: string;
   new_findings?: DraftFinding[];
-  // R14 #24: client-supplied timestamp of the last save (mirrors
-  // server-stamped lastSavedAt; see Draft type). Optional for
-  // backwards-compat with pre-R14 callers.
   lastSavedAt?: number;
+  intent?: SubmitIntent;
 };
 
 type Done = {
@@ -2555,11 +2571,35 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
               const input = (await request.json().catch(() => ({}))) as Submit;
               const notes = typeof input.notes === "string" ? input.notes.trim() : "";
               const fresh = Array.isArray(input.new_findings) ? input.new_findings : [];
+              const intent: SubmitIntent = isSubmitIntent(input.intent)
+                ? input.intent
+                : "request_changes";
+              if (input.intent !== undefined && !isSubmitIntent(input.intent)) {
+                return new Response(
+                  JSON.stringify({ error: `invalid intent: ${String(input.intent)}` }),
+                  { status: 400, headers: { "content-type": "application/json" } },
+                );
+              }
               const round = base.round + 1;
               const created = sanitize(fresh, round, map);
-              const carry = base.findings.filter((item) => item.status === "open");
               const closed = base.findings.filter((item) => item.status !== "open");
-              const findings = [...closed, ...carry, ...created];
+              const openCarry = base.findings.filter((item) => item.status === "open");
+              const findings =
+                intent === "approve"
+                  ? [
+                      ...closed,
+                      ...openCarry.map((item) => ({
+                        ...item,
+                        status: "resolved" as const,
+                        resolution_kind: "approved" as FindingResolutionKind,
+                        resolved_at: Date.now(),
+                        resolved_by: "user" as const,
+                        manually_edited: true,
+                        edited_at: Date.now(),
+                      })),
+                      ...created,
+                    ]
+                  : [...closed, ...openCarry, ...created];
               const previousFindings = base.findings;
               const next: State = {
                 ...base,
@@ -2570,6 +2610,10 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                 draft: undefined,
                 updated_at: Date.now(),
               };
+              if (intent === "approve") {
+                const existingApprovals = next.approvals ?? [];
+                next.approvals = [...existingApprovals, { round, notes, at: Date.now() }];
+              }
               if (detectSilentRound({ freshCount: created.length, notes })) {
                 const filesChanged = Object.values(map).map((file) => ({
                   file: file.path,
@@ -2634,6 +2678,8 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                 JSON.stringify({
                   ok: true,
                   round,
+                  intent,
+                  approved: intent === "approve",
                   json_path,
                   md_path,
                 }),

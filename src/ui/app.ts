@@ -1487,6 +1487,26 @@ const statusRoot = document.querySelector("#status") as HTMLDivElement;
 const addButton = document.querySelector("#add") as HTMLButtonElement;
 const clearButton = document.querySelector("#clear") as HTMLButtonElement;
 const submitButton = document.querySelector("#submit") as HTMLButtonElement;
+const submitRow = document.createElement("span");
+submitRow.className = "submit-row";
+submitRow.innerHTML = `<button class="btn btn-secondary" id="submit-request-changes" type="button" data-i18n="toolbar.requestChanges">Request changes</button><button class="btn btn-success" id="submit-approve-changes" type="button" data-i18n="toolbar.approveChanges" disabled>Approve changes</button>`;
+submitButton.insertAdjacentElement("afterend", submitRow);
+const submitRequestButton = document.querySelector("#submit-request-changes") as HTMLButtonElement;
+const submitApproveButton = document.querySelector("#submit-approve-changes") as HTMLButtonElement;
+registerUITranslator("toolbar.requestChanges", () => t("toolbar.requestChanges"));
+registerUITranslator("toolbar.approveChanges", () => t("toolbar.approveChanges"));
+function updateSubmitButtons(): void {
+  const findings = all();
+  const openCount = findings.filter(
+    (f) => f.status === "open" || f.status === "closed_auto",
+  ).length;
+  const notesNonEmpty = typeof state.notes === "string" && state.notes.trim().length > 0;
+  const enabled = openCount === 0 && notesNonEmpty;
+  submitApproveButton.disabled = !enabled;
+  submitApproveButton.title = enabled
+    ? t("toolbar.approveChanges")
+    : t("toolbar.approveChanges.disabledTooltip");
+}
 const exportButton = document.querySelector("#export") as HTMLButtonElement | null;
 const drawerToggle = document.querySelector("#drawer-toggle") as HTMLButtonElement;
 const drawer = document.querySelector("#drawer") as HTMLElement;
@@ -5804,6 +5824,7 @@ function renderFindings() {
   updateFindingCount();
   updateTabCounts();
   updateFileCommentsBadges();
+  updateSubmitButtons();
 
   if (items.length === 0) {
     findingsRoot.textContent = t("conversation.empty.noFindings");
@@ -5923,7 +5944,7 @@ function fillOptions() {
   }
 }
 
-function draftPayload() {
+function draftPayload(intent: "request_changes" | "approve" = "request_changes") {
   return {
     notes: state.notes,
     new_findings: state.fresh.map((item) => ({
@@ -5937,6 +5958,7 @@ function draftPayload() {
       comment: item.comment,
       kind: item.kind ?? "line",
     })),
+    intent,
     // R14 #24: client stamp of the last save. Server uses max(client, server)
     // to keep state.draft.lastSavedAt monotonic across clock skew.
     lastSavedAt: Date.now(),
@@ -6069,8 +6091,10 @@ function clearSelection() {
   syncAll();
 }
 
-async function submit() {
+async function submit(intent: "request_changes" | "approve" = "request_changes") {
   submitButton.disabled = true;
+  submitRequestButton.disabled = true;
+  submitApproveButton.disabled = true;
   setStatus(t("status.submitting"));
 
   const response = await fetch(endpoint("/submit"), {
@@ -6078,11 +6102,12 @@ async function submit() {
     headers: {
       "content-type": "application/json",
     },
-    body: JSON.stringify(draftPayload()),
+    body: JSON.stringify(draftPayload(intent)),
   }).catch(() => undefined);
 
   if (!response) {
     submitButton.disabled = false;
+    updateSubmitButtons();
     setStatus(t("status.submitInterrupted"), true);
     return;
   }
@@ -6090,29 +6115,40 @@ async function submit() {
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
     submitButton.disabled = false;
+    updateSubmitButtons();
     showToast(`Submit failed (${response.status})`, { error: true });
     setStatus(`Submit failed (${response.status}) ${detail || "unknown error"}`, true);
     return;
   }
 
-  const body = await response.json().catch(() => ({}));
-  showToast(t("review.submitted.title", { round: body?.round ? ` — round ${body.round}` : "" }));
-  showPostSubmit(body?.round);
+  const body = (await response.json().catch(() => ({}))) as { round?: number; approved?: boolean };
+  if (body.approved) {
+    showToast(t("status.submitApproved"));
+  } else {
+    showToast(t("review.submitted.title", { round: body?.round ? ` — round ${body.round}` : "" }));
+  }
+  showPostSubmit(body?.round, body?.approved);
 }
 
-function showPostSubmit(round: number | undefined) {
+function showPostSubmit(round: number | undefined, approved = false) {
   addButton.disabled = true;
   clearButton.disabled = true;
   submitButton.disabled = true;
+  submitRequestButton.disabled = true;
+  submitApproveButton.disabled = true;
   commentRoot.disabled = true;
-  document.body.classList.add("submitted");
+  document.body.classList.add(approved ? "approved" : "submitted");
 
   const overlay = document.createElement("div");
-  overlay.className = "post-submit";
-  const titleText = t("review.submitted.title", { round: round ? ` — round ${round}` : "" });
-  const messageText = t("review.submitted.message", {
-    shortcut: "<kbd>⌘W</kbd> / <kbd>Ctrl+W</kbd>",
-  });
+  overlay.className = approved ? "post-submit post-submit-approved" : "post-submit";
+  const titleText = approved
+    ? t("review.approved.title")
+    : t("review.submitted.title", { round: round ? ` — round ${round}` : "" });
+  const messageText = approved
+    ? t("review.approved.title")
+    : t("review.submitted.message", {
+        shortcut: "<kbd>⌘W</kbd> / <kbd>Ctrl+W</kbd>",
+      });
   overlay.innerHTML = `
     <div class="post-submit-card">
       <h2>${titleText}</h2>
@@ -6225,6 +6261,45 @@ submitButton.addEventListener("click", () => {
   installModalA11y(dialog, close);
   notesArea.focus();
 });
+
+submitRequestButton.addEventListener("click", () => {
+  submitButton.click();
+});
+
+submitApproveButton.addEventListener("click", () => {
+  if (submitApproveButton.disabled) return;
+  const findings = all();
+  const openCount = findings.filter(
+    (f) => f.status === "open" || f.status === "closed_auto",
+  ).length;
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  const dialog = document.createElement("div");
+  dialog.className = "modal-dialog submit-confirm-modal submit-approve-modal";
+  dialog.setAttribute("role", "dialog");
+  dialog.setAttribute("aria-modal", "true");
+  const notePreview = (state.notes ?? "").trim();
+  const noteDisplay = notePreview ? escapeHtml(notePreview.slice(0, 120)) : "—";
+  dialog.innerHTML = `<h3>${escapeHtml(t("modal.submit.approve.title"))}</h3><p>${escapeHtml(t("modal.submit.approve.body"))}</p><div class="finding-count">${openCount}</div><p style="text-align:center;font-size:13px;color:light-dark(#666,#aaa);margin:0 0 12px 0">${escapeHtml(t("submit.modal.findingCount", { count: openCount }))}</p><div class="round-notes-display"><strong>${escapeHtml(t("submit.modal.roundNotes.label"))}</strong> <span>${noteDisplay}</span></div><div class="modal-actions"><button id="approve-confirm-cancel" type="button">${escapeHtml(t("modal.cancel"))}</button><button id="approve-confirm-ok" class="btn-success" type="button">${escapeHtml(t("modal.submit.approve.confirm"))}</button></div>`;
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+  const close = () => {
+    if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+  };
+  const cancelBtn = dialog.querySelector("#approve-confirm-cancel") as HTMLButtonElement;
+  const okBtn = dialog.querySelector("#approve-confirm-ok") as HTMLButtonElement;
+  cancelBtn.addEventListener("click", close);
+  okBtn.addEventListener("click", () => {
+    close();
+    submit("approve");
+  });
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) close();
+  });
+  installModalA11y(dialog, close);
+  okBtn.focus();
+});
+
 exportButton?.addEventListener("click", () => {
   if (!state.data) {
     setStatus(t("status.noReviewData"), true);

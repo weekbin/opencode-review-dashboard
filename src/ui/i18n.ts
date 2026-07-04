@@ -62,6 +62,12 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "toolbar.review": { en: "Review", "zh-CN": "审查" },
   "toolbar.export": { en: "Export", "zh-CN": "导出" },
   "toolbar.submit": { en: "Submit Review", "zh-CN": "提交审查" },
+  "toolbar.requestChanges": { en: "Request changes", "zh-CN": "请求修改" },
+  "toolbar.approveChanges": { en: "Approve changes", "zh-CN": "通过审查" },
+  "toolbar.approveChanges.disabledTooltip": {
+    en: "Resolve all open findings + write round notes first",
+    "zh-CN": "请先关闭所有未解决发现并填写本轮备注",
+  },
   "toolbar.copyBranch.label": { en: "Copy branch", "zh-CN": "复制分支" },
   "toolbar.copyBranch.title": {
     en: "Copy current branch name to clipboard",
@@ -593,6 +599,22 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "skipLink": { en: "Skip to main content", "zh-CN": "跳到主要内容" },
   "modal.submit.title": { en: "Submit review?", "zh-CN": "提交审查?" },
   "modal.submit.confirm": { en: "Submit", "zh-CN": "提交" },
+  "modal.submit.requestChanges.title": {
+    en: "Request changes for round?",
+    "zh-CN": "本轮请求修改?",
+  },
+  "modal.submit.approve.title": { en: "Approve round?", "zh-CN": "通过本轮?" },
+  "modal.submit.approve.body": {
+    en: "All open findings will be marked approved and not carried forward. Worktree is ready to merge. Agent will NOT apply further changes.",
+    "zh-CN":
+      "所有未解决发现将被标记为已通过，不带入下一轮。Worktree 可以合并。Agent 不会再继续修改。",
+  },
+  "modal.submit.approve.confirm": { en: "Approve", "zh-CN": "通过" },
+  "review.approved.title": {
+    en: "Round approved · worktree ready to merge",
+    "zh-CN": "本轮已通过 · Worktree 可以合并",
+  },
+  "status.submitApproved": { en: "Round approved", "zh-CN": "本轮已通过" },
   "modal.resolve.title": { en: "Resolve Finding", "zh-CN": "解决审查项" },
   "modal.wontfix.title": { en: "Mark as wontfix", "zh-CN": "标记为不修复" },
   "modal.wontfix.body": {

@@ -194,6 +194,7 @@ describe("AC9 — State + Finding type shapes are unchanged", () => {
       "  diff_base?: DiffBase;",
       "  previous_diff_base?: DiffBase;",
       "  roundSystemNotes?: RoundSystemNote[];",
+      "  approvals?: Approval[];",
       "  updated_at: number;",
       "};",
     ].join("\n");
