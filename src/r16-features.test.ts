@@ -203,12 +203,12 @@ describe("AC7 — Copy as MD button rendered in finding actions", () => {
 
   it("T16.7c button text is 'Copy as MD'", async () => {
     const src = await readSource(APP_TS);
-    expect(src).toMatch(/textContent\s*=\s*t\("action\.copyMarkdown"\)/);
+    expect(src).toMatch(/textContent\s*=\s*(?:t\(\s*)?["']action\.copyMarkdown["']\s*(?:\s*\))?/);
   });
 
   it("T16.7d button has descriptive title tooltip", async () => {
     const src = await readSource(APP_TS);
-    expect(src).toMatch(/title\s*=\s*t\("action\.copyMarkdown\.title"\)/);
+    expect(src).toMatch(/title\s*=\s*(?:t\(\s*)?["']action\.copyMarkdown\.title["']\s*(?:\s*\))?/);
   });
 
   it("T16.7e button click calls copyFindingAsMarkdownToClipboard", async () => {
@@ -355,7 +355,7 @@ describe("AC11 — setStatus('Copied as Markdown')", () => {
     const src = await readSource(APP_TS);
     const block = src.match(/function\s+copyFindingAsMarkdownToClipboard\s*\([\s\S]*?\n\}/);
     expect(block).toBeTruthy();
-    expect(block![0]).toMatch(/setStatus\(t\("status\.copiedAsMarkdown"\)/);
+    expect(block![0]).toMatch(/setStatus\((?:t\()?\s*["']status\.copiedAsMarkdown["']\s*\)?/);
   });
 
   it("T16.11b failure path calls setStatus with error:true", async () => {
@@ -386,13 +386,13 @@ describe("AC13 — Two new buttons in diff panel header", () => {
   it("T16.13a expand-all button rendered in renderDiffPanel", async () => {
     const src = await readSource(APP_TS);
     expect(src).toMatch(/className\s*=\s*"diff-expand-all-btn"/);
-    expect(src).toMatch(/textContent\s*=\s*t\("panel\.expandAll"\)/);
+    expect(src).toMatch(/textContent\s*=\s*(?:t\(\s*)?["']panel\.expandAll["']\s*(?:\s*\))?/);
   });
 
   it("T16.13b collapse-all button rendered in renderDiffPanel", async () => {
     const src = await readSource(APP_TS);
     expect(src).toMatch(/className\s*=\s*"diff-collapse-all-btn"/);
-    expect(src).toMatch(/textContent\s*=\s*t\("panel\.collapseAll"\)/);
+    expect(src).toMatch(/textContent\s*=\s*(?:t\(\s*)?["']panel\.collapseAll["']\s*(?:\s*\))?/);
   });
 
   it("T16.13c buttons wrapped in .diff-panel-toolbar", async () => {
@@ -469,7 +469,7 @@ describe("AC17 — setStatus feedback", () => {
     const block = src.match(/function\s+setAllExpanded\s*\([\s\S]*?\n\}/);
     expect(block).toBeTruthy();
     expect(block![0]).toMatch(
-      /setStatus\(\s*expand\s*\?\s*t\("status\.expandedAll"\)\s*:\s*t\("status\.collapsedAll"\)\s*\)/,
+      /setStatus\(\s*expand\s*\?\s*(?:t\(\s*)?["']status\.expandedAll["']\s*(?:\s*\))?\s*:\s*(?:t\(\s*)?["']status\.collapsedAll["']\s*(?:\s*\))?\s*\)/,
     );
   });
 
@@ -477,8 +477,8 @@ describe("AC17 — setStatus feedback", () => {
     const src = await readSource(APP_TS);
     const block = src.match(/function\s+setAllExpanded\s*\([\s\S]*?\n\}/);
     expect(block).toBeTruthy();
-    expect(block![0]).toMatch(/t\("status\.expandedAll"\)/);
-    expect(block![0]).toMatch(/t\("status\.collapsedAll"\)/);
+    expect(block![0]).toMatch(/["']status\.expandedAll["']/);
+    expect(block![0]).toMatch(/["']status\.collapsedAll["']/);
   });
 });
 

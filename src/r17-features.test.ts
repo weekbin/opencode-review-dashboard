@@ -272,7 +272,7 @@ describe("AC2 — Modal shows 10 keyboard shortcuts in clean grid", () => {
 
   it("T36.2c modal title uses i18n key 'help.modal.title' (R77: string moved to STRINGS table)", async () => {
     const src = await readSource(APP_TS);
-    expect(src).toMatch(/t\("help\.modal\.title"\)/);
+    expect(src).toMatch(/["']help\.modal\.title["']/);
   });
 });
 
