@@ -4602,12 +4602,6 @@ function renderConversationPanel(root: HTMLElement) {
           if (beforeRange !== afterRange) {
             changes.push(t("audit.lineUpdated", { before: beforeRange, after: afterRange }));
           }
-        } else if (row.after_anchor && !row.before_anchor) {
-          changes.push(
-            t("audit.anchorUpdated", {
-              after: `${row.after_anchor.file}:${row.after_anchor.start_line}-${row.after_anchor.end_line}`,
-            }),
-          );
         }
         if (row.before_status && row.after_status && row.before_status !== row.after_status) {
           changes.push(

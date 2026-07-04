@@ -309,10 +309,6 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "status: {before} → {after}",
     "zh-CN": "状态: {before} → {after}",
   },
-  "audit.anchorUpdated": {
-    en: "anchor moved to {after}",
-    "zh-CN": "锚点已移动至 {after}",
-  },
   "audit.noChanges": {
     en: "no field changes",
     "zh-CN": "无字段变更",
