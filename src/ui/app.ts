@@ -4754,7 +4754,7 @@ function renderPreviouslyDiscussedPanel(root: HTMLElement) {
     sel.innerHTML = "";
     const allOpt = document.createElement("option");
     allOpt.value = "all";
-    allOpt.textContent = "All rounds";
+    allOpt.textContent = t("previously.allRounds");
     sel.appendChild(allOpt);
     for (const n of roundNumbers) {
       const opt = document.createElement("option");
@@ -4847,7 +4847,7 @@ function renderPreviouslyDiscussedPanel(root: HTMLElement) {
       notesBlock.className = "previously-notes";
       const notesLabel = document.createElement("div");
       notesLabel.className = "previously-notes-label";
-      notesLabel.textContent = "Notes you sent to the agent";
+      notesLabel.textContent = t("previously.notesLabel");
       notesBlock.appendChild(notesLabel);
       const notesText = document.createElement("div");
       notesText.className = "previously-notes-text";
@@ -4864,7 +4864,7 @@ function renderPreviouslyDiscussedPanel(root: HTMLElement) {
     if (roundEntry.findings.length > 0) {
       const findingsHeader = document.createElement("div");
       findingsHeader.className = "previously-findings-header";
-      findingsHeader.textContent = "Findings + comment threads";
+      findingsHeader.textContent = t("previously.findingsHeader");
       section.appendChild(findingsHeader);
 
       for (const finding of roundEntry.findings) {

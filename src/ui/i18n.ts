@@ -274,6 +274,15 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "Filter previously-discussed by round",
     "zh-CN": "按轮次筛选历史讨论",
   },
+  "previously.allRounds": { en: "All rounds", "zh-CN": "所有轮次" },
+  "previously.notesLabel": {
+    en: "Notes you sent to the agent",
+    "zh-CN": "你发送给 agent 的笔记",
+  },
+  "previously.findingsHeader": {
+    en: "Findings + comment threads",
+    "zh-CN": "审查项 + 评论线程",
+  },
   "conversation.filter.open.title": {
     en: "Show only unresolved",
     "zh-CN": "仅显示未解决",
