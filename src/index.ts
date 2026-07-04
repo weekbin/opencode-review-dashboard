@@ -700,6 +700,7 @@ async function readPriorNotesFromSession(
 }
 
 const ROUND_SYSTEM_NOTES_CAP = 50;
+const ROUND_APPROVALS_CAP = 50;
 const ROUND_SUMMARY_GENERATOR_VERSION = "v1";
 
 function detectSilentRound(opts: { freshCount: number; notes: string }): boolean {
@@ -2580,6 +2581,12 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                   { status: 400, headers: { "content-type": "application/json" } },
                 );
               }
+              if (intent === "approve" && notes.length === 0) {
+                return new Response(
+                  JSON.stringify({ error: "approve intent requires non-empty notes" }),
+                  { status: 400, headers: { "content-type": "application/json" } },
+                );
+              }
               const round = base.round + 1;
               const created = sanitize(fresh, round, map);
               const closed = base.findings.filter((item) => item.status !== "open");
@@ -2612,7 +2619,11 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
               };
               if (intent === "approve") {
                 const existingApprovals = next.approvals ?? [];
-                next.approvals = [...existingApprovals, { round, notes, at: Date.now() }];
+                const approvalsCap =
+                  existingApprovals.length >= ROUND_APPROVALS_CAP
+                    ? existingApprovals.slice(existingApprovals.length - ROUND_APPROVALS_CAP + 1)
+                    : existingApprovals;
+                next.approvals = [...approvalsCap, { round, notes, at: Date.now() }];
               }
               if (detectSilentRound({ freshCount: created.length, notes })) {
                 const filesChanged = Object.values(map).map((file) => ({

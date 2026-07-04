@@ -1487,6 +1487,7 @@ const statusRoot = document.querySelector("#status") as HTMLDivElement;
 const addButton = document.querySelector("#add") as HTMLButtonElement;
 const clearButton = document.querySelector("#clear") as HTMLButtonElement;
 const submitButton = document.querySelector("#submit") as HTMLButtonElement;
+submitButton.style.display = "none";
 const submitRow = document.createElement("span");
 submitRow.className = "submit-row";
 submitRow.innerHTML = `<button class="btn btn-secondary" id="submit-request-changes" type="button" data-i18n="toolbar.requestChanges">Request changes</button><button class="btn btn-success" id="submit-approve-changes" type="button" data-i18n="toolbar.approveChanges" disabled>Approve changes</button>`;
@@ -6263,8 +6264,78 @@ submitButton.addEventListener("click", () => {
 });
 
 submitRequestButton.addEventListener("click", () => {
-  submitButton.click();
+  if (submitRequestButton.disabled) return;
+  showRequestChangesModal();
 });
+
+function showRequestChangesModal() {
+  const findings = all();
+  const openCount = findings.filter(
+    (f) => f.status === "open" || f.status === "closed_auto",
+  ).length;
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  const dialog = document.createElement("div");
+  dialog.className = "modal-dialog submit-confirm-modal";
+  dialog.setAttribute("role", "dialog");
+  dialog.setAttribute("aria-modal", "true");
+  const submitFootprintHtml = state.submitFootprint
+    ? (() => {
+        const openFindings = state.fresh
+          .concat(state.existing)
+          .filter((f) => f.status === "open" || f.status === "closed_auto");
+        const fpFiles = new Set(
+          openFindings.map((f) => f.file).filter((p): p is string => Boolean(p)),
+        );
+        const fpCats = new Map<string, number>();
+        for (const f of openFindings) {
+          fpCats.set(f.category, (fpCats.get(f.category) ?? 0) + 1);
+        }
+        const topCats = [...fpCats.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3)
+          .map(([c]) => c);
+        return (
+          '<div class="submit-footprint" aria-live="polite"><h4>' +
+          escapeHtml(t("submit.footprint.heading")) +
+          '</h4><p class="submit-footprint-body">' +
+          escapeHtml(t("submit.modal.body")) +
+          '</p><ul class="submit-footprint-list"><li>' +
+          escapeHtml(t("submit.footprint.openFindings", { count: String(openFindings.length) })) +
+          "</li><li>" +
+          escapeHtml(t("submit.footprint.files", { count: String(fpFiles.size) })) +
+          "</li><li>" +
+          escapeHtml(t("submit.footprint.categories", { categories: topCats.join(", ") || "—" })) +
+          "</li></ul></div>"
+        );
+      })()
+    : "";
+  dialog.innerHTML = `<h3>${escapeHtml(t("modal.submit.requestChanges.title"))}</h3><p>${escapeHtml(t("submit.modal.body"))}</p>${submitFootprintHtml}<div class="finding-count">${openCount}</div><p style="text-align:center;font-size:13px;color:light-dark(#666,#aaa);margin-bottom:0">${escapeHtml(t("submit.modal.findingCount", { count: openCount }))}</p><label for="round-notes" class="round-notes-label">${escapeHtml(t("submit.modal.roundNotes.label"))}</label><textarea id="round-notes" data-testid="round-notes-textarea" class="round-notes-textarea" placeholder="${escapeHtml(t("submit.modal.roundNotes.placeholder"))}" rows="5"></textarea><div class="modal-actions"><button id="submit-confirm-cancel" type="button">${escapeHtml(t("modal.cancel"))}</button><button id="submit-confirm-ok" class="primary" type="button">${escapeHtml(t("modal.submit.confirm"))}</button></div>`;
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+  const close = () => {
+    if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+  };
+  const cancelBtn = dialog.querySelector("#submit-confirm-cancel") as HTMLButtonElement;
+  const okBtn = dialog.querySelector("#submit-confirm-ok") as HTMLButtonElement;
+  const notesArea = dialog.querySelector("#round-notes") as HTMLTextAreaElement;
+  notesArea.value = state.notes ?? "";
+  notesArea.addEventListener("input", () => {
+    state.notes = notesArea.value;
+    scheduleSave();
+  });
+  cancelBtn.addEventListener("click", close);
+  okBtn.addEventListener("click", () => {
+    state.notes = notesArea.value;
+    close();
+    submit("request_changes");
+  });
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) close();
+  });
+  installModalA11y(dialog, close);
+  notesArea.focus();
+}
 
 submitApproveButton.addEventListener("click", () => {
   if (submitApproveButton.disabled) return;
