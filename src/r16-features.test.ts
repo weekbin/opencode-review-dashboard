@@ -386,13 +386,13 @@ describe("AC13 — Two new buttons in diff panel header", () => {
   it("T16.13a expand-all button rendered in renderDiffPanel", async () => {
     const src = await readSource(APP_TS);
     expect(src).toMatch(/className\s*=\s*"diff-expand-all-btn"/);
-    expect(src).toMatch(/textContent\s*=\s*"Expand all"/);
+    expect(src).toMatch(/textContent\s*=\s*t\("panel\.expandAll"\)/);
   });
 
   it("T16.13b collapse-all button rendered in renderDiffPanel", async () => {
     const src = await readSource(APP_TS);
     expect(src).toMatch(/className\s*=\s*"diff-collapse-all-btn"/);
-    expect(src).toMatch(/textContent\s*=\s*"Collapse all"/);
+    expect(src).toMatch(/textContent\s*=\s*t\("panel\.collapseAll"\)/);
   });
 
   it("T16.13c buttons wrapped in .diff-panel-toolbar", async () => {

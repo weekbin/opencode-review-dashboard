@@ -460,6 +460,14 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   },
   "panel.expandAll": { en: "Expand all", "zh-CN": "全部展开" },
   "panel.collapseAll": { en: "Collapse all", "zh-CN": "全部折叠" },
+  "panel.expandAll.title": {
+    en: "Expand all unchanged regions across every file",
+    "zh-CN": "展开所有文件的所有未变更区域",
+  },
+  "panel.collapseAll.title": {
+    en: "Collapse all unchanged regions across every file",
+    "zh-CN": "折叠所有文件的所有未变更区域",
+  },
   "diff.hunk.collapse": { en: "Collapse hunk", "zh-CN": "折叠 hunk" },
   "diff.hunk.expand": { en: "Expand hunk", "zh-CN": "展开 hunk" },
 };

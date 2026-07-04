@@ -5004,14 +5004,14 @@ function renderDiffPanel() {
     const expandAllBtn = document.createElement("button");
     expandAllBtn.type = "button";
     expandAllBtn.className = "diff-expand-all-btn";
-    expandAllBtn.textContent = "Expand all";
-    expandAllBtn.title = "Expand all unchanged regions across every file";
+    expandAllBtn.textContent = t("panel.expandAll");
+    expandAllBtn.title = t("panel.expandAll.title");
     expandAllBtn.addEventListener("click", () => setAllExpanded(true));
     const collapseAllBtn = document.createElement("button");
     collapseAllBtn.type = "button";
     collapseAllBtn.className = "diff-collapse-all-btn";
-    collapseAllBtn.textContent = "Collapse all";
-    collapseAllBtn.title = "Collapse all unchanged regions across every file";
+    collapseAllBtn.textContent = t("panel.collapseAll");
+    collapseAllBtn.title = t("panel.collapseAll.title");
     collapseAllBtn.addEventListener("click", () => setAllExpanded(false));
     panelToolbar.appendChild(expandAllBtn);
     panelToolbar.appendChild(collapseAllBtn);
