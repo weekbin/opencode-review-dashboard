@@ -471,6 +471,31 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   },
   "status.expandedAll": { en: "Expanded all files", "zh-CN": "已展开所有文件" },
   "status.collapsedAll": { en: "Collapsed all files", "zh-CN": "已折叠所有文件" },
+  "status.commentAdded": { en: "Comment added", "zh-CN": "评论已添加" },
+  "status.commentTooLong": {
+    en: "Comment exceeds the maximum length",
+    "zh-CN": "评论超过最大长度限制",
+  },
+  "status.copiedAsMarkdown": {
+    en: "Copied as Markdown",
+    "zh-CN": "已复制为 Markdown",
+  },
+  "status.copyMarkdownBlocked": {
+    en: "Could not copy as Markdown — clipboard blocked",
+    "zh-CN": "复制为 Markdown 失败 — 剪贴板被阻止",
+  },
+  "status.failedAddComment": {
+    en: "Failed to add comment",
+    "zh-CN": "添加评论失败",
+  },
+  "status.noChangesToSave": {
+    en: "No changes to save",
+    "zh-CN": "没有需要保存的更改",
+  },
+  "status.noReviewData": {
+    en: "No review data available",
+    "zh-CN": "暂无审查数据",
+  },
   "status.commentBoxEmpty": {
     en: "Comment box is empty — write the template body first",
     "zh-CN": "评论框为空 — 请先填写模板内容",
