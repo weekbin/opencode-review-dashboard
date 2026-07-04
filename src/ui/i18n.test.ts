@@ -437,3 +437,43 @@ describe("AC1.2 — toggle re-renders static-HTML labels via registerUITranslato
     expect(src.includes("state.data?.auto_worktree_branch")).toBe(true);
   });
 });
+
+describe("AC1.6 — comprehensive en + zh-CN translation (R107 gap #4 fix)", () => {
+  it("every STRINGS row resolves to its en field under lang='en'", () => {
+    const failures: string[] = [];
+    let covered = 0;
+    for (const key of Object.keys(STRINGS)) {
+      covered++;
+      const row = STRINGS[key];
+      if (!row) continue;
+      const got = translate(key, "en");
+      if (got !== row.en) failures.push(`${key}: got ${JSON.stringify(got)}`);
+    }
+    expect(failures).toEqual([]);
+    expect(covered).toBeGreaterThan(50);
+  });
+
+  it("every STRINGS row resolves to its zh-CN field under lang='zh-CN'", () => {
+    const failures: string[] = [];
+    let covered = 0;
+    for (const key of Object.keys(STRINGS)) {
+      covered++;
+      const row = STRINGS[key];
+      if (!row) continue;
+      const got = translate(key, "zh-CN");
+      if (got !== row["zh-CN"]) failures.push(`${key}: got ${JSON.stringify(got)}`);
+    }
+    expect(failures).toEqual([]);
+    expect(covered).toBeGreaterThan(50);
+  });
+
+  it("no STRINGS row collapses to the literal key string in either language", () => {
+    const collapsed: string[] = [];
+    for (const lang of ["en", "zh-CN"] as const) {
+      for (const key of Object.keys(STRINGS)) {
+        if (translate(key, lang) === key) collapsed.push(`${lang}/${key}`);
+      }
+    }
+    expect(collapsed).toEqual([]);
+  });
+});
