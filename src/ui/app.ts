@@ -211,6 +211,7 @@ const SIDEBAR_FILTER_UNREAD_KEY = "diff-review:filter-unread";
 const SEARCH_HISTORY_MAX_KEY = "diff-review:search-history-max";
 // R113 #78: submit-dialog apply-footprint preview toggle (default off).
 const SUBMIT_FOOTPRINT_KEY = "diff-review:submit-footprint";
+const RECONCILE_MODE_KEY = "diff-review:reconcile-mode";
 
 function readStored<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   try {
@@ -1490,12 +1491,30 @@ const submitButton = document.querySelector("#submit") as HTMLButtonElement;
 submitButton.style.display = "none";
 const submitRow = document.createElement("span");
 submitRow.className = "submit-row";
-submitRow.innerHTML = `<button class="btn btn-secondary" id="submit-request-changes" type="button" data-i18n="toolbar.requestChanges">Request changes</button><button class="btn btn-success" id="submit-approve-changes" type="button" data-i18n="toolbar.approveChanges" disabled>Approve changes</button>`;
+submitRow.innerHTML = `<button class="btn btn-secondary" id="submit-request-changes" type="button" data-i18n="toolbar.requestChanges">Request changes</button><button class="btn btn-success" id="submit-approve-changes" type="button" data-i18n="toolbar.approveChanges" disabled>Approve changes</button><button class="btn btn-secondary" id="toggle-reconcile" type="button" data-i18n="toolbar.reconcile" title="Per-file cross-round reconciliation">Reconcile</button>`;
 submitButton.insertAdjacentElement("afterend", submitRow);
 const submitRequestButton = document.querySelector("#submit-request-changes") as HTMLButtonElement;
 const submitApproveButton = document.querySelector("#submit-approve-changes") as HTMLButtonElement;
+const reconcileToggleBtn = document.querySelector("#toggle-reconcile") as HTMLButtonElement;
 registerUITranslator("toolbar.requestChanges", () => t("toolbar.requestChanges"));
 registerUITranslator("toolbar.approveChanges", () => t("toolbar.approveChanges"));
+registerUITranslator("toolbar.reconcile", () => t("toolbar.reconcile"));
+registerUITranslator("toolbar.reconcile.active", () => t("toolbar.reconcile.active"));
+registerUITranslator("reconcile.banner.hint", () => t("reconcile.banner.hint"));
+registerUITranslator("reconcile.badge.resolved", () => t("reconcile.badge.resolved"));
+registerUITranslator("reconcile.badge.open", () => t("reconcile.badge.open"));
+registerUITranslator("reconcile.badge.new", () => t("reconcile.badge.new"));
+
+if (reconcileToggleBtn) {
+  reconcileToggleBtn.addEventListener("click", () => {
+    state.reconcileMode = !state.reconcileMode;
+    localStorage.setItem(RECONCILE_MODE_KEY, state.reconcileMode ? "on" : "off");
+    reconcileToggleBtn.textContent = state.reconcileMode
+      ? t("toolbar.reconcile.active")
+      : t("toolbar.reconcile");
+    renderDiffPanel();
+  });
+}
 function updateSubmitButtons(): void {
   const findings = all();
   const openCount = findings.filter(
@@ -1549,6 +1568,7 @@ const state = {
   // diff-review:filter-unread. Default false (show all files).
   filterUnread: readStoredFilterUnread(),
   submitFootprint: readStored<"on" | "off">(SUBMIT_FOOTPRINT_KEY, ["on", "off"], "off") === "on",
+  reconcileMode: readStored<"on" | "off">(RECONCILE_MODE_KEY, ["on", "off"], "off") === "on",
   activeTab: readStored<"files" | "commits" | "conversation" | "previously">(
     ACTIVE_TAB_KEY,
     ["files", "commits", "conversation", "previously"],
@@ -5152,6 +5172,57 @@ function injectHunkCollapseButtons(
   }
 }
 
+function renderReconcileOverlay() {
+  const existing = diffsRoot.querySelector(".reconcile-overlay-banner");
+  if (existing) existing.remove();
+  diffsRoot.querySelectorAll<HTMLElement>(".card-reconcile-strip").forEach((el) => el.remove());
+  if (!state.reconcileMode) return;
+  const banner = document.createElement("div");
+  banner.className = "reconcile-overlay-banner";
+  banner.setAttribute("role", "status");
+  banner.textContent = t("reconcile.banner.hint");
+  diffsRoot.insertBefore(banner, diffsRoot.firstChild);
+  const allFindings = [...state.fresh, ...state.existing];
+  for (const card of diffsRoot.querySelectorAll<HTMLElement>(".card[data-file]")) {
+    const filePath = card.dataset.file;
+    if (!filePath) continue;
+    const fileFindings = allFindings.filter((f) => f.file === filePath);
+    const resolved = fileFindings.filter((f) => f.status === "resolved");
+    const open = fileFindings.filter((f) => f.status === "open");
+    const freshCount = fileFindings.filter(
+      (f) => state.fresh.includes(f) && f.status !== "resolved",
+    ).length;
+    if (resolved.length === 0 && open.length === 0 && freshCount === 0) continue;
+    const strip = document.createElement("div");
+    strip.className = "card-reconcile-strip";
+    if (resolved.length > 0) {
+      const green = document.createElement("span");
+      green.className = "reconcile-badge reconcile-green";
+      green.dataset.findingId = resolved[0]!.id;
+      green.title = `${resolved.length} resolved by you`;
+      green.textContent = t("reconcile.badge.resolved", { count: String(resolved.length) });
+      strip.appendChild(green);
+    }
+    if (open.length > 0) {
+      const amber = document.createElement("span");
+      amber.className = "reconcile-badge reconcile-amber";
+      amber.dataset.findingId = open[0]!.id;
+      amber.title = `${open.length} still open`;
+      amber.textContent = t("reconcile.badge.open", { count: String(open.length) });
+      strip.appendChild(amber);
+    }
+    if (freshCount > 0) {
+      const red = document.createElement("span");
+      red.className = "reconcile-badge reconcile-red";
+      red.dataset.findingId = "fresh";
+      red.title = `${freshCount} new this round`;
+      red.textContent = t("reconcile.badge.new", { count: String(freshCount) });
+      strip.appendChild(red);
+    }
+    card.insertBefore(strip, card.firstChild);
+  }
+}
+
 function renderDiffPanel() {
   for (const view of state.views.values()) {
     view.instance.cleanUp();
@@ -5359,6 +5430,7 @@ function renderDiffPanel() {
     state.views.set(file.path, view);
     syncFile(file.path);
   }
+  if (state.reconcileMode) renderReconcileOverlay();
 }
 
 async function resolveFinding(
@@ -6390,7 +6462,25 @@ diffsRoot.addEventListener("click", (event) => {
       addFileFinding(filePath);
     }
   }
+  const reconcileBadge = target.closest(".reconcile-badge[data-finding-id]");
+  if (reconcileBadge instanceof HTMLElement) {
+    const findingId = reconcileBadge.getAttribute("data-finding-id");
+    if (findingId) {
+      event.stopPropagation();
+      jumpToFindingById(findingId);
+    }
+  }
 });
+
+function jumpToFindingById(id: string): void {
+  const finding = [...state.existing, ...state.fresh].find((f) => f.id === id);
+  if (!finding) return;
+  state.activeTab = "conversation";
+  renderConversationPane();
+  requestAnimationFrame(() => {
+    flashLine(finding.file, finding.start_line, finding.end_line);
+  });
+}
 
 function updateFileCommentsBadges() {
   for (const badge of diffsRoot.querySelectorAll<HTMLElement>(".file-comments-badge[data-file]")) {

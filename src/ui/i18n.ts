@@ -64,6 +64,19 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "toolbar.submit": { en: "Submit Review", "zh-CN": "提交审查" },
   "toolbar.requestChanges": { en: "Request changes", "zh-CN": "请求修改" },
   "toolbar.approveChanges": { en: "Approve changes", "zh-CN": "通过审查" },
+  "toolbar.reconcile": { en: "Reconcile", "zh-CN": "对账" },
+  "toolbar.reconcile.active": { en: "Reconcile: ON", "zh-CN": "对账模式：开" },
+  "toolbar.reconcile.tooltip": {
+    en: "Show per-file cross-round reconciliation status",
+    "zh-CN": "显示每文件跨轮次对账状态",
+  },
+  "reconcile.banner.hint": {
+    en: "Reconcile mode: click a badge to see which findings were addressed in each file.",
+    "zh-CN": "对账模式：点击徽章查看每个文件中修复了哪些审查项。",
+  },
+  "reconcile.badge.resolved": { en: "{count} resolved", "zh-CN": "{count} 个已解决" },
+  "reconcile.badge.open": { en: "{count} still open", "zh-CN": "{count} 个未解决" },
+  "reconcile.badge.new": { en: "{count} new this round", "zh-CN": "{count} 个本轮新增" },
   "toolbar.approveChanges.disabledTooltip": {
     en: "Resolve all open findings + write round notes first",
     "zh-CN": "请先关闭所有未解决发现并填写本轮备注",
