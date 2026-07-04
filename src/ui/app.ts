@@ -1146,7 +1146,7 @@ function openCmdPPalette(): void {
   results.className = "cmd-p-results";
   const footer = document.createElement("div");
   footer.className = "cmd-p-footer";
-  footer.innerHTML = `<span><kbd>↵</kbd> jump</span><span><kbd>↑↓</kbd> navigate</span><span><kbd>Esc</kbd> close</span>`;
+  footer.innerHTML = `<span><kbd>↵</kbd> ${escapeHtml(t("palette.cmdP.footer.jump"))}</span><span><kbd>↑↓</kbd> ${escapeHtml(t("palette.cmdP.footer.navigate"))}</span><span><kbd>Esc</kbd> ${escapeHtml(t("palette.cmdP.footer.close"))}</span>`;
   palette.appendChild(inputWrap);
   palette.appendChild(results);
   palette.appendChild(footer);
@@ -2317,7 +2317,7 @@ function updateSaveIndicator() {
     el.dataset.state = "idle";
     return;
   }
-  el.textContent = `Saved ${formatRelativeSeconds(elapsed)}`;
+  el.textContent = t("save.indicator.saved", { seconds: formatRelativeSeconds(elapsed) });
   el.dataset.state = "fresh";
   // Subtle 1-frame pulse on fresh save to draw the eye.
   el.classList.remove("pulse-on-save");
@@ -2346,12 +2346,12 @@ function showReopenReasonModal(_findingId: string): Promise<string | null> {
     dialog.setAttribute("role", "dialog");
     dialog.setAttribute("aria-modal", "true");
     dialog.innerHTML = `
-      <h3>Force Reopen Finding</h3>
-      <p>Why are you re-opening this finding? (Optional but helps the agent understand your intent.)</p>
+      <h3>${escapeHtml(t("modal.reopen.title"))}</h3>
+      <p>${escapeHtml(t("modal.reopen.body"))}</p>
       <textarea id="reopen-reason" rows="3" placeholder="${escapeHtml(t("modal.reopenReason.placeholder"))}"></textarea>
       <div class="modal-actions">
-        <button id="reopen-cancel" type="button">Cancel</button>
-        <button id="reopen-submit" class="primary" type="button">Re-open</button>
+        <button id="reopen-cancel" type="button">${escapeHtml(t("modal.cancel"))}</button>
+        <button id="reopen-submit" class="primary" type="button">${escapeHtml(t("action.reopen"))}</button>
       </div>
     `;
     overlay.appendChild(dialog);
@@ -2405,8 +2405,8 @@ function showResolveReasonModal(_findingId: string): Promise<ResolveReasonModalR
     dialog.setAttribute("role", "dialog");
     dialog.setAttribute("aria-modal", "true");
     dialog.innerHTML = `
-      <h3>Resolve Finding</h3>
-      <p>Why are you resolving this finding? (Optional — helps the agent learn your intent.)</p>
+      <h3>${escapeHtml(t("modal.resolve.title"))}</h3>
+      <p>${escapeHtml(t("modal.resolve.body"))}</p>
       <div class="resolve-reason-chips" id="resolve-reason-chips">
         <button type="button" class="resolve-reason-chip" data-reason="fixed in this round">fixed in this round</button>
         <button type="button" class="resolve-reason-chip" data-reason="no longer applies">no longer applies</button>
@@ -2501,7 +2501,7 @@ function showMarkAsWontfixModal(_findingId: string): Promise<MarkAsWontfixResult
       `,
     ).join("");
     dialog.innerHTML = `
-      <h3>Mark as wontfix</h3>
+      <h3>${escapeHtml(t("modal.wontfix.title"))}</h3>
       <p>Why is this finding not actionable? Pick a category and add an optional reason.</p>
       <div class="wontfix-radios" id="wontfix-radios">${radios}</div>
       <textarea id="wontfix-reason" rows="3" placeholder="${escapeHtml(t("modal.wontfixReason.placeholder"))}"></textarea>

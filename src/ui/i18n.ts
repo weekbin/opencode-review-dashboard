@@ -434,6 +434,21 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "Comment is required",
     "zh-CN": "评论内容不能为空",
   },
+  "modal.reopen.body": {
+    en: "Why are you re-opening this finding? (Optional but helps the agent understand your intent.)",
+    "zh-CN": "为什么要重新打开此审查项？（可选，但有助于 agent 理解你的意图。）",
+  },
+  "modal.resolve.body": {
+    en: "Why are you resolving this finding? (Optional — helps the agent learn your intent.)",
+    "zh-CN": "为什么要解决此审查项？（可选 — 有助于 agent 学习你的意图。）",
+  },
+  "palette.cmdP.footer.jump": { en: "jump", "zh-CN": "跳转" },
+  "palette.cmdP.footer.navigate": { en: "navigate", "zh-CN": "浏览" },
+  "palette.cmdP.footer.close": { en: "close", "zh-CN": "关闭" },
+  "save.indicator.saved": {
+    en: "Saved {seconds}",
+    "zh-CN": "已保存 {seconds}",
+  },
   "status.expandedAll": { en: "Expanded all files", "zh-CN": "已展开所有文件" },
   "status.collapsedAll": { en: "Collapsed all files", "zh-CN": "已折叠所有文件" },
   "status.commentBoxEmpty": {
