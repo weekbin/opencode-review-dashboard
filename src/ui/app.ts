@@ -4472,11 +4472,15 @@ function renderConversationPanel(root: HTMLElement) {
         const ts = new Date(row.at).toLocaleString();
         const changes: string[] = [];
         if (row.before.category !== row.after.category)
-          changes.push(`category: ${row.before.category} → ${row.after.category}`);
+          changes.push(
+            t("audit.category", { before: row.before.category, after: row.after.category }),
+          );
         if (row.before.severity !== row.after.severity)
-          changes.push(`severity: ${row.before.severity} → ${row.after.severity}`);
-        if (row.before.comment !== row.after.comment) changes.push("comment updated");
-        const changeText = changes.length > 0 ? changes.join(", ") : "no field changes";
+          changes.push(
+            t("audit.severity", { before: row.before.severity, after: row.after.severity }),
+          );
+        if (row.before.comment !== row.after.comment) changes.push(t("audit.commentUpdated"));
+        const changeText = changes.length > 0 ? changes.join(", ") : t("audit.noChanges");
         const rowEl = document.createElement("div");
         rowEl.className = "audit-trail-row";
         rowEl.innerHTML = `<span class="audit-icon">✏️</span><div class="audit-body"><div class="audit-changes">${escapeHtml(changeText)}</div></div><span class="audit-ts">${escapeHtml(ts)}</span>`;

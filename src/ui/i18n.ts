@@ -240,6 +240,22 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "Resolution: {kind}{reason}",
     "zh-CN": "解决方案: {kind}{reason}",
   },
+  "audit.category": {
+    en: "category: {before} → {after}",
+    "zh-CN": "类别: {before} → {after}",
+  },
+  "audit.severity": {
+    en: "severity: {before} → {after}",
+    "zh-CN": "严重程度: {before} → {after}",
+  },
+  "audit.commentUpdated": {
+    en: "comment updated",
+    "zh-CN": "评论已更新",
+  },
+  "audit.noChanges": {
+    en: "no field changes",
+    "zh-CN": "无字段变更",
+  },
   "settings.btn.ariaLabel": { en: "Settings", "zh-CN": "设置" },
   "fileComments.tooltip": {
     en: "File-level findings",
