@@ -533,6 +533,42 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "action.reopen": { en: "Re-open", "zh-CN": "重新打开" },
   "action.mark": { en: "Mark as wontfix", "zh-CN": "标记为不修复" },
   "action.remove": { en: "Remove", "zh-CN": "删除" },
+  "action.markAsRead": { en: "Mark as read", "zh-CN": "标记为已读" },
+  "wontfix.kind.wontfix": { en: "Wontfix", "zh-CN": "不修复" },
+  "wontfix.kind.outOfScope": { en: "Out of scope", "zh-CN": "超出范围" },
+  "wontfix.kind.falsePositive": {
+    en: "False positive",
+    "zh-CN": "误报",
+  },
+  "wontfix.kind.duplicate": { en: "Duplicate", "zh-CN": "重复" },
+  "wontfix.kind.wontfix.hint": {
+    en: "Acknowledged but will not address (e.g. design choice, intentional)",
+    "zh-CN": "已知但不会处理（例如设计选择、有意为之）",
+  },
+  "wontfix.kind.outOfScope.hint": {
+    en: "Should be tracked elsewhere / not in this review's scope",
+    "zh-CN": "应记录在别处 / 不在本次审查范围内",
+  },
+  "wontfix.kind.falsePositive.hint": {
+    en: "Not actually an issue — the code is correct as-is",
+    "zh-CN": "实际不是问题 — 代码保持原样正确",
+  },
+  "wontfix.kind.duplicate.hint": {
+    en: "Already covered by another finding or fixed elsewhere",
+    "zh-CN": "已被另一审查项覆盖或在别处已修复",
+  },
+  "status.findingMarkedWontfix": {
+    en: "Finding marked as wontfix",
+    "zh-CN": "审查项已标记为不修复",
+  },
+  "status.findingResolved": {
+    en: "Finding resolved",
+    "zh-CN": "审查项已解决",
+  },
+  "status.findingReopened": {
+    en: "Finding reopened",
+    "zh-CN": "审查项已重新打开",
+  },
   "action.resolve": { en: "Resolve", "zh-CN": "解决" },
   "action.edit": { en: "Edit", "zh-CN": "编辑" },
   "action.jump": { en: "Jump", "zh-CN": "跳转" },

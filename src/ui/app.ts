@@ -2464,23 +2464,23 @@ type MarkAsWontfixResult = { kind: FindingResolutionKind; reason: string } | nul
 const MARKS_AS_WONTFIX_KINDS: { value: FindingResolutionKind; label: string; hint: string }[] = [
   {
     value: "wontfix",
-    label: "Wontfix",
-    hint: "Acknowledged but will not address (e.g. design choice, intentional)",
+    label: t("wontfix.kind.wontfix"),
+    hint: t("wontfix.kind.wontfix.hint"),
   },
   {
     value: "out_of_scope",
-    label: "Out of scope",
-    hint: "Should be tracked elsewhere / not in this review's scope",
+    label: t("wontfix.kind.outOfScope"),
+    hint: t("wontfix.kind.outOfScope.hint"),
   },
   {
     value: "false_positive",
-    label: "False positive",
-    hint: "Not actually an issue — the code is correct as-is",
+    label: t("wontfix.kind.falsePositive"),
+    hint: t("wontfix.kind.falsePositive.hint"),
   },
   {
     value: "duplicate",
-    label: "Duplicate",
-    hint: "Already covered by another finding or fixed elsewhere",
+    label: t("wontfix.kind.duplicate"),
+    hint: t("wontfix.kind.duplicate.hint"),
   },
 ];
 function showMarkAsWontfixModal(_findingId: string): Promise<MarkAsWontfixResult> {
@@ -5114,7 +5114,7 @@ function renderDiffPanel() {
     const readBtn = document.createElement("button");
     readBtn.type = "button";
     readBtn.className = "btn-icon";
-    readBtn.title = "Mark as read";
+    readBtn.title = t("action.markAsRead");
     readBtn.innerHTML = CHECK_SVG;
     readBtn.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -5235,7 +5235,7 @@ async function resolveFinding(
   renderFindings();
   renderConversationPane();
   syncAll();
-  setStatus(opts.resolution_kind ? "Finding marked as wontfix" : "Finding resolved");
+  setStatus(opts.resolution_kind ? t("status.findingMarkedWontfix") : t("status.findingResolved"));
 }
 
 async function reopenFinding(id: string, reason = "", opts: { manually_reopened?: boolean } = {}) {
@@ -5270,7 +5270,7 @@ async function reopenFinding(id: string, reason = "", opts: { manually_reopened?
   setStatus(
     opts.manually_reopened
       ? "Finding force-reopened — will be re-applied in the next round"
-      : "Finding reopened",
+      : t("status.findingReopened"),
   );
 }
 
