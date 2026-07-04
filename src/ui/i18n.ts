@@ -173,6 +173,26 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "No findings yet.",
     "zh-CN": "暂无审查项。",
   },
+  "conversation.empty.unresolved": {
+    en: "No unresolved findings.",
+    "zh-CN": "暂无未解决的审查项。",
+  },
+  "conversation.empty.resolved": {
+    en: "No resolved findings.",
+    "zh-CN": "暂无已解决的审查项。",
+  },
+  "conversation.empty.pinned": {
+    en: "No pinned findings — star a finding to revisit it later.",
+    "zh-CN": "暂无置顶审查项 — 给审查项加星标以便稍后查看。",
+  },
+  "conversation.empty.reacted": {
+    en: "No reacted findings — click an emoji on a finding to give feedback.",
+    "zh-CN": "暂无表情反应的审查项 — 点击表情以给出反馈。",
+  },
+  "conversation.empty.found": {
+    en: "No findings found.",
+    "zh-CN": "未找到审查项。",
+  },
   "savedReplies.empty": {
     en: "No saved replies yet — save your first one",
     "zh-CN": "暂无已保存回复 — 保存第一条试试",

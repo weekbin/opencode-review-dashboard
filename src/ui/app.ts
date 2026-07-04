@@ -4030,14 +4030,14 @@ function renderConversationPanel(root: HTMLElement) {
     } else {
       empty.textContent =
         state.conversationFilter === "open"
-          ? "No unresolved findings."
+          ? t("conversation.empty.unresolved")
           : state.conversationFilter === "resolved"
-            ? "No resolved findings."
+            ? t("conversation.empty.resolved")
             : state.conversationFilter === "pinned"
-              ? "No pinned findings — star a finding to revisit it later."
+              ? t("conversation.empty.pinned")
               : state.conversationFilter === "reacted"
-                ? "No reacted findings — click an emoji on a finding to give feedback."
-                : "No findings found.";
+                ? t("conversation.empty.reacted")
+                : t("conversation.empty.found");
     }
     root.appendChild(empty);
     return;
