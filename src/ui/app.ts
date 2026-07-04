@@ -4000,7 +4000,7 @@ function renderConversationPanel(root: HTMLElement) {
   if (entries.length === 0) {
     const empty = document.createElement("div");
     empty.className = "conversation-empty";
-    empty.textContent = "No findings yet.";
+    empty.textContent = t("conversation.empty.noFindings");
     root.appendChild(empty);
     return;
   }
@@ -4576,7 +4576,7 @@ function renderConversationPanel(root: HTMLElement) {
       if (list.length === 0) {
         const empty = document.createElement("div");
         empty.className = "saved-replies-empty";
-        empty.textContent = "No saved replies yet — save your first one";
+        empty.textContent = t("savedReplies.empty");
         dropdown.appendChild(empty);
       } else {
         for (const item of list) {
@@ -4796,7 +4796,7 @@ function renderPreviouslyDiscussedPanel(root: HTMLElement) {
     } else if (effectiveFilter !== "all") {
       empty.textContent = `No findings in round ${effectiveFilter}.`;
     } else {
-      empty.textContent = "No prior discussion yet. Submit a round to start the history.";
+      empty.textContent = t("previously.empty");
     }
     root.appendChild(empty);
     return;
@@ -5535,7 +5535,7 @@ function renderFindings() {
   updateFileCommentsBadges();
 
   if (items.length === 0) {
-    findingsRoot.textContent = "No findings yet.";
+    findingsRoot.textContent = t("conversation.empty.noFindings");
     setStatus("");
     return;
   }

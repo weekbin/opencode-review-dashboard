@@ -66,7 +66,7 @@ describe("AC7-2.1 — hint renders when currentRound > 1", () => {
   it("T7.4d hint is placed AFTER the empty-state early return (non-empty branch only)", async () => {
     const src = await readAppTs();
     const body = sliceRenderPreviouslyDiscussedPanel(src);
-    const emptyReturnIdx = body.indexOf('"No prior discussion yet.');
+    const emptyReturnIdx = body.indexOf('t("previously.empty")');
     expect(emptyReturnIdx).toBeGreaterThanOrEqual(0);
     const hintIdx = body.indexOf('className = "previously-panel-hint"');
     expect(hintIdx).toBeGreaterThan(emptyReturnIdx);

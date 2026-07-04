@@ -169,6 +169,18 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: 'No findings match "{query}".',
     "zh-CN": '没有匹配 "{query}" 的审查项。',
   },
+  "conversation.empty.noFindings": {
+    en: "No findings yet.",
+    "zh-CN": "暂无审查项。",
+  },
+  "savedReplies.empty": {
+    en: "No saved replies yet — save your first one",
+    "zh-CN": "暂无已保存回复 — 保存第一条试试",
+  },
+  "previously.empty": {
+    en: "No prior discussion yet. Submit a round to start the history.",
+    "zh-CN": "暂无历史讨论。提交一轮以开始记录历史。",
+  },
   "export.modal.title": { en: "Export review", "zh-CN": "导出审查" },
   "export.modal.body": {
     en: "Choose a format. The file is generated client-side from the current round state.",
