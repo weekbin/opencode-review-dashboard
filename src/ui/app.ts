@@ -3594,7 +3594,7 @@ function renderCommitsPanel(root: HTMLElement) {
 
       const jump = document.createElement("span");
       jump.className = "commit-file-jump";
-      jump.textContent = "Jump";
+      jump.textContent = t("action.jump");
 
       row.appendChild(fileIcon);
       row.appendChild(name);
@@ -4223,7 +4223,7 @@ function renderConversationPanel(root: HTMLElement) {
       const wontfixBtn = document.createElement("button");
       wontfixBtn.type = "button";
       wontfixBtn.className = "finding-wontfix";
-      wontfixBtn.textContent = "Mark as wontfix";
+      wontfixBtn.textContent = t("action.mark");
       wontfixBtn.title =
         "Mark this finding as wontfix / out_of_scope / false_positive / duplicate (R13 #21)";
       wontfixBtn.addEventListener("click", async (event) => {
@@ -5569,7 +5569,7 @@ function renderFindings() {
       const resolve = document.createElement("button");
       resolve.className = "btn-resolve";
       resolve.type = "button";
-      resolve.textContent = "Resolve";
+      resolve.textContent = t("action.resolve");
       resolve.dataset.resolve = item.id;
       actions.appendChild(resolve);
     }
@@ -5578,7 +5578,7 @@ function renderFindings() {
       const remove = document.createElement("button");
       remove.className = "btn-remove";
       remove.type = "button";
-      remove.textContent = "Remove";
+      remove.textContent = t("action.remove");
       remove.dataset.remove = item.id;
       actions.appendChild(remove);
     }

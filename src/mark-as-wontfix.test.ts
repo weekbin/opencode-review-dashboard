@@ -31,7 +31,7 @@ describe("AC3 — Mark as wontfix button + radio modal", () => {
   it("T13.21.R3a 'Mark as wontfix' button rendered next to 'Resolve' on open findings", async () => {
     const src = await readSource(APP_TS);
     expect(src).toMatch(/finding-wontfix/);
-    expect(src).toMatch(/wontfixBtn\.textContent\s*=\s*"Mark as wontfix"/);
+    expect(src).toMatch(/wontfixBtn\.textContent\s*=\s*t\("action\.mark"\)/);
   });
 
   it("T13.21.R3b showMarkAsWontfixModal renders 4 radio buttons (one per enum value)", async () => {
