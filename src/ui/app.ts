@@ -2699,7 +2699,7 @@ function syncAll() {
 
 function renderSelection() {
   if (!state.selection) {
-    selectionRoot.textContent = "Select lines in the diff to start.";
+    selectionRoot.textContent = t("drawer.selectionHint");
     return;
   }
 
@@ -4296,7 +4296,7 @@ function renderConversationPanel(root: HTMLElement) {
       const copyLinkBtn = document.createElement("button");
       copyLinkBtn.type = "button";
       copyLinkBtn.className = "finding-copy-link";
-      copyLinkBtn.textContent = "Copy link";
+      copyLinkBtn.textContent = t("action.copyLink");
       copyLinkBtn.title = `Copy permalink: ${buildFindingPermalink(entry.id)}`;
       copyLinkBtn.addEventListener("click", (event) => {
         event.stopPropagation();
@@ -4307,7 +4307,7 @@ function renderConversationPanel(root: HTMLElement) {
       const copyMdBtn = document.createElement("button");
       copyMdBtn.type = "button";
       copyMdBtn.className = "finding-copy-md";
-      copyMdBtn.textContent = "Copy as MD";
+      copyMdBtn.textContent = t("action.copyMarkdown");
       copyMdBtn.title =
         "Copy finding as a Markdown snippet (round, file:line, permalink, comment, audit count, reactions)";
       copyMdBtn.addEventListener("click", (event) => {
@@ -4513,7 +4513,7 @@ function renderConversationPanel(root: HTMLElement) {
     });
     const submitBtn = document.createElement("button");
     submitBtn.className = "btn btn-primary";
-    submitBtn.textContent = "Comment";
+    submitBtn.textContent = t("action.submitComment");
     submitBtn.addEventListener("click", (event) => {
       event.stopPropagation();
       const text = textarea.value.trim();
@@ -4541,7 +4541,7 @@ function renderConversationPanel(root: HTMLElement) {
       const list = loadSavedReplies();
       const header = document.createElement("div");
       header.className = "saved-replies-header";
-      header.textContent = "Saved Replies";
+      header.textContent = t("savedReplies.title");
       dropdown.appendChild(header);
 
       const saveCurrent = document.createElement("button");
