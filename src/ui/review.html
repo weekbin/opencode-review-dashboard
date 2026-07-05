@@ -3277,6 +3277,50 @@
         background: rgba(74, 158, 255, 0.1);
         border-color: rgba(74, 158, 255, 0.3);
       }
+      /* R130: Dark mode CSS variants for reconcile UI (R126 retro flag) */
+      @media (prefers-color-scheme: dark) {
+        .reconcile-overlay-banner {
+          background: #3d3a1a;
+          border-bottom-color: #6b5300;
+          color: #fff8c5;
+        }
+        .card-reconcile-strip {
+          background: rgba(255, 255, 255, 0.05);
+          border-bottom-color: rgba(255, 255, 255, 0.12);
+        }
+        .reconcile-green {
+          background: #1a3d24;
+          color: #b5f0c5;
+        }
+        .reconcile-amber {
+          background: #3d2e0a;
+          color: #ffe9b3;
+        }
+        .reconcile-red {
+          background: #3d1818;
+          color: #ffd4d4;
+        }
+        .reconcile-hunk-badge {
+          background: rgba(74, 158, 255, 0.25);
+          border-color: rgba(74, 158, 255, 0.5);
+          color: #b3d9ff;
+        }
+        .reconcile-listing {
+          background: #1e1e1e;
+          border-color: rgba(255, 255, 255, 0.2);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+        .reconcile-listing-heading {
+          color: #aaa;
+        }
+        .reconcile-listing-item {
+          color: #ddd;
+        }
+        .reconcile-listing-item:hover {
+          background: rgba(74, 158, 255, 0.2);
+          border-color: rgba(74, 158, 255, 0.4);
+        }
+      }
     </style>
   </head>
   <body>
