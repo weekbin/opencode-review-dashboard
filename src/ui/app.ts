@@ -3712,7 +3712,8 @@ function renderStatsPane(): void {
       { key: "1-7d", i18nKey: "view.stats.firstPass.bucket.weekOne" },
       { key: "7d+", i18nKey: "view.stats.firstPass.bucket.overWeek" },
     ];
-    const maxCount = Math.max(...bucketDefs.map((b) => buckets[b.key]), 1);
+    const totalCount = bucketDefs.reduce((sum, b) => sum + buckets[b.key], 0);
+    const maxCount = Math.max(totalCount, 1);
     for (const def of bucketDefs) {
       const count = buckets[def.key];
       const cell = document.createElement("div");
