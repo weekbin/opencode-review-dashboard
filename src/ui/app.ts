@@ -3610,15 +3610,37 @@ function renderStatsPane(): void {
   byRoundSection.appendChild(byRoundTitle);
   const byRoundTable = document.createElement("table");
   byRoundTable.className = "stats-table";
-  for (const [round, agg] of [...aggregateByRound(findings).entries()].sort(
-    (a, b) => a[0] - b[0],
-  )) {
+  const sortedRounds = [...aggregateByRound(findings).entries()].sort((a, b) => a[0] - b[0]);
+  for (const [round, agg] of sortedRounds) {
     const row = document.createElement("tr");
     const rate = agg.total > 0 ? Math.round((agg.resolved / agg.total) * 100) : 0;
     row.innerHTML = `<td>Round ${round}</td><td>${agg.total} ${t("view.stats.byRound.total")}</td><td>${agg.resolved} ${t("view.stats.byRound.resolved")}</td><td>${rate}% ${t("view.stats.byRound.resolutionRate")}</td>`;
     byRoundTable.appendChild(row);
   }
   byRoundSection.appendChild(byRoundTable);
+  if (sortedRounds.length >= 2) {
+    const rates = sortedRounds.map(([, agg]) =>
+      agg.total > 0 ? Math.round((agg.resolved / agg.total) * 100) : 0,
+    );
+    const trendCaption = document.createElement("div");
+    trendCaption.className = "stats-by-round-trend";
+    const trend = renderSparkline(rates, {
+      width: 280,
+      height: 32,
+      ariaLabel: "Resolution rate trend by round",
+      dataPoints: sortedRounds.map(([round], i) => ({
+        label: `Round ${round}`,
+        value: rates[i] ?? 0,
+      })),
+    });
+    trend.style.color = "var(--accent, #4a9eff)";
+    trendCaption.appendChild(trend);
+    const trendLabel = document.createElement("div");
+    trendLabel.className = "stats-by-round-trend-label";
+    trendLabel.textContent = t("view.stats.byRound.trend");
+    trendCaption.appendChild(trendLabel);
+    byRoundSection.appendChild(trendCaption);
+  }
   root.appendChild(byRoundSection);
 
   const byCategorySection = document.createElement("section");

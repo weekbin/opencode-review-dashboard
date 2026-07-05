@@ -78,6 +78,7 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "view.stats.byRound.total": { en: "Total", "zh-CN": "总数" },
   "view.stats.byRound.resolved": { en: "Resolved", "zh-CN": "已解决" },
   "view.stats.byRound.resolutionRate": { en: "Resolution rate", "zh-CN": "解决率" },
+  "view.stats.byRound.trend": { en: "Resolution rate trend", "zh-CN": "解决率趋势" },
   "view.stats.byCategory.heading": {
     en: "By category",
     "zh-CN": "按类别",
