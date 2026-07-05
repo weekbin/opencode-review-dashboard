@@ -6847,7 +6847,21 @@ function jumpToFindingById(id: string): void {
   });
 }
 
+let currentReconcileListing: {
+  element: HTMLElement;
+  dismiss: (e: MouseEvent) => void;
+  handleKey: (e: KeyboardEvent) => void;
+  disposeA11y: () => void;
+} | null = null;
+
 function showReconcileListing(badge: HTMLElement, findings: Finding[]): void {
+  if (currentReconcileListing) {
+    currentReconcileListing.element.remove();
+    document.removeEventListener("click", currentReconcileListing.dismiss);
+    document.removeEventListener("keydown", currentReconcileListing.handleKey);
+    currentReconcileListing.disposeA11y();
+    currentReconcileListing = null;
+  }
   const existing = document.querySelector(".reconcile-listing");
   if (existing) existing.remove();
   const listing = document.createElement("div");
@@ -6886,6 +6900,7 @@ function showReconcileListing(badge: HTMLElement, findings: Finding[]): void {
     document.removeEventListener("click", dismiss);
     document.removeEventListener("keydown", handleKey);
     disposeA11y();
+    currentReconcileListing = null;
   });
   const dismiss = (e: MouseEvent) => {
     if (listing.contains(e.target as Node)) return;
@@ -6893,6 +6908,7 @@ function showReconcileListing(badge: HTMLElement, findings: Finding[]): void {
     document.removeEventListener("click", dismiss);
     document.removeEventListener("keydown", handleKey);
     disposeA11y();
+    currentReconcileListing = null;
   };
   const handleKey = (e: KeyboardEvent) => {
     if (e.key !== "Escape") return;
@@ -6900,7 +6916,9 @@ function showReconcileListing(badge: HTMLElement, findings: Finding[]): void {
     document.removeEventListener("keydown", handleKey);
     document.removeEventListener("click", dismiss);
     disposeA11y();
+    currentReconcileListing = null;
   };
+  currentReconcileListing = { element: listing, dismiss, handleKey, disposeA11y };
   setTimeout(() => {
     document.addEventListener("click", dismiss);
     document.addEventListener("keydown", handleKey);
