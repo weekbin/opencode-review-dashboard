@@ -669,6 +669,14 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "Round approved · worktree ready to merge",
     "zh-CN": "本轮已通过 · Worktree 可以合并",
   },
+  "review.locked.title": {
+    en: "Review locked · all findings resolved",
+    "zh-CN": "审查已锁定 · 所有审查项已解决",
+  },
+  "review.locked.message": {
+    en: "No open findings remain. This review is complete and no further changes can be made.",
+    "zh-CN": "没有未解决的审查项。本次审查已完成，无法继续修改。",
+  },
   "status.submitApproved": { en: "Round approved", "zh-CN": "本轮已通过" },
   "modal.resolve.title": { en: "Resolve Finding", "zh-CN": "解决审查项" },
   "modal.wontfix.title": { en: "Mark as wontfix", "zh-CN": "标记为不修复" },

@@ -190,6 +190,10 @@ type State = {
   previous_diff_base?: DiffBase;
   roundSystemNotes?: RoundSystemNote[];
   approvals?: Approval[];
+  // R131: optional lock marker — set when the user approves a round with
+  // 0 open findings and 0 draft. Once set, all mutation endpoints reject
+  // with HTTP 409. Backwards-compat: legacy state.json files omit it.
+  locked?: { at: number; round: number; by: "user" };
   updated_at: number;
 };
 
@@ -1997,6 +2001,16 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
             }
 
             if (request.method === "PUT" && pathname === `/api/review/${id}/draft`) {
+              if (base.locked) {
+                return new Response(
+                  JSON.stringify({
+                    error: "review locked",
+                    locked_at: base.locked.at,
+                    locked_round: base.locked.round,
+                  }),
+                  { status: 409, headers: { "content-type": "application/json" } },
+                );
+              }
               const input = (await request.json().catch(() => ({}))) as Submit;
               const notes = typeof input.notes === "string" ? input.notes : "";
               const new_findings = Array.isArray(input.new_findings) ? input.new_findings : [];
@@ -2025,6 +2039,16 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
             }
 
             if (request.method === "POST" && pathname === `/api/review/${id}/resolve`) {
+              if (base.locked) {
+                return new Response(
+                  JSON.stringify({
+                    error: "review locked",
+                    locked_at: base.locked.at,
+                    locked_round: base.locked.round,
+                  }),
+                  { status: 409, headers: { "content-type": "application/json" } },
+                );
+              }
               const input = (await request.json().catch(() => ({}))) as {
                 finding_id?: string;
                 reason?: string;
@@ -2520,6 +2544,16 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
             // same emoji + same author = remove the reaction. Validates
             // emoji against the 6-emoji whitelist (400 on miss).
             if (request.method === "POST" && pathname === `/api/review/${id}/reaction`) {
+              if (base.locked) {
+                return new Response(
+                  JSON.stringify({
+                    error: "review locked",
+                    locked_at: base.locked.at,
+                    locked_round: base.locked.round,
+                  }),
+                  { status: 409, headers: { "content-type": "application/json" } },
+                );
+              }
               const input = (await request.json().catch(() => ({}))) as {
                 finding_id?: string;
                 emoji?: string;
@@ -2569,6 +2603,16 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
             }
 
             if (request.method === "POST" && pathname === `/api/review/${id}/submit`) {
+              if (base.locked) {
+                return new Response(
+                  JSON.stringify({
+                    error: "review locked",
+                    locked_at: base.locked.at,
+                    locked_round: base.locked.round,
+                  }),
+                  { status: 409, headers: { "content-type": "application/json" } },
+                );
+              }
               const input = (await request.json().catch(() => ({}))) as Submit;
               const notes = typeof input.notes === "string" ? input.notes.trim() : "";
               const fresh = Array.isArray(input.new_findings) ? input.new_findings : [];
@@ -2624,6 +2668,9 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                     ? existingApprovals.slice(existingApprovals.length - ROUND_APPROVALS_CAP + 1)
                     : existingApprovals;
                 next.approvals = [...approvalsCap, { round, notes, at: Date.now() }];
+                if (openCarry.length === 0 && created.length === 0) {
+                  next.locked = { at: Date.now(), round, by: "user" };
+                }
               }
               if (detectSilentRound({ freshCount: created.length, notes })) {
                 const filesChanged = Object.values(map).map((file) => ({
@@ -2691,6 +2738,7 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                   round,
                   intent,
                   approved: intent === "approve",
+                  locked: Boolean(next.locked),
                   json_path,
                   md_path,
                 }),

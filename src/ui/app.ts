@@ -6545,40 +6545,62 @@ async function submit(intent: "request_changes" | "approve" = "request_changes")
     return;
   }
 
-  const body = (await response.json().catch(() => ({}))) as { round?: number; approved?: boolean };
-  if (body.approved) {
+  const body = (await response.json().catch(() => ({}))) as {
+    round?: number;
+    approved?: boolean;
+    locked?: boolean;
+  };
+  if (body.locked) {
+    showToast(t("review.locked.title"));
+  } else if (body.approved) {
     showToast(t("status.submitApproved"));
   } else {
     showToast(t("review.submitted.title", { round: body?.round ? ` — round ${body.round}` : "" }));
   }
-  showPostSubmit(body?.round, body?.approved);
+  showPostSubmit(body?.round, body?.approved, body?.locked);
 }
 
-function showPostSubmit(round: number | undefined, approved = false) {
+function showPostSubmit(round: number | undefined, approved = false, locked = false) {
   addButton.disabled = true;
   clearButton.disabled = true;
   submitButton.disabled = true;
   submitRequestButton.disabled = true;
   submitApproveButton.disabled = true;
   commentRoot.disabled = true;
-  document.body.classList.add(approved ? "approved" : "submitted");
+  document.body.classList.add(locked ? "review-locked" : approved ? "approved" : "submitted");
+  document.querySelectorAll("[data-resolve]").forEach((btn) => {
+    if (btn instanceof HTMLButtonElement) btn.disabled = true;
+  });
+  document.querySelectorAll("[data-reaction]").forEach((btn) => {
+    if (btn instanceof HTMLButtonElement) btn.disabled = true;
+  });
 
   const overlay = document.createElement("div");
-  overlay.className = approved ? "post-submit post-submit-approved" : "post-submit";
-  const titleText = approved
-    ? t("review.approved.title")
-    : t("review.submitted.title", { round: round ? ` — round ${round}` : "" });
-  const messageText = approved
-    ? t("review.approved.title")
-    : t("review.submitted.message", {
-        shortcut: "<kbd>⌘W</kbd> / <kbd>Ctrl+W</kbd>",
-      });
-  overlay.innerHTML = `
-    <div class="post-submit-card">
-      <h2>${titleText}</h2>
-      <p>${messageText}</p>
-    </div>
-  `;
+  if (locked) {
+    overlay.className = "post-submit post-submit-locked";
+    overlay.innerHTML = `
+      <div class="post-submit-card">
+        <h2>🔒 ${t("review.locked.title")}</h2>
+        <p>${t("review.locked.message", { round: round ? ` — round ${round}` : "" })}</p>
+      </div>
+    `;
+  } else {
+    overlay.className = approved ? "post-submit post-submit-approved" : "post-submit";
+    const titleText = approved
+      ? t("review.approved.title")
+      : t("review.submitted.title", { round: round ? ` — round ${round}` : "" });
+    const messageText = approved
+      ? t("review.approved.title")
+      : t("review.submitted.message", {
+          shortcut: "<kbd>⌘W</kbd> / <kbd>Ctrl+W</kbd>",
+        });
+    overlay.innerHTML = `
+      <div class="post-submit-card">
+        <h2>${titleText}</h2>
+        <p>${messageText}</p>
+      </div>
+    `;
+  }
   document.body.appendChild(overlay);
 }
 

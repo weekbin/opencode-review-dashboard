@@ -195,8 +195,10 @@ describe("AC9 — State + Finding type shapes are unchanged", () => {
       "  previous_diff_base?: DiffBase;",
       "  roundSystemNotes?: RoundSystemNote[];",
       "  approvals?: Approval[];",
-      "  updated_at: number;",
-      "};",
+      "  // R131: optional lock marker — set when the user approves a round with",
+      "  // 0 open findings and 0 draft. Once set, all mutation endpoints reject",
+      "  // with HTTP 409. Backwards-compat: legacy state.json files omit it.",
+      '  locked?: { at: number; round: number; by: "user" };',
     ].join("\n");
 
     const expectedFinding = [
