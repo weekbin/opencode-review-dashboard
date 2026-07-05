@@ -1569,9 +1569,9 @@ const state = {
   filterUnread: readStoredFilterUnread(),
   submitFootprint: readStored<"on" | "off">(SUBMIT_FOOTPRINT_KEY, ["on", "off"], "off") === "on",
   reconcileMode: readStored<"on" | "off">(RECONCILE_MODE_KEY, ["on", "off"], "off") === "on",
-  activeTab: readStored<"files" | "commits" | "conversation" | "previously">(
+  activeTab: readStored<"files" | "commits" | "conversation" | "previously" | "stats">(
     ACTIVE_TAB_KEY,
-    ["files", "commits", "conversation", "previously"],
+    ["files", "commits", "conversation", "previously", "stats"],
     "files",
   ),
   conversationFilter: readStored<"open" | "resolved" | "all" | "pinned" | "reacted">(
@@ -1705,6 +1705,10 @@ registerUITranslator("sidebar.tree", () => t("sidebar.tree"));
 registerUITranslator("sidebar.flat", () => t("sidebar.flat"));
 registerUITranslator("sidebar.filter.unread", () => t("sidebar.filter.unread"));
 registerUITranslator("save.idle", () => t("save.idle"));
+registerUITranslator("view.stats.tab", () => t("view.stats.tab"));
+registerUITranslator("sidebar.stats.tooltip", () => t("sidebar.stats.tooltip"));
+registerUITranslator("view.stats.heading", () => t("view.stats.heading"));
+registerUITranslator("view.stats.empty", () => t("view.stats.empty"));
 // R21 #44: settings modal i18n (data-i18n elements exist in static HTML).
 registerUITranslator("toolbar.settings", () => t("toolbar.settings"));
 registerUITranslator("settings.title", () => t("settings.title"));
@@ -3439,6 +3443,205 @@ function countFiles(node: TreeNode): number {
   return n;
 }
 
+type RoundAggregate = { round: number; total: number; resolved: number };
+type CategoryAggregate = {
+  category: string;
+  resolved: number;
+  unresolved: number;
+  wontfix: number;
+};
+
+function allFindingsForStats(): Finding[] {
+  return [...state.fresh, ...state.existing];
+}
+
+function aggregateByRound(findings: Finding[]): Map<number, RoundAggregate> {
+  const map = new Map<number, RoundAggregate>();
+  for (const f of findings) {
+    const r = f.round ?? 0;
+    const entry = map.get(r) ?? { round: r, total: 0, resolved: 0 };
+    entry.total++;
+    if (f.status === "resolved") entry.resolved++;
+    map.set(r, entry);
+  }
+  return map;
+}
+
+function aggregateByCategory(findings: Finding[]): Map<string, CategoryAggregate> {
+  const map = new Map<string, CategoryAggregate>();
+  for (const f of findings) {
+    const entry = map.get(f.category) ?? {
+      category: f.category,
+      resolved: 0,
+      unresolved: 0,
+      wontfix: 0,
+    };
+    if (f.status === "resolved") {
+      entry.resolved++;
+      if (f.resolution_kind === "wontfix") entry.wontfix++;
+    } else {
+      entry.unresolved++;
+    }
+    map.set(f.category, entry);
+  }
+  return map;
+}
+
+function aggregateRoundIntervals(findings: Finding[]): number[] {
+  const byRound = new Map<number, number[]>();
+  for (const f of findings) {
+    if (typeof f.created_at !== "number") continue;
+    const r = f.round ?? 0;
+    const arr = byRound.get(r) ?? [];
+    arr.push(f.created_at);
+    byRound.set(r, arr);
+  }
+  const rounds = [...byRound.keys()].sort((a, b) => a - b);
+  const gaps: number[] = [];
+  for (let i = 1; i < rounds.length; i++) {
+    const prevArr: number[] = byRound.get(rounds[i - 1]!) ?? [];
+    const currArr: number[] = byRound.get(rounds[i]!) ?? [];
+    if (prevArr.length === 0 || currArr.length === 0) continue;
+    const minCurr = currArr.reduce((a, b) => (a < b ? a : b), currArr[0]!);
+    const maxPrev = prevArr.reduce((a, b) => (a > b ? a : b), prevArr[0]!);
+    gaps.push(minCurr - maxPrev);
+  }
+  return gaps;
+}
+
+function aggregateFirstPass(findings: Finding[]): { avgMs: number; values: number[] } {
+  const values: number[] = [];
+  for (const f of findings) {
+    if (
+      f.status === "resolved" &&
+      typeof f.resolved_at === "number" &&
+      typeof f.created_at === "number"
+    ) {
+      values.push(f.resolved_at - f.created_at);
+    }
+  }
+  const avgMs = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+  return { avgMs, values };
+}
+
+function renderSparkline(
+  values: number[],
+  opts: { width?: number; height?: number; ariaLabel?: string } = {},
+): SVGSVGElement {
+  const width = opts.width ?? 120;
+  const height = opts.height ?? 24;
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("width", String(width));
+  svg.setAttribute("height", String(height));
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("role", "img");
+  if (opts.ariaLabel) svg.setAttribute("aria-label", opts.ariaLabel);
+  if (values.length < 2) {
+    const empty = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    empty.setAttribute("x", String(width / 2));
+    empty.setAttribute("y", String(height / 2 + 4));
+    empty.setAttribute("text-anchor", "middle");
+    empty.textContent = "—";
+    svg.appendChild(empty);
+    return svg;
+  }
+  const max = Math.max(...values, 1);
+  const polyline = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+  const points = values
+    .map((v, i) => {
+      const x = (i / (values.length - 1)) * width;
+      const y = height - 2 - (v / max) * (height - 4);
+      return `${x.toFixed(2)},${y.toFixed(2)}`;
+    })
+    .join(" ");
+  polyline.setAttribute("points", points);
+  polyline.setAttribute("fill", "none");
+  polyline.setAttribute("stroke", "currentColor");
+  polyline.setAttribute("stroke-width", "1.5");
+  svg.appendChild(polyline);
+  return svg;
+}
+
+function renderStatsPane(): void {
+  const root = document.getElementById("stats-content");
+  const emptyEl = document.querySelector<HTMLElement>("[data-stats-empty]");
+  if (!root) return;
+  const findings = allFindingsForStats();
+  if (findings.length === 0) {
+    if (emptyEl) emptyEl.hidden = false;
+    root.innerHTML = "";
+    return;
+  }
+  if (emptyEl) emptyEl.hidden = true;
+  root.innerHTML = "";
+
+  const byRoundSection = document.createElement("section");
+  byRoundSection.className = "stats-section";
+  const byRoundTitle = document.createElement("h3");
+  byRoundTitle.textContent = t("view.stats.byRound.heading");
+  byRoundSection.appendChild(byRoundTitle);
+  const byRoundTable = document.createElement("table");
+  byRoundTable.className = "stats-table";
+  for (const [round, agg] of [...aggregateByRound(findings).entries()].sort(
+    (a, b) => a[0] - b[0],
+  )) {
+    const row = document.createElement("tr");
+    const rate = agg.total > 0 ? Math.round((agg.resolved / agg.total) * 100) : 0;
+    row.innerHTML = `<td>Round ${round}</td><td>${agg.total} ${t("view.stats.byRound.total")}</td><td>${agg.resolved} ${t("view.stats.byRound.resolved")}</td><td>${rate}% ${t("view.stats.byRound.resolutionRate")}</td>`;
+    byRoundTable.appendChild(row);
+  }
+  byRoundSection.appendChild(byRoundTable);
+  root.appendChild(byRoundSection);
+
+  const byCategorySection = document.createElement("section");
+  byCategorySection.className = "stats-section";
+  const byCategoryTitle = document.createElement("h3");
+  byCategoryTitle.textContent = t("view.stats.byCategory.heading");
+  byCategorySection.appendChild(byCategoryTitle);
+  const byCategoryTable = document.createElement("table");
+  byCategoryTable.className = "stats-table";
+  for (const [category, agg] of aggregateByCategory(findings)) {
+    const row = document.createElement("tr");
+    row.innerHTML = `<td>${category}</td><td>${agg.resolved} ${t("view.stats.byCategory.resolved")}</td><td>${agg.unresolved} ${t("view.stats.byCategory.unresolved")}</td><td>${agg.wontfix} ${t("view.stats.byCategory.wontfix")}</td>`;
+    byCategoryTable.appendChild(row);
+  }
+  byCategorySection.appendChild(byCategoryTable);
+  root.appendChild(byCategorySection);
+
+  const gaps = aggregateRoundIntervals(findings);
+  const intervalsSection = document.createElement("section");
+  intervalsSection.className = "stats-section";
+  const intervalsTitle = document.createElement("h3");
+  intervalsTitle.textContent = t("view.stats.intervals.heading");
+  intervalsSection.appendChild(intervalsTitle);
+  const avgGap = gaps.length > 0 ? Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length) : 0;
+  const avgLabel = document.createElement("div");
+  avgLabel.className = "stats-avg-gap";
+  avgLabel.textContent = `${t("view.stats.intervals.avgGap")}: ${avgGap}ms`;
+  intervalsSection.appendChild(avgLabel);
+  const spark1 = renderSparkline(gaps, { ariaLabel: "Round interval sparkline" });
+  spark1.style.color = "var(--accent, #4a9eff)";
+  intervalsSection.appendChild(spark1);
+  root.appendChild(intervalsSection);
+
+  const firstPass = aggregateFirstPass(findings);
+  const firstPassSection = document.createElement("section");
+  firstPassSection.className = "stats-section";
+  const firstPassTitle = document.createElement("h3");
+  firstPassTitle.textContent = t("view.stats.firstPass.heading");
+  firstPassSection.appendChild(firstPassTitle);
+  const avgResolved = document.createElement("div");
+  avgResolved.className = "stats-avg-resolved";
+  avgResolved.textContent = `${t("view.stats.firstPass.avgMs")}: ${Math.round(firstPass.avgMs)}ms`;
+  firstPassSection.appendChild(avgResolved);
+  const spark2 = renderSparkline(firstPass.values, {
+    ariaLabel: "First-pass resolve time sparkline",
+  });
+  spark2.style.color = "var(--accent, #4a9eff)";
+  firstPassSection.appendChild(spark2);
+  root.appendChild(firstPassSection);
+}
+
 function renderActivePane() {
   if (state.activeTab === "files") {
     renderFilesPane();
@@ -3456,6 +3659,8 @@ function renderActivePane() {
     void loadPriorNotes(priorNotesController.signal).then(() => {
       if (state.activeTab === "previously") renderPreviouslyPane();
     });
+  } else if (state.activeTab === "stats") {
+    renderStatsPane();
   }
   updateTabCounts();
 }

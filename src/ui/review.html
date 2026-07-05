@@ -3357,6 +3357,15 @@
         <span data-i18n="sidebar.previously">Previously discussed</span>
         <span class="navbar-count" id="previously-count" hidden>0</span>
       </button>
+      <button
+        data-tab="stats"
+        role="tab"
+        aria-pressed="false"
+        data-i18n-title="sidebar.stats.tooltip"
+      >
+        <span data-i18n="view.stats.tab">Stats</span>
+        <span class="navbar-count" id="stats-count" hidden>0</span>
+      </button>
     </nav>
 
     <div id="range-banner" class="range-banner" hidden></div>
@@ -3481,6 +3490,9 @@
           </label>
         </div>
         <div class="previously-list" id="previously-list"></div>
+      </div>
+      <div class="pane pane-stats" data-pane="stats" hidden>
+        <div class="stats-content" id="stats-content"></div>
       </div>
     </div>
 

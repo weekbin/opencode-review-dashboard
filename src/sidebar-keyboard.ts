@@ -4,7 +4,7 @@
  * importing the DOM-coupled `src/ui/app.ts`.
  */
 
-export const TAB_ORDER = ["files", "commits", "conversation", "previously"] as const;
+export const TAB_ORDER = ["files", "commits", "conversation", "previously", "stats"] as const;
 export type TabKey = (typeof TAB_ORDER)[number];
 
 /**

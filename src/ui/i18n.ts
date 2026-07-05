@@ -62,6 +62,37 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "toolbar.review": { en: "Review", "zh-CN": "审查" },
   "toolbar.export": { en: "Export", "zh-CN": "导出" },
   "toolbar.submit": { en: "Submit Review", "zh-CN": "提交审查" },
+  "view.stats.tab": { en: "Stats", "zh-CN": "统计" },
+  "view.stats.heading": {
+    en: "Review velocity",
+    "zh-CN": "审查速度",
+  },
+  "view.stats.empty": {
+    en: "No findings yet — submit a round to start tracking review velocity.",
+    "zh-CN": "暂无审查项 — 提交一轮后开始追踪审查速度。",
+  },
+  "view.stats.byRound.heading": {
+    en: "Findings by round",
+    "zh-CN": "按轮次统计",
+  },
+  "view.stats.byRound.total": { en: "Total", "zh-CN": "总数" },
+  "view.stats.byRound.resolved": { en: "Resolved", "zh-CN": "已解决" },
+  "view.stats.byRound.resolutionRate": { en: "Resolution rate", "zh-CN": "解决率" },
+  "view.stats.byCategory.heading": {
+    en: "By category",
+    "zh-CN": "按类别",
+  },
+  "view.stats.byCategory.resolved": { en: "Resolved", "zh-CN": "已解决" },
+  "view.stats.byCategory.unresolved": { en: "Open", "zh-CN": "未解决" },
+  "view.stats.byCategory.wontfix": { en: "Wontfix", "zh-CN": "暂不修复" },
+  "view.stats.intervals.heading": { en: "Round intervals", "zh-CN": "轮次间隔" },
+  "view.stats.intervals.avgGap": { en: "Avg gap", "zh-CN": "平均间隔" },
+  "view.stats.firstPass.heading": {
+    en: "First-pass resolve time",
+    "zh-CN": "首次解决耗时",
+  },
+  "view.stats.firstPass.avgMs": { en: "Average", "zh-CN": "平均" },
+  "view.stats.firstPass.histogram": { en: "Distribution", "zh-CN": "分布" },
   "toolbar.requestChanges": { en: "Request changes", "zh-CN": "请求修改" },
   "toolbar.approveChanges": { en: "Approve changes", "zh-CN": "通过审查" },
   "toolbar.reconcile": { en: "Reconcile", "zh-CN": "对账" },
@@ -368,6 +399,10 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "sidebar.previously.tooltip": {
     en: "Previously discussed (prior round notes + comment threads)",
     "zh-CN": "历史讨论（上一轮笔记 + 评论线程）",
+  },
+  "sidebar.stats.tooltip": {
+    en: "Review velocity (per-round, per-category, interval, first-pass resolve time)",
+    "zh-CN": "审查速度（按轮次、按类别、间隔、首次解决耗时）",
   },
   "saveIndicator.title": { en: "Auto-save status", "zh-CN": "自动保存状态" },
   "toolbar.layout.unified.title": {

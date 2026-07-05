@@ -18,25 +18,25 @@ import { describe, expect, it } from "bun:test";
 import { cycleTab, TAB_ORDER, tabIndexFor } from "./sidebar-keyboard";
 
 describe("AC8-2 — sidebar tab keyboard navigation helpers", () => {
-  it("T8.2a TAB_ORDER has 4 tabs in declared order (files, commits, conversation, previously)", () => {
-    expect(TAB_ORDER).toEqual(["files", "commits", "conversation", "previously"]);
-    expect(TAB_ORDER.length).toBe(4);
+  it("T8.2a TAB_ORDER has 5 tabs in declared order (files, commits, conversation, previously, stats)", () => {
+    expect(TAB_ORDER).toEqual(["files", "commits", "conversation", "previously", "stats"]);
+    expect(TAB_ORDER.length).toBe(5);
   });
 
-  it("T8.2b cycleTab wraps in both directions; tabIndexFor emits the 4-element roving array", () => {
+  it("T8.2b cycleTab wraps in both directions; tabIndexFor emits the 5-element roving array", () => {
     // cycleTab — forward wrap (last index → first)
-    expect(cycleTab(3, 1, 4)).toBe(0);
+    expect(cycleTab(4, 1, 5)).toBe(0);
     // cycleTab — backward wrap (first index → last)
-    expect(cycleTab(0, -1, 4)).toBe(3);
+    expect(cycleTab(0, -1, 5)).toBe(4);
     // cycleTab — normal forward step
-    expect(cycleTab(1, 1, 4)).toBe(2);
+    expect(cycleTab(1, 1, 5)).toBe(2);
     // cycleTab — normal backward step
-    expect(cycleTab(2, -1, 4)).toBe(1);
-    // tabIndexFor — active index 1 → ["-1","0","-1","-1"]
-    expect(tabIndexFor(1, 4)).toEqual(["-1", "0", "-1", "-1"]);
-    // tabIndexFor — active index 0 → ["0","-1","-1","-1"]
-    expect(tabIndexFor(0, 4)).toEqual(["0", "-1", "-1", "-1"]);
-    // tabIndexFor — active index 3 (last) → ["-1","-1","-1","0"]
-    expect(tabIndexFor(3, 4)).toEqual(["-1", "-1", "-1", "0"]);
+    expect(cycleTab(2, -1, 5)).toBe(1);
+    // tabIndexFor — active index 1 → ["-1","0","-1","-1","-1"]
+    expect(tabIndexFor(1, 5)).toEqual(["-1", "0", "-1", "-1", "-1"]);
+    // tabIndexFor — active index 0 → ["0","-1","-1","-1","-1"]
+    expect(tabIndexFor(0, 5)).toEqual(["0", "-1", "-1", "-1", "-1"]);
+    // tabIndexFor — active index 4 (last) → ["-1","-1","-1","-1","0"]
+    expect(tabIndexFor(4, 5)).toEqual(["-1", "-1", "-1", "-1", "0"]);
   });
 });
