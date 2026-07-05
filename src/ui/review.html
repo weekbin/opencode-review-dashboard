@@ -3182,6 +3182,101 @@
         cursor: pointer;
         user-select: none;
       }
+      /* R126: CSS for reconcile badges + listing popup (closes R123 retro flag) */
+      .reconcile-overlay-banner {
+        background: #fff8c5;
+        border-bottom: 1px solid #d4a017;
+        padding: 8px 16px;
+        font-size: 13px;
+        color: #6b5300;
+      }
+      .card-reconcile-strip {
+        display: flex;
+        gap: 6px;
+        padding: 4px 8px;
+        background: rgba(0, 0, 0, 0.03);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      }
+      .reconcile-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 11px;
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .reconcile-green {
+        background: #d4f4dd;
+        color: #1a6e36;
+      }
+      .reconcile-amber {
+        background: #ffe9b3;
+        color: #7a4f00;
+      }
+      .reconcile-red {
+        background: #ffd4d4;
+        color: #7a1818;
+      }
+      .reconcile-badge:hover {
+        filter: brightness(0.95);
+      }
+      .reconcile-hunk-badge {
+        display: inline-flex;
+        align-items: center;
+        margin-left: 6px;
+        padding: 1px 6px;
+        border-radius: 6px;
+        font-size: 10px;
+        font-weight: 500;
+        border: 1px solid rgba(0, 0, 0, 0.15);
+        background: rgba(74, 158, 255, 0.12);
+        color: #1a4f8a;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .reconcile-hunk-badge:hover {
+        background: rgba(74, 158, 255, 0.22);
+      }
+      .reconcile-listing {
+        background: #fff;
+        border: 1px solid rgba(0, 0, 0, 0.15);
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        padding: 6px;
+        min-width: 220px;
+        max-height: 320px;
+        overflow-y: auto;
+      }
+      .reconcile-listing-heading {
+        font-size: 11px;
+        font-weight: 600;
+        color: #555;
+        margin-bottom: 4px;
+      }
+      .reconcile-listing-list {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .reconcile-listing-item {
+        display: block;
+        width: 100%;
+        text-align: left;
+        background: transparent;
+        border: 1px solid transparent;
+        padding: 4px 6px;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .reconcile-listing-item:hover {
+        background: rgba(74, 158, 255, 0.1);
+        border-color: rgba(74, 158, 255, 0.3);
+      }
     </style>
   </head>
   <body>
