@@ -3542,7 +3542,12 @@ function aggregateFirstPassBuckets(values: number[]): {
 
 function renderSparkline(
   values: number[],
-  opts: { width?: number; height?: number; ariaLabel?: string } = {},
+  opts: {
+    width?: number;
+    height?: number;
+    ariaLabel?: string;
+    dataPoints?: Array<{ label: string; value: number }>;
+  } = {},
 ): SVGSVGElement {
   const width = opts.width ?? 120;
   const height = opts.height ?? 24;
@@ -3574,6 +3579,13 @@ function renderSparkline(
   polyline.setAttribute("fill", "none");
   polyline.setAttribute("stroke", "currentColor");
   polyline.setAttribute("stroke-width", "1.5");
+  if (opts.dataPoints) {
+    for (const dp of opts.dataPoints) {
+      const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+      title.textContent = `${dp.label}: ${dp.value}`;
+      polyline.appendChild(title);
+    }
+  }
   svg.appendChild(polyline);
   return svg;
 }
@@ -3635,7 +3647,10 @@ function renderStatsPane(): void {
   avgLabel.className = "stats-avg-gap";
   avgLabel.textContent = `${t("view.stats.intervals.avgGap")}: ${avgGap}ms`;
   intervalsSection.appendChild(avgLabel);
-  const spark1 = renderSparkline(gaps, { ariaLabel: "Round interval sparkline" });
+  const spark1 = renderSparkline(gaps, {
+    ariaLabel: "Round interval sparkline",
+    dataPoints: gaps.map((g, i) => ({ label: `Gap ${i + 1}→${i + 2}`, value: g })),
+  });
   spark1.style.color = "var(--accent, #4a9eff)";
   intervalsSection.appendChild(spark1);
   root.appendChild(intervalsSection);
@@ -3652,6 +3667,10 @@ function renderStatsPane(): void {
   firstPassSection.appendChild(avgResolved);
   const spark2 = renderSparkline(firstPass.values, {
     ariaLabel: "First-pass resolve time sparkline",
+    dataPoints: firstPass.values.map((v, i) => ({
+      label: `Resolution ${i + 1}`,
+      value: v,
+    })),
   });
   spark2.style.color = "var(--accent, #4a9eff)";
   firstPassSection.appendChild(spark2);
@@ -3689,6 +3708,9 @@ function renderStatsPane(): void {
       rect.setAttribute("height", String(barHeight));
       rect.setAttribute("fill", "currentColor");
       rect.setAttribute("opacity", count === 0 ? "0.15" : "0.85");
+      const barTitle = document.createElementNS("http://www.w3.org/2000/svg", "title");
+      barTitle.textContent = `${t(def.i18nKey)}: ${count}`;
+      rect.appendChild(barTitle);
       svg.appendChild(rect);
       cell.appendChild(svg);
       const labelEl = document.createElement("div");
