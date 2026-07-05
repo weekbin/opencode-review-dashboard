@@ -3524,6 +3524,22 @@ function aggregateFirstPass(findings: Finding[]): { avgMs: number; values: numbe
   return { avgMs, values };
 }
 
+function aggregateFirstPassBuckets(values: number[]): {
+  "<1h": number;
+  "1-24h": number;
+  "1-7d": number;
+  "7d+": number;
+} {
+  const HOUR = 3600 * 1000;
+  const DAY = 24 * HOUR;
+  return {
+    "<1h": values.filter((v) => v < HOUR).length,
+    "1-24h": values.filter((v) => v >= HOUR && v < DAY).length,
+    "1-7d": values.filter((v) => v >= DAY && v < 7 * DAY).length,
+    "7d+": values.filter((v) => v >= 7 * DAY).length,
+  };
+}
+
 function renderSparkline(
   values: number[],
   opts: { width?: number; height?: number; ariaLabel?: string } = {},
@@ -3639,6 +3655,54 @@ function renderStatsPane(): void {
   });
   spark2.style.color = "var(--accent, #4a9eff)";
   firstPassSection.appendChild(spark2);
+  if (firstPass.values.length > 0) {
+    const buckets = aggregateFirstPassBuckets(firstPass.values);
+    const histogramHeading = document.createElement("h4");
+    histogramHeading.textContent = t("view.stats.firstPass.histogram");
+    histogramHeading.className = "stats-histogram-heading";
+    firstPassSection.appendChild(histogramHeading);
+    const histogramRow = document.createElement("div");
+    histogramRow.className = "stats-histogram-row";
+    histogramRow.setAttribute("role", "group");
+    histogramRow.setAttribute("aria-label", "First-pass resolve time distribution by bucket");
+    const bucketDefs: { key: keyof typeof buckets; i18nKey: string }[] = [
+      { key: "<1h", i18nKey: "view.stats.firstPass.bucket.underHour" },
+      { key: "1-24h", i18nKey: "view.stats.firstPass.bucket.dayOne" },
+      { key: "1-7d", i18nKey: "view.stats.firstPass.bucket.weekOne" },
+      { key: "7d+", i18nKey: "view.stats.firstPass.bucket.overWeek" },
+    ];
+    const maxCount = Math.max(...bucketDefs.map((b) => buckets[b.key]), 1);
+    for (const def of bucketDefs) {
+      const count = buckets[def.key];
+      const cell = document.createElement("div");
+      cell.className = "stats-histogram-cell";
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("width", "40");
+      svg.setAttribute("height", "32");
+      svg.setAttribute("viewBox", "0 0 40 32");
+      svg.setAttribute("role", "img");
+      const barHeight = (count / maxCount) * 28;
+      const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      rect.setAttribute("x", "10");
+      rect.setAttribute("y", String(30 - barHeight));
+      rect.setAttribute("width", "20");
+      rect.setAttribute("height", String(barHeight));
+      rect.setAttribute("fill", "currentColor");
+      rect.setAttribute("opacity", count === 0 ? "0.15" : "0.85");
+      svg.appendChild(rect);
+      cell.appendChild(svg);
+      const labelEl = document.createElement("div");
+      labelEl.className = "stats-histogram-label";
+      labelEl.textContent = t(def.i18nKey);
+      cell.appendChild(labelEl);
+      const countEl = document.createElement("div");
+      countEl.className = "stats-histogram-count";
+      countEl.textContent = String(count);
+      cell.appendChild(countEl);
+      histogramRow.appendChild(cell);
+    }
+    firstPassSection.appendChild(histogramRow);
+  }
   root.appendChild(firstPassSection);
 }
 
