@@ -5793,6 +5793,7 @@ async function resolveFinding(
   renderConversationPane();
   syncAll();
   setStatus(opts.resolution_kind ? t("status.findingMarkedWontfix") : t("status.findingResolved"));
+  updateSubmitButtons();
 }
 
 async function reopenFinding(id: string, reason = "", opts: { manually_reopened?: boolean } = {}) {
@@ -5824,6 +5825,7 @@ async function reopenFinding(id: string, reason = "", opts: { manually_reopened?
   renderFindings();
   renderConversationPane();
   syncAll();
+  updateSubmitButtons();
   setStatus(
     opts.manually_reopened ? t("status.findingForceReopened") : t("status.findingReopened"),
   );
@@ -6634,6 +6636,7 @@ submitButton.addEventListener("click", () => {
   notesArea.addEventListener("input", () => {
     state.notes = notesArea.value;
     scheduleSave();
+    updateSubmitButtons();
   });
   cancelBtn.addEventListener("click", close);
   okBtn.addEventListener("click", () => {
@@ -6708,6 +6711,7 @@ function showRequestChangesModal() {
   notesArea.addEventListener("input", () => {
     state.notes = notesArea.value;
     scheduleSave();
+    updateSubmitButtons();
   });
   cancelBtn.addEventListener("click", close);
   okBtn.addEventListener("click", () => {
