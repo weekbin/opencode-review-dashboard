@@ -215,6 +215,10 @@ export class DiffVirtualizer {
     return this.collapsedHunks.get(filePath)?.has(hunkIndex) ?? false;
   }
 
+  getHunkRanges(filePath: string): HunkRange[] {
+    return this.hunkRanges.get(filePath) ?? [];
+  }
+
   expandAll(filePath: string): void {
     const ranges = this.hunkRanges.get(filePath) ?? [];
     const set = this.collapsedHunks.get(filePath) ?? new Set();

@@ -114,6 +114,7 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "reconcile.badge.open": { en: "{count} still open", "zh-CN": "{count} 个未解决" },
   "reconcile.badge.new": { en: "{count} new this round", "zh-CN": "{count} 个本轮新增" },
   "reconcile.listing.heading": { en: "Findings in this file", "zh-CN": "本文件中的审查项" },
+  "reconcile.hunk.badge": { en: "{count} in this hunk", "zh-CN": "本代码块内 {count} 项" },
   "toolbar.approveChanges.disabledTooltip": {
     en: "Resolve all open findings + write round notes first",
     "zh-CN": "请先关闭所有未解决发现并填写本轮备注",

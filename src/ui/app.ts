@@ -5457,12 +5457,26 @@ function setAllExpanded(expand: boolean) {
   setStatus(expand ? t("status.expandedAll") : t("status.collapsedAll"));
 }
 
+function findingsInHunk(
+  findings: Finding[],
+  hunkRange: { startLine: number; endLine: number },
+  filePath: string,
+): Finding[] {
+  return findings.filter(
+    (f) =>
+      f.file === filePath &&
+      f.start_line >= hunkRange.startLine &&
+      f.start_line <= hunkRange.endLine,
+  );
+}
+
 function injectHunkCollapseButtons(
   mount: HTMLElement,
   filePath: string,
   virtualizer: DiffVirtualizer,
 ): void {
   const wrappers = mount.querySelectorAll<HTMLElement>("[data-hunk]");
+  const allFindings = [...state.existing, ...state.fresh];
   for (const wrapper of wrappers) {
     const hunkIndex = parseInt(wrapper.getAttribute("data-hunk") ?? "-1", 10);
     if (hunkIndex < 0) continue;
@@ -5483,6 +5497,25 @@ function injectHunkCollapseButtons(
       btn.textContent = isCollapsed ? "▶" : "▼";
     });
     wrapper.insertBefore(btn, wrapper.firstChild);
+    if (state.reconcileMode) {
+      const ranges = virtualizer.getHunkRanges(filePath);
+      const range = ranges[hunkIndex];
+      if (range) {
+        const hunkFindings = findingsInHunk(allFindings, range, filePath);
+        if (hunkFindings.length > 0) {
+          const hunkBadge = document.createElement("button");
+          hunkBadge.type = "button";
+          hunkBadge.className = "reconcile-hunk-badge";
+          hunkBadge.setAttribute("data-hunk-index", String(hunkIndex));
+          hunkBadge.textContent = t("reconcile.hunk.badge", { count: String(hunkFindings.length) });
+          hunkBadge.addEventListener("click", (e) => {
+            e.stopPropagation();
+            jumpToFindingById(hunkFindings[0]!.id);
+          });
+          wrapper.insertBefore(hunkBadge, btn.nextSibling);
+        }
+      }
+    }
   }
 }
 
