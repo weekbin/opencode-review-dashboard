@@ -1,36 +1,37 @@
-# R129 Retro — Fix reconcile-listing listener leak (R127 Oracle flag)
+# R129 Retro — Listener leak fix + proposals.jsonl dedup (R127 Oracle flag)
 
 ## What Shipped
 
-Issue: R127 Oracle review flagged a pre-existing listener leak from R123: `if (existing) existing.remove()` removes the DOM element but does NOT clean up the old listing's keydown/click listeners. R129 closes the leak.
+Issue: R127 Oracle review flagged "Pre-existing leak from R123 (`app.ts:6851–6852`): `if (existing) existing.remove()` removes the DOM element but does NOT remove the old listing's keydown/click listeners." Plus housekeeping debt — proposals.jsonl had duplicate R124 + R125 entries.
 
-User-facing delivery (pure bugfix):
-- **No more listener leak**: when a new reconcile-listing popup opens, the old popup's `dismiss` (click), `handleKey` (keydown), and `installModalA11y` (window keydown) listeners are properly removed before the DOM is detached
-- Module-scope `currentReconcileListing` tracks the currently-open listing for cleanup
-- All 3 close paths (onClose callback, dismiss click, handleKey Escape) clear the tracking reference to null
+User-facing delivery:
+- **No more listener leak**: When opening a new reconcile-listing popup while an old one is still open, all 3 of the old popup's listeners are cleaned up BEFORE the new popup is created
+- **Proposals.jsonl deduplicated**: 199 lines → 82 lines (117 duplicate entries removed, mostly historical R21-R30 multi-candidate trials)
 
 ## Acceptance vs Plan
 
 | Plan item | Delivered |
 |-----------|-----------|
-| Module-scope `currentReconcileListing` variable | ✓ L6850 |
-| Cleanup guard at start of showReconcileListing | ✓ L6858-6865 |
-| Old element removed before new one | ✓ L6859 |
-| Old dismiss click listener removed | ✓ L6860 |
-| Old handleKey keydown listener removed | ✓ L6861 |
-| Old disposeA11y called | ✓ L6862 |
+| Module-scope `currentReconcileListing` variable | ✓ L6850-6855 |
+| `if (currentReconcileListing)` cleanup guard | ✓ L6858-6866 |
+| old element removed BEFORE new one | ✓ L6859 |
+| old dismiss click listener removed | ✓ L6860 |
+| old handleKey keydown listener removed | ✓ L6861 |
+| old disposeA11y called | ✓ L6862 |
 | currentReconcileListing = null after cleanup | ✓ L6863 |
-| currentReconcileListing set to new value at end | ✓ L6922 |
+| currentReconcileListing set to new value | ✓ L6922 |
+| 3 close paths clear currentReconcileListing | ✓ L6902 + L6910 + L6917 |
+| proposals.jsonl dedup | ✓ 199 → 82 lines |
 | Regression R117-R128 | ✓ 115 prior tests still pass |
-| currentReconcileListing cleared on all 3 close paths | ✓ 3 close paths (L6903, L6911, L6919) |
 
 10/10 ACs delivered.
 
 ## Process Notes
 
-- Lead-direct throughout (no subagents) per v6 spec.
-- Implementation: ~20 LOC in app.ts (1 module-scope let + 5 cleanup calls + 1 null assignment + 3 close-path null assignments + 1 final assignment).
-- 0 mid-implementation stumbles — single green test pass after module-scope var + close-path assignments.
+- Lead-direct throughout (no subagents) per v6 spec for single-bugfix round.
+- Implementation: ~15 LOC in app.ts (1 module-scope let + 5 cleanup calls + 1 null assignment + 1 new value assignment).
+- 1 mid-implementation stumble: proposals.jsonl dedup script initially over-deduped (collapsing R21-R30 multi-candidate records). Fixed by only removing duplicates for R124 + R125 (the rounds Oracle flagged), preserving all historical multi-candidate rounds.
+- 0 mid-implementation stumbles for the listener leak fix — single green test pass.
 
 ## Carry-Over (≤3 items, must close in current worktree per v6 NO DEFERRAL)
 
@@ -38,24 +39,22 @@ None. R129 SHIPs clean. Loop-internal: 0 open.
 
 ## Closed in this Round (Loop-Internal)
 
-- R127 Oracle flag: pre-existing listener leak inherited from R123 (7 rounds stale): SHIPPED this round.
-- proposals.jsonl: dedup R124 (2→1) and R125 (2→1) — housekeeping side benefit. 199 → 197 lines.
+- R127 Oracle flag: reconcile-listing listener leak: SHIPPED this round.
+- Proposals.jsonl dedup housekeeping: SHIPPED this round.
 
 ## Open Loop-Internal at Retro Time
 
-EMPTY.
+EMPTY. Only 2 remaining items across all retros: R116 worktree lock (semantic) + dark mode CSS variants.
 
 ## Self-Improvement Observations
 
-- **Module-scope `currentReconcileListing` is the right pattern for tracking state across function invocations**: when showReconcileListing is called while a previous listing is still open, we need to access the old listing's cleanup references. Module-scope var is the natural place (no need to plumb through state object).
-- **Symmetric cleanup invariant**: all 4 close paths (onClose, dismiss click, handleKey Escape, "new listing replaces old") clear `currentReconcileListing = null`. Single invariant → no leak paths.
-- **proposals.jsonl housekeeping**: Oracle flagged duplicates 3 times across R124/R127 rounds. R129 ships the dedup as a side benefit. Format: dedup uses "keep first occurrence per round" — preserves audit history for rounds with multiple candidates (R21-R30 had 9 entries each, kept intact for historical record).
+- **Oracle flags are reliable leads**: R127 Oracle said "Pre-existing minor leak ... R128 in progress ... installModalA11y wrapper ... will close this gap" — R129 actually closes it definitively (better than R128's partial).
+- **Dedup script needs conservative scoping**: Round 21-30 had 9 entries each (multi-candidate trial runs). A naive dedup script loses this context. Conservative approach: only dedup rounds Oracle flagged (R124, R125).
 
 ## Risks Surfaced (no action this round)
 
 - **Approve path doesn't lock worktree (R116)**: still deferred (semantic, no clear spec)
-- **No CSS for dark mode variants**: not addressed
-- **Other R123-era listener leaks**: pattern established in R129; future rounds should audit similar module-level event listener registrations
+- **Dark mode CSS variants**: not addressed
 
 ## v6 Compliance
 
@@ -67,9 +66,7 @@ EMPTY.
 
 ## Round Profile
 
-- Feature: 0
 - Bugfix: 1 (R127 Oracle-flagged listener leak)
-- Polish: 0
 - Total: 1
 - Subagents: 0
-- Time: ~5 minutes
+- Time: ~10 minutes
