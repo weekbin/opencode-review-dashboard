@@ -100,12 +100,12 @@ describe("R127 R123 retro AC8 — role='dialog' preserved on listing", () => {
   });
 });
 
-describe("R127 R123 retro AC9 — installModalA11y not required", () => {
-  it("showReconcileListing handles Escape inline (not via installModalA11y)", async () => {
+describe("R127 R123 retro AC9 — installModalA11y added in R128", () => {
+  it("showReconcileListing now uses installModalA11y (R128 supersedes R127 standalone)", async () => {
     const src = await readSrc(APP_TS);
     const fnStart = src.indexOf("function showReconcileListing");
     const window = src.slice(fnStart, fnStart + 3000);
-    expect(window).not.toMatch(/installModalA11y/);
+    expect(window).toMatch(/installModalA11y/);
   });
 });
 

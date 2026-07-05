@@ -6879,18 +6879,27 @@ function showReconcileListing(badge: HTMLElement, findings: Finding[]): void {
   listing.style.top = `${window.scrollY + rect.bottom + 4}px`;
   listing.style.left = `${window.scrollX + rect.left}px`;
   listing.style.zIndex = "1000";
+  listing.setAttribute("aria-modal", "true");
   document.body.appendChild(listing);
+  const disposeA11y = installModalA11y(listing, () => {
+    listing.remove();
+    document.removeEventListener("click", dismiss);
+    document.removeEventListener("keydown", handleKey);
+    disposeA11y();
+  });
   const dismiss = (e: MouseEvent) => {
     if (listing.contains(e.target as Node)) return;
     listing.remove();
     document.removeEventListener("click", dismiss);
     document.removeEventListener("keydown", handleKey);
+    disposeA11y();
   };
   const handleKey = (e: KeyboardEvent) => {
     if (e.key !== "Escape") return;
     listing.remove();
     document.removeEventListener("keydown", handleKey);
     document.removeEventListener("click", dismiss);
+    disposeA11y();
   };
   setTimeout(() => {
     document.addEventListener("click", dismiss);
