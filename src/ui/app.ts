@@ -6884,8 +6884,18 @@ function showReconcileListing(badge: HTMLElement, findings: Finding[]): void {
     if (listing.contains(e.target as Node)) return;
     listing.remove();
     document.removeEventListener("click", dismiss);
+    document.removeEventListener("keydown", handleKey);
   };
-  setTimeout(() => document.addEventListener("click", dismiss), 0);
+  const handleKey = (e: KeyboardEvent) => {
+    if (e.key !== "Escape") return;
+    listing.remove();
+    document.removeEventListener("keydown", handleKey);
+    document.removeEventListener("click", dismiss);
+  };
+  setTimeout(() => {
+    document.addEventListener("click", dismiss);
+    document.addEventListener("keydown", handleKey);
+  }, 0);
 }
 
 function updateFileCommentsBadges() {
