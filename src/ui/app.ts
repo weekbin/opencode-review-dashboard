@@ -5512,6 +5512,7 @@ function renderReconcileOverlay() {
       const green = document.createElement("span");
       green.className = "reconcile-badge reconcile-green";
       green.dataset.findingId = resolved[0]!.id;
+      green.dataset.category = "resolved";
       green.title = `${resolved.length} resolved by you`;
       green.textContent = t("reconcile.badge.resolved", { count: String(resolved.length) });
       strip.appendChild(green);
@@ -5520,6 +5521,7 @@ function renderReconcileOverlay() {
       const amber = document.createElement("span");
       amber.className = "reconcile-badge reconcile-amber";
       amber.dataset.findingId = open[0]!.id;
+      amber.dataset.category = "open";
       amber.title = `${open.length} still open`;
       amber.textContent = t("reconcile.badge.open", { count: String(open.length) });
       strip.appendChild(amber);
@@ -6782,8 +6784,20 @@ diffsRoot.addEventListener("click", (event) => {
   const reconcileBadge = target.closest(".reconcile-badge[data-finding-id]");
   if (reconcileBadge instanceof HTMLElement) {
     const findingId = reconcileBadge.getAttribute("data-finding-id");
-    if (findingId) {
-      event.stopPropagation();
+    const category = reconcileBadge.getAttribute("data-category");
+    const filePath = reconcileBadge.closest<HTMLElement>(".card[data-file]")?.dataset.file;
+    const allFindings = [...state.existing, ...state.fresh];
+    const matched = allFindings.filter((f) => {
+      if (f.file !== filePath) return false;
+      if (category === "resolved") return f.status === "resolved";
+      if (category === "open") return f.status === "open";
+      if (category === "new") return state.fresh.includes(f) && f.status !== "resolved";
+      return false;
+    });
+    event.stopPropagation();
+    if (matched.length >= 2) {
+      showReconcileListing(reconcileBadge, matched);
+    } else if (findingId) {
       jumpToFindingById(findingId);
     }
   }
@@ -6797,6 +6811,47 @@ function jumpToFindingById(id: string): void {
   requestAnimationFrame(() => {
     flashLine(finding.file, finding.start_line, finding.end_line);
   });
+}
+
+function showReconcileListing(badge: HTMLElement, findings: Finding[]): void {
+  const existing = document.querySelector(".reconcile-listing");
+  if (existing) existing.remove();
+  const listing = document.createElement("div");
+  listing.className = "reconcile-listing";
+  listing.setAttribute("role", "dialog");
+  listing.setAttribute("aria-label", t("reconcile.listing.heading"));
+  const heading = document.createElement("div");
+  heading.className = "reconcile-listing-heading";
+  heading.textContent = t("reconcile.listing.heading");
+  listing.appendChild(heading);
+  const list = document.createElement("div");
+  list.className = "reconcile-listing-list";
+  for (const f of findings) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "reconcile-listing-item";
+    btn.setAttribute("data-finding-id", f.id);
+    const preview = (f.comment ?? "").replace(/\s+/g, " ").trim();
+    btn.textContent = `${f.file}:${f.start_line} — ${f.category} — ${preview.slice(0, 60)}${preview.length > 60 ? "…" : ""}`;
+    btn.addEventListener("click", () => {
+      listing.remove();
+      jumpToFindingById(f.id);
+    });
+    list.appendChild(btn);
+  }
+  listing.appendChild(list);
+  const rect = badge.getBoundingClientRect();
+  listing.style.position = "absolute";
+  listing.style.top = `${window.scrollY + rect.bottom + 4}px`;
+  listing.style.left = `${window.scrollX + rect.left}px`;
+  listing.style.zIndex = "1000";
+  document.body.appendChild(listing);
+  const dismiss = (e: MouseEvent) => {
+    if (listing.contains(e.target as Node)) return;
+    listing.remove();
+    document.removeEventListener("click", dismiss);
+  };
+  setTimeout(() => document.addEventListener("click", dismiss), 0);
 }
 
 function updateFileCommentsBadges() {
