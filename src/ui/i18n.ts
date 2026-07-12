@@ -319,6 +319,22 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "No saved replies yet — save your first one",
     "zh-CN": "暂无已保存回复 — 保存第一条试试",
   },
+  "savedReplies.error.nameRequired": {
+    en: "Template name is required",
+    "zh-CN": "模板名称不能为空",
+  },
+  "savedReplies.error.bodyRequired": {
+    en: "Template body is required",
+    "zh-CN": "模板内容不能为空",
+  },
+  "savedReplies.error.softCap": {
+    en: "Too many templates ({n}). Delete some first.",
+    "zh-CN": "模板过多（{n} 个）。请先删除一些。",
+  },
+  "savedReplies.error.quotaExceeded": {
+    en: "Browser storage quota exceeded",
+    "zh-CN": "浏览器存储空间已满",
+  },
   "previously.empty": {
     en: "No prior discussion yet. Submit a round to start the history.",
     "zh-CN": "暂无历史讨论。提交一轮以开始记录历史。",

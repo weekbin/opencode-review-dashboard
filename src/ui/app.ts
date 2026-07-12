@@ -290,18 +290,15 @@ function persistSavedReplies(list: SavedReply[]): boolean {
 
 function addSavedReply(name: string, body: string): { ok: boolean; error?: string } {
   const trimmed = name.trim();
-  if (!trimmed) return { ok: false, error: "name is required" };
-  if (!body.trim()) return { ok: false, error: "body is required" };
+  if (!trimmed) return { ok: false, error: "savedReplies.error.nameRequired" };
+  if (!body.trim()) return { ok: false, error: "savedReplies.error.bodyRequired" };
   const list = loadSavedReplies();
   if (list.length >= SAVED_REPLIES_SOFT_CAP) {
-    return {
-      ok: false,
-      error: `soft cap reached (${SAVED_REPLIES_SOFT_CAP}). Delete some templates first.`,
-    };
+    return { ok: false, error: "savedReplies.error.softCap" };
   }
   list.push({ name: trimmed, body, createdAt: Date.now() });
   if (!persistSavedReplies(list)) {
-    return { ok: false, error: "localStorage quota exceeded" };
+    return { ok: false, error: "savedReplies.error.quotaExceeded" };
   }
   return { ok: true };
 }
@@ -5081,7 +5078,7 @@ function renderConversationPanel(root: HTMLElement) {
         if (name === null) return;
         const result = addSavedReply(name, body);
         if (!result.ok) {
-          setStatus(result.error ?? t("status.templateSaveFailed"), true);
+          setStatus(result.error ? t(result.error) : t("status.templateSaveFailed"), true);
           return;
         }
         setStatus(`Saved template "${name.trim()}"`);

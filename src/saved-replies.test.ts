@@ -50,14 +50,21 @@ describe("AC1.1 / AC1.2 — Saved Replies helpers + UI button", () => {
     expect(block![0]).toMatch(/typeof item\.createdAt === "number"/);
   });
 
-  it("T10.1c addSavedReply enforces soft cap + valid input", async () => {
+  it("T10.1c addSavedReply enforces soft cap + valid input + returns translation keys", async () => {
     const src = await readSource(APP_TS);
     const block = src.match(/function\s+addSavedReply[\s\S]*?\n\}/);
     expect(block).toBeTruthy();
     expect(block![0]).toMatch(/name\.trim\(\)/);
     expect(block![0]).toMatch(/body\.trim\(\)/);
     expect(block![0]).toMatch(/SAVED_REPLIES_SOFT_CAP/);
-    expect(block![0]).toMatch(/localStorage quota exceeded/);
+    expect(block![0]).toMatch(/error: "savedReplies\.error\.nameRequired"/);
+    expect(block![0]).toMatch(/error: "savedReplies\.error\.bodyRequired"/);
+    expect(block![0]).toMatch(/error: "savedReplies\.error\.softCap"/);
+    expect(block![0]).toMatch(/error: "savedReplies\.error\.quotaExceeded"/);
+    expect(block![0]).not.toMatch(/name is required/);
+    expect(block![0]).not.toMatch(/body is required/);
+    expect(block![0]).not.toMatch(/localStorage quota exceeded/);
+    expect(block![0]).not.toMatch(/soft cap reached \(/);
   });
 });
 
