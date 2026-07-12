@@ -241,16 +241,16 @@ describe("AC8 — copyFindingAsMarkdownToClipboard function shape", () => {
     expect(block![0]).toMatch(/navigator\.clipboard\?\.writeText/);
   });
 
-  it("T16.8d function delegates clipboard fallback to hoisted legacyExecCommandCopy helper", async () => {
+  it("T16.8d function uses navigator.clipboard.writeText only (R153: legacyExecCommandCopy fallback removed)", async () => {
     const src = await readSource(APP_TS);
     const caller = src.match(/function\s+copyFindingAsMarkdownToClipboard\s*\([\s\S]*?\n\}/);
     expect(caller).toBeTruthy();
-    expect(caller![0]).toMatch(/legacyExecCommandCopy\(md\)/);
+    expect(caller![0]).toMatch(/navigator\.clipboard\?\.writeText/);
+    expect(caller![0]).not.toMatch(/legacyExecCommandCopy/);
     const helper = src.match(
-      /function\s+legacyExecCommandCopy\s*\(\s*text:\s*string\s*\)\s*:\s*boolean\s*\{[\s\S]*?\n\}/,
+      /function\s+legacyExecCommandCopy\s*\(\s*text:\s*string\s*\)\s*:\s*boolean\s*\{/,
     );
-    expect(helper).toBeTruthy();
-    expect(helper![0]).toMatch(/document\.execCommand\(\s*"copy"\s*\)/);
+    expect(helper).toBeNull();
   });
 
   it("T16.8e function shows transient '✓ Copied' label + setTimeout revert", async () => {
@@ -336,26 +336,21 @@ describe("AC9 — Markdown snippet format", () => {
   });
 });
 
-describe("AC10 — Uses existing navigator.clipboard + legacyExecCommandCopy pattern", () => {
-  it("T16.10a clipboard writeText + legacyExecCommandCopy delegation matches permalink helper", async () => {
+describe("AC10 — Uses existing navigator.clipboard pattern (R153: legacyExecCommandCopy fallback removed)", () => {
+  it("T16.10a copyFindingAsMarkdownToClipboard uses navigator.clipboard.writeText only", async () => {
     const src = await readSource(APP_TS);
     const caller = src.match(/function\s+copyFindingAsMarkdownToClipboard\s*\([\s\S]*?\n\}/);
     expect(caller).toBeTruthy();
     expect(caller![0]).toMatch(/navigator\.clipboard\??\.writeText\(md\)/);
-    expect(caller![0]).toMatch(/legacyExecCommandCopy\(md\)/);
-    const helper = src.match(
-      /function\s+legacyExecCommandCopy\s*\(\s*text:\s*string\s*\)\s*:\s*boolean\s*\{[\s\S]*?\n\}/,
-    );
-    expect(helper).toBeTruthy();
-    expect(helper![0]).toMatch(/document\.execCommand\(\s*"copy"\s*\)/);
+    expect(src).not.toMatch(/function\s+legacyExecCommandCopy/);
   });
 
-  it("T16.10b catches writeText rejection and falls back", async () => {
+  it("T16.10b catches writeText rejection and sets ok=false (no fallback)", async () => {
     const src = await readSource(APP_TS);
     const block = src.match(/function\s+copyFindingAsMarkdownToClipboard\s*\([\s\S]*?\n\}/);
     expect(block).toBeTruthy();
     expect(block![0]).toMatch(/await\s+navigator\.clipboard\.writeText\(md\)/);
-    expect(block![0]).toMatch(/catch[\s\S]*?legacyExecCommandCopy\(md\)/);
+    expect(block![0]).toMatch(/catch\s*\{[^}]*ok\s*=\s*false/);
   });
 });
 
