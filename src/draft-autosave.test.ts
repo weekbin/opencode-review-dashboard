@@ -164,12 +164,14 @@ describe("AC1 + AC2 + AC3 — Sort findings dropdown (R14 #23)", () => {
 });
 
 describe("AC4 + AC5 + AC6 — Previously-discussed round filter (R14 #25)", () => {
-  it("T14.25.1 <select id=filter-previously-by-round> is wired in review.html with default 'All rounds' option", async () => {
+  it("T14.25.1 <select id=filter-previously-by-round> is wired in review.html with default 'All rounds' option (R146 upgrade: behavior-contract + data-i18n)", async () => {
     const html = await readSource(HTML);
     expect(html).toMatch(
       /<select\s+id="filter-previously-by-round"\s+class="filter-previously-by-round"/,
     );
-    expect(html).toMatch(/<option\s+value="all">All rounds<\/option>/);
+    expect(html).toMatch(
+      /<option\s+value="all"[^>]*data-i18n="previously\.allRounds"[^>]*>All rounds</,
+    );
   });
 
   it("T14.25.2 state.previouslyFilterByRound is in-memory ONLY (NOT localStorage)", async () => {

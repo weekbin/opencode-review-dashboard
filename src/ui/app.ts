@@ -1721,8 +1721,10 @@ registerUITranslator("conversation.sort.oldest", () => t("conversation.sort.olde
 registerUITranslator("conversation.sort.severity", () => t("conversation.sort.severity"));
 registerUITranslator("conversation.sort.file", () => t("conversation.sort.file"));
 registerUITranslator("previously.paneTitle", () => t("previously.paneTitle"));
+registerUITranslator("previously.allRounds", () => t("previously.allRounds"));
 registerUITranslator("selection.empty", () => t("selection.empty"));
 registerUITranslator("selection.hint", () => t("selection.hint"));
+registerUITranslator("previously.allRounds", () => t("previously.allRounds"));
 
 // ── Layout toggle ──
 function applyLayout() {
