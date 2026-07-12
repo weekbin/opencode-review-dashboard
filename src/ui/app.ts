@@ -3619,7 +3619,10 @@ function renderStatsPane(): void {
     lockHeading.textContent = t("view.stats.locked.heading");
     const lockDetail = document.createElement("span");
     lockDetail.textContent = t("view.stats.locked.detail", { round: locked.round });
-    lockCopy.append(lockHeading, lockDetail);
+    const lockAgo = document.createElement("span");
+    lockAgo.className = "stats-lock-status-ago";
+    lockAgo.textContent = formatRelativeTime(locked.at);
+    lockCopy.append(lockHeading, lockDetail, lockAgo);
     lockStatus.append(lockIcon, lockCopy);
     root.appendChild(lockStatus);
   }
@@ -4186,18 +4189,14 @@ type ConversationEntry = {
 
 function formatRelativeTime(ts: number): string {
   if (!ts) return "";
-  const now = Date.now();
-  const diff = now - ts;
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const d = new Date(ts);
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
+  const diff = Date.now() - ts;
+  if (diff < 60_000) return t("view.stats.locked.ago.justNow");
+  if (diff < 3_600_000) return t("view.stats.locked.ago.minutes", { n: Math.floor(diff / 60_000) });
+  if (diff < 86_400_000)
+    return t("view.stats.locked.ago.hours", { n: Math.floor(diff / 3_600_000) });
+  if (diff < 2_592_000_000)
+    return t("view.stats.locked.ago.days", { n: Math.floor(diff / 86_400_000) });
+  return t("view.stats.locked.ago.months", { n: Math.floor(diff / 2_592_000_000) });
 }
 
 // ── Export review (R10 #4, GH#14) ──

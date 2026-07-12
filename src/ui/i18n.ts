@@ -79,6 +79,14 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "Locked after round {round}; no further changes can be made.",
     "zh-CN": "已在第 {round} 轮后锁定；无法继续修改。",
   },
+  "view.stats.locked.ago.justNow": { en: "just now", "zh-CN": "刚刚" },
+  "view.stats.locked.ago.minutes": {
+    en: "{n}m ago",
+    "zh-CN": "{n}分钟前",
+  },
+  "view.stats.locked.ago.hours": { en: "{n}h ago", "zh-CN": "{n}小时前" },
+  "view.stats.locked.ago.days": { en: "{n}d ago", "zh-CN": "{n}天前" },
+  "view.stats.locked.ago.months": { en: "{n}mo ago", "zh-CN": "{n}个月前" },
   "view.stats.byRound.heading": {
     en: "Findings by round",
     "zh-CN": "按轮次统计",
