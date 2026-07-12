@@ -29,3 +29,12 @@ scripts/test-review-ui/*-mock.json
 
 # playwright-cli local state (created on first playwright-cli open)
 .playwright-cli/
+
+# OpenCode skill-manager local scratch (per-machine skill hash cache)
+.agents/
+skills-lock.json
+
+# R132 visual evidence was intentionally left untracked ("the project does not
+# ship per-round captures"); relocate it under the round dir but keep it
+# out of git history.
+.omo/round-*/evidence/
