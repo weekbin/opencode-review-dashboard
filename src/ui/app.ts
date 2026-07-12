@@ -387,21 +387,6 @@ async function copyFindingPermalinkToClipboard(
   button: HTMLButtonElement,
 ): Promise<void> {
   const url = buildFindingPermalink(findingId);
-  const fallbackCopy = (text: string) => {
-    try {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position = "fixed";
-      ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-      return true;
-    } catch {
-      return false;
-    }
-  };
   let ok = false;
   if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
     try {
@@ -468,21 +453,6 @@ async function copyFindingAsMarkdownToClipboard(
   button: HTMLButtonElement,
 ): Promise<void> {
   const md = buildFindingMarkdownSnippet(finding, round);
-  const fallbackCopy = (text: string) => {
-    try {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position = "fixed";
-      ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-      return true;
-    } catch {
-      return false;
-    }
-  };
   let ok = false;
   if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
     try {
@@ -697,6 +667,23 @@ const DIFF_SEARCH_MAX_MATCHES = 100;
 const DIFF_SEARCH_FLASH_MS = 1500;
 const COPY_FEEDBACK_MS = 1200;
 const PERMALINK_FLASH_MS = 1600;
+
+function fallbackCopy(text: string): boolean {
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 type DiffSearchState = {
   query: string;
   matchElements: HTMLElement[];
@@ -1765,21 +1752,6 @@ async function copyBranchNameToClipboard(button: HTMLButtonElement): Promise<voi
     showToast(t("status.copyBranchEmpty"), { error: true });
     return;
   }
-  const fallbackCopy = (text: string) => {
-    try {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position = "fixed";
-      ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-      return true;
-    } catch {
-      return false;
-    }
-  };
   let ok = false;
   if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
     try {
@@ -1812,21 +1784,6 @@ async function copyBranchNameToClipboard(button: HTMLButtonElement): Promise<voi
 }
 
 async function copyRoundNotesToClipboard(notes: string, button: HTMLButtonElement): Promise<void> {
-  const fallbackCopy = (text: string) => {
-    try {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position = "fixed";
-      ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-      return true;
-    } catch {
-      return false;
-    }
-  };
   let ok = false;
   if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
     try {

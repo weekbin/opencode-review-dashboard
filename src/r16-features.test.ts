@@ -241,11 +241,16 @@ describe("AC8 — copyFindingAsMarkdownToClipboard function shape", () => {
     expect(block![0]).toMatch(/navigator\.clipboard\?\.writeText/);
   });
 
-  it("T16.8d function uses document.execCommand('copy') fallback", async () => {
+  it("T16.8d function delegates clipboard fallback to hoisted fallbackCopy helper", async () => {
     const src = await readSource(APP_TS);
-    const block = src.match(/function\s+copyFindingAsMarkdownToClipboard\s*\([\s\S]*?\n\}/);
-    expect(block).toBeTruthy();
-    expect(block![0]).toMatch(/document\.execCommand\(\s*"copy"\s*\)/);
+    const caller = src.match(/function\s+copyFindingAsMarkdownToClipboard\s*\([\s\S]*?\n\}/);
+    expect(caller).toBeTruthy();
+    expect(caller![0]).toMatch(/fallbackCopy\(md\)/);
+    const helper = src.match(
+      /function\s+fallbackCopy\s*\(\s*text:\s*string\s*\)\s*:\s*boolean\s*\{[\s\S]*?\n\}/,
+    );
+    expect(helper).toBeTruthy();
+    expect(helper![0]).toMatch(/document\.execCommand\(\s*"copy"\s*\)/);
   });
 
   it("T16.8e function shows transient '✓ Copied' label + setTimeout revert", async () => {
@@ -332,13 +337,17 @@ describe("AC9 — Markdown snippet format", () => {
 });
 
 describe("AC10 — Uses existing navigator.clipboard + fallbackCopy pattern", () => {
-  it("T16.10a clipboard writeText pattern matches permalink helper", async () => {
+  it("T16.10a clipboard writeText + fallbackCopy delegation matches permalink helper", async () => {
     const src = await readSource(APP_TS);
-    const block = src.match(/function\s+copyFindingAsMarkdownToClipboard\s*\([\s\S]*?\n\}/);
-    expect(block).toBeTruthy();
-    expect(block![0]).toMatch(/navigator\.clipboard\??\.writeText\(md\)/);
-    expect(block![0]).toMatch(/document\.execCommand\(\s*"copy"\s*\)/);
-    expect(block![0]).toMatch(/fallbackCopy\(md\)/);
+    const caller = src.match(/function\s+copyFindingAsMarkdownToClipboard\s*\([\s\S]*?\n\}/);
+    expect(caller).toBeTruthy();
+    expect(caller![0]).toMatch(/navigator\.clipboard\??\.writeText\(md\)/);
+    expect(caller![0]).toMatch(/fallbackCopy\(md\)/);
+    const helper = src.match(
+      /function\s+fallbackCopy\s*\(\s*text:\s*string\s*\)\s*:\s*boolean\s*\{[\s\S]*?\n\}/,
+    );
+    expect(helper).toBeTruthy();
+    expect(helper![0]).toMatch(/document\.execCommand\(\s*"copy"\s*\)/);
   });
 
   it("T16.10b catches writeText rejection and falls back", async () => {

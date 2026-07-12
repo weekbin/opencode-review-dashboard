@@ -59,15 +59,20 @@ describe("AC2.2 / AC2.3 / AC2.4 — Copy-link + hash scroll + flash", () => {
     expect(block![0]).toMatch(/#finding-\$\{findingId\}/);
   });
 
-  it("T11.2d copyFindingPermalinkToClipboard uses navigator.clipboard.writeText + execCommand fallback + transient ✓ Copied label", async () => {
+  it("T11.2d copyFindingPermalinkToClipboard uses navigator.clipboard.writeText + fallbackCopy helper + transient ✓ Copied label", async () => {
     const src = await readSource(APP_TS);
     expect(src).toMatch(/function\s+copyFindingPermalinkToClipboard\s*\(/);
     const block = src.match(/function\s+copyFindingPermalinkToClipboard[\s\S]*?\n\}/);
     expect(block).toBeTruthy();
     expect(block![0]).toMatch(/navigator\.clipboard\?\.writeText/);
-    expect(block![0]).toMatch(/document\.execCommand\(\s*"copy"\s*\)/);
+    expect(block![0]).toMatch(/fallbackCopy\(/);
     expect(block![0]).toMatch(/✓ Copied/);
     expect(block![0]).toMatch(/setStatus\(/);
+    const helper = src.match(
+      /function\s+fallbackCopy\s*\(\s*text:\s*string\s*\)\s*:\s*boolean\s*\{[\s\S]*?\n\}/,
+    );
+    expect(helper).toBeTruthy();
+    expect(helper![0]).toMatch(/document\.execCommand\(\s*"copy"\s*\)/);
   });
 
   it("T11.2e parseFindingHash + flashFindingPermaHighlight + resolveHashOnLoad wired", async () => {
