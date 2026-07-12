@@ -931,16 +931,64 @@ export function registerUITranslator(key: string, fn: () => string): () => void 
 function applyUITranslator(key: string, fn: () => string): void {
   try {
     const text = fn();
-    const targets = document.querySelectorAll<HTMLElement>(`[data-i18n="${CSS.escape(key)}"]`);
-    for (const el of targets) el.textContent = text;
+    const ecap = CSS.escape(key);
+    const textTargets = document.querySelectorAll<HTMLElement>(`[data-i18n="${ecap}"]`);
+    for (const el of textTargets) el.textContent = text;
+    const titleTargets = document.querySelectorAll<HTMLElement>(`[data-i18n-title="${ecap}"]`);
+    for (const el of titleTargets) el.setAttribute("title", text);
+    const ariaTargets = document.querySelectorAll<HTMLElement>(`[data-i18n-aria-label="${ecap}"]`);
+    for (const el of ariaTargets) el.setAttribute("aria-label", text);
   } catch {
     // Element may not yet be in the DOM; setLanguage will re-render once it exists.
+  }
+}
+
+function discoverAttributeKeys(): void {
+  if (typeof document === "undefined") return;
+  const seen = new Set<string>();
+  for (const attr of ["data-i18n-title", "data-i18n-aria-label"] as const) {
+    const nodes = document.querySelectorAll<HTMLElement>(`[${attr}]`);
+    for (const node of nodes) {
+      const key = node.getAttribute(attr);
+      if (key && !uiTranslators.has(key) && !seen.has(key)) seen.add(key);
+    }
+  }
+  for (const key of seen) {
+    uiTranslators.set(key, () => t(key));
+    applyUITranslator(key, () => t(key));
   }
 }
 
 /** Re-render every registered UI translator. Called on `setLanguage` and on demand. */
 export function applyUI(): void {
   for (const [key, fn] of uiTranslators) applyUITranslator(key, fn);
+}
+
+/**
+ * Boot-time hook for `data-i18n-title` and `data-i18n-aria-label` attributes.
+ * Registers a translator for each distinct value already in the DOM and
+ * installs a MutationObserver so post-boot attribute changes also re-render.
+ */
+export function initUIDataI18nAttributes(): void {
+  discoverAttributeKeys();
+  if (typeof MutationObserver === "undefined") return;
+  const observer = new MutationObserver((records) => {
+    for (const r of records) {
+      if (
+        r.type === "attributes" &&
+        (r.attributeName === "data-i18n-title" || r.attributeName === "data-i18n-aria-label")
+      ) {
+        discoverAttributeKeys();
+        applyUI();
+        return;
+      }
+    }
+  });
+  observer.observe(document.body, {
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["data-i18n-title", "data-i18n-aria-label"],
+  });
 }
 
 /** Synchronously adopt the persisted language before any UI renders. */

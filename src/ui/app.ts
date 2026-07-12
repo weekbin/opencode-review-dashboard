@@ -12,6 +12,7 @@ import { showToast } from "./toast";
 // R19 #33: language toggle (i18n helper).
 import {
   applyLanguage,
+  initUIDataI18nAttributes,
   onLanguageChange,
   peekLanguage,
   registerUITranslator,
@@ -1650,6 +1651,7 @@ themeToggle.addEventListener("click", (event) => {
 
 // R19 #33: language toggle — one toolbar button flips en ↔ zh-CN.
 applyLanguage();
+initUIDataI18nAttributes();
 const languageToggle = document.querySelector("#language-toggle");
 function applyLanguageToggle(): void {
   if (!(languageToggle instanceof HTMLElement)) return;
