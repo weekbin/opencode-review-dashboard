@@ -5693,7 +5693,7 @@ function renderDiffPanel() {
     if (file.source === "working") {
       uncommittedBadge.className = "file-badge-uncommitted";
       uncommittedBadge.textContent = "uncommitted";
-      uncommittedBadge.title = "Working-tree only (not in diff base)";
+      uncommittedBadge.title = t("file.uncommitted.title");
     }
 
     const cardReviewed = document.createElement("span");

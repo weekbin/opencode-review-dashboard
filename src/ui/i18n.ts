@@ -887,6 +887,10 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   },
   "diff.hunk.collapse": { en: "Collapse hunk", "zh-CN": "折叠 hunk" },
   "diff.hunk.expand": { en: "Expand hunk", "zh-CN": "展开 hunk" },
+  "file.uncommitted.title": {
+    en: "Working-tree only (not in diff base)",
+    "zh-CN": "仅在工作区中（不在 diff 基线中）",
+  },
 };
 
 let currentLanguage: Lang = DEFAULT_LANGUAGE;
