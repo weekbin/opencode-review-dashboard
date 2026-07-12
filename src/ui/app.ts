@@ -2445,7 +2445,7 @@ function showReopenReasonModal(_findingId: string): Promise<string | null> {
     cancelBtn?.addEventListener("click", () => closeWith(null));
     submitBtn?.addEventListener("click", () => {
       const trimmed = (textarea?.value ?? "").trim();
-      closeWith(trimmed || "(no reason provided)");
+      closeWith(trimmed || t("resolve.reason.empty"));
     });
     overlay.addEventListener("click", (e) => {
       if (e.target === overlay) closeWith(null);
@@ -5393,7 +5393,7 @@ function renderPreviouslyDiscussedPanel(root: HTMLElement) {
       copyNotesBtn.type = "button";
       copyNotesBtn.className = "previously-notes-copy";
       copyNotesBtn.textContent = t("previously.notes.copyButton");
-      copyNotesBtn.title = t("previously.notes.copyButton");
+      copyNotesBtn.setAttribute("data-i18n-title", "previously.notes.copyButton");
       copyNotesBtn.addEventListener("click", () => {
         void copyRoundNotesToClipboard(roundEntry.notes, copyNotesBtn);
       });
@@ -6047,7 +6047,7 @@ async function pinFinding(id: string): Promise<void> {
   }).catch(() => undefined);
   if (!response?.ok) {
     const data = await response?.json().catch(() => undefined);
-    setStatus(data?.error ?? "Failed to pin finding", true);
+    setStatus(data?.error ?? t("status.pinFailed"), true);
     return;
   }
   const payload = (await response.json().catch(() => undefined)) as
@@ -6078,7 +6078,7 @@ async function unpinFinding(id: string): Promise<void> {
   }).catch(() => undefined);
   if (!response?.ok) {
     const data = await response?.json().catch(() => undefined);
-    setStatus(data?.error ?? "Failed to unpin finding", true);
+    setStatus(data?.error ?? t("status.unpinFailed"), true);
     return;
   }
   const existing = state.existing.find((item) => item.id === id);
@@ -6105,7 +6105,7 @@ async function toggleReaction(id: string, emoji: ReactionEmoji): Promise<void> {
   }).catch(() => undefined);
   if (!response?.ok) {
     const data = await response?.json().catch(() => undefined);
-    setStatus(data?.error ?? "Failed to toggle reaction", true);
+    setStatus(data?.error ?? t("status.reactionFailed"), true);
     return;
   }
   const payload = (await response.json().catch(() => undefined)) as

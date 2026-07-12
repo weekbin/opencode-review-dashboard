@@ -727,6 +727,10 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "false alarm — keep the code",
     "zh-CN": "误报 — 保留代码",
   },
+  "resolve.reason.empty": {
+    en: "(no reason provided)",
+    "zh-CN": "（未提供原因）",
+  },
   "action.undo": { en: "Undo", "zh-CN": "撤销" },
   "action.reopen": { en: "Re-open", "zh-CN": "重新打开" },
   "action.mark": { en: "Mark as wontfix", "zh-CN": "标记为不修复" },
@@ -779,6 +783,18 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "status.reopenFailed": {
     en: "Cannot reopen (code may have changed)",
     "zh-CN": "无法重新打开（代码可能已变更）",
+  },
+  "status.pinFailed": {
+    en: "Failed to pin finding",
+    "zh-CN": "置顶审查项失败",
+  },
+  "status.unpinFailed": {
+    en: "Failed to unpin finding",
+    "zh-CN": "取消置顶审查项失败",
+  },
+  "status.reactionFailed": {
+    en: "Failed to toggle reaction",
+    "zh-CN": "切换表情反应失败",
   },
   "status.editFailed": {
     en: "Failed to edit finding",
