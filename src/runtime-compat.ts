@@ -41,8 +41,9 @@ const IS_BUN = typeof _bunGlobal !== "undefined";
 // `Bun.write` has a very different shape from Node's `fs/promises.writeFile`.
 // We keep the lazy reference to the Bun global so test injection can swap it
 // without breaking the runtime-compat layer's own detection.
-function bun(): any {
-  return (globalThis as { Bun?: any }).Bun;
+const _BUN: typeof Bun | undefined = (globalThis as { Bun?: typeof Bun }).Bun;
+function bun(): typeof Bun {
+  return _BUN as typeof Bun;
 }
 
 // ---------------------------------------------------------------------------
@@ -121,7 +122,8 @@ export async function readFileJson<T>(path: string, defaultValue: T): Promise<T>
 
 export async function writeFile(path: string, content: string | Uint8Array): Promise<void> {
   if (IS_BUN) {
-    return bun().write(path, content);
+    await bun().write(path, content);
+    return;
   }
   const { writeFile: nodeWriteFile } = await import("node:fs/promises");
   return nodeWriteFile(path, content);
@@ -318,7 +320,7 @@ export async function serve(opts: ServeOptions): Promise<ServeInstance> {
       fetch: opts.fetch,
     });
     return {
-      port: server.port,
+      port: server.port ?? 0,
       stop: async () => {
         await server.stop();
       },
