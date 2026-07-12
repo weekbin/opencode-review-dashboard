@@ -4958,7 +4958,7 @@ function renderConversationPanel(root: HTMLElement) {
       summary.textContent = `${auditLog.length} edit${auditLog.length !== 1 ? "s" : ""} — click to expand`;
       auditDisclosure.appendChild(summary);
       for (const row of auditLog) {
-        const ts = new Date(row.at).toLocaleString();
+        const ts = formatRelativeTime(row.at);
         const changes: string[] = [];
         if (row.before.category !== row.after.category)
           changes.push(
