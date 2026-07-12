@@ -470,6 +470,32 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "Sort findings in this Conversation panel",
     "zh-CN": "在对话面板中排序审查项",
   },
+  "conversation.sort.newest": { en: "Newest first", "zh-CN": "最新优先" },
+  "conversation.sort.oldest": { en: "Oldest first", "zh-CN": "最早优先" },
+  "conversation.sort.severity": {
+    en: "Severity (high → low)",
+    "zh-CN": "严重程度（高 → 低）",
+  },
+  "conversation.sort.file": {
+    en: "File path (A–Z)",
+    "zh-CN": "文件路径 (A–Z)",
+  },
+  "previously.paneTitle": {
+    en: "Prior rounds — what you told the agent + how it replied",
+    "zh-CN": "历史轮次 — 你告诉代理的内容与代理的回复",
+  },
+  "selection.empty": {
+    en: "Select lines in the diff to start.",
+    "zh-CN": "在 diff 中选择行以开始。",
+  },
+  "selection.hint": {
+    en: "Click a line number to start, click another to set range.",
+    "zh-CN": "点击行号开始，再点击另一行以设置范围。",
+  },
+  "comment.placeholder": {
+    en: "What should change and why?",
+    "zh-CN": "应当修改什么？为什么？",
+  },
   "previously.filter.title": {
     en: "Filter previously-discussed by round",
     "zh-CN": "按轮次筛选历史讨论",

@@ -3639,10 +3639,12 @@
               class="sort-findings"
               data-i18n-title="conversation.sort.title"
             >
-              <option value="newest">Newest first</option>
-              <option value="oldest">Oldest first</option>
-              <option value="severity">Severity (high → low)</option>
-              <option value="file">File path (A–Z)</option>
+              <option value="newest" data-i18n="conversation.sort.newest">Newest first</option>
+              <option value="oldest" data-i18n="conversation.sort.oldest">Oldest first</option>
+              <option value="severity" data-i18n="conversation.sort.severity">
+                Severity (high → low)
+              </option>
+              <option value="file" data-i18n="conversation.sort.file">File path (A–Z)</option>
             </select>
           </label>
         </div>
@@ -3650,7 +3652,9 @@
       </div>
       <div class="pane pane-previously" data-pane="previously" hidden>
         <div class="pane-toolbar">
-          <div class="pane-title">Prior rounds — what you told the agent + how it replied</div>
+          <div class="pane-title" data-i18n="previously.paneTitle">
+            Prior rounds — what you told the agent + how it replied
+          </div>
           <label class="filter-previously-label" for="filter-previously-by-round">
             Round
             <select
@@ -3693,8 +3697,10 @@
         </button>
       </div>
       <div class="drawer-body">
-        <div id="selection">Select lines in the diff to start.</div>
-        <div class="hint">Click a line number to start, click another to set range.</div>
+        <div id="selection" data-i18n="selection.empty">Select lines in the diff to start.</div>
+        <div class="hint" data-i18n="selection.hint">
+          Click a line number to start, click another to set range.
+        </div>
         <div class="field-row">
           <div>
             <label for="category">Category</label>
@@ -3707,7 +3713,11 @@
         </div>
         <div>
           <label for="comment">Comment</label>
-          <textarea id="comment" placeholder="What should change and why?"></textarea>
+          <textarea
+            id="comment"
+            data-i18n-placeholder="comment.placeholder"
+            placeholder="What should change and why?"
+          ></textarea>
         </div>
         <div class="btn-row">
           <button class="btn" id="clear" type="button">Clear</button>

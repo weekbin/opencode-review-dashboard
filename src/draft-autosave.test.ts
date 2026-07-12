@@ -138,13 +138,21 @@ describe("AC1 + AC2 + AC3 — Sort findings dropdown (R14 #23)", () => {
     );
   });
 
-  it("T14.23.7 <select id=sort-findings> is wired in review.html with 4 options", async () => {
+  it("T14.23.7 <select id=sort-findings> is wired in review.html with 4 options (R145 upgrade: behavior-contract + data-i18n)", async () => {
     const html = await readSource(HTML);
     expect(html).toMatch(/<select\s+id="sort-findings"\s+class="sort-findings"/);
-    expect(html).toMatch(/<option\s+value="newest">Newest first<\/option>/);
-    expect(html).toMatch(/<option\s+value="oldest">Oldest first<\/option>/);
-    expect(html).toMatch(/<option\s+value="severity">Severity \(high → low\)<\/option>/);
-    expect(html).toMatch(/<option\s+value="file">File path \(A–Z\)<\/option>/);
+    expect(html).toMatch(
+      /<option\s+value="newest"[^>]*data-i18n="conversation\.sort\.newest"[^>]*>Newest first</,
+    );
+    expect(html).toMatch(
+      /<option\s+value="oldest"[^>]*data-i18n="conversation\.sort\.oldest"[^>]*>Oldest first</,
+    );
+    expect(html).toMatch(
+      /<option\s+value="severity"[^>]*data-i18n="conversation\.sort\.severity"[^>]*>/,
+    );
+    expect(html).toMatch(
+      /<option\s+value="file"[^>]*data-i18n="conversation\.sort\.file"[^>]*>File path \(A.{1,3}Z\)</,
+    );
   });
 
   it("T14.23.8 CSS for .sort-findings-label and .sort-findings exists in review.html", async () => {

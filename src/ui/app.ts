@@ -1716,6 +1716,13 @@ registerUITranslator("settings.virtualization.label", () => t("settings.virtuali
 registerUITranslator("settings.virtualization.description", () =>
   t("settings.virtualization.description"),
 );
+registerUITranslator("conversation.sort.newest", () => t("conversation.sort.newest"));
+registerUITranslator("conversation.sort.oldest", () => t("conversation.sort.oldest"));
+registerUITranslator("conversation.sort.severity", () => t("conversation.sort.severity"));
+registerUITranslator("conversation.sort.file", () => t("conversation.sort.file"));
+registerUITranslator("previously.paneTitle", () => t("previously.paneTitle"));
+registerUITranslator("selection.empty", () => t("selection.empty"));
+registerUITranslator("selection.hint", () => t("selection.hint"));
 
 // ── Layout toggle ──
 function applyLayout() {
