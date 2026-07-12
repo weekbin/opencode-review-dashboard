@@ -30,6 +30,7 @@ EMPTY. R132 ends with no deferred work and the v6 NO DEFERRAL invariant satisfie
 - **R105 conformance shape**: keep `decision.md` to the literal token (`SHIP`/`REVERT`/`CARRY`) for R82+. The template's multi-line "Decision / Lightweight / Doc updates / Loop summary" structure is *informational only* and must not be written into `decision.md` until R105 lets go.
 - **Banner width formula**: prefer `width: min(100% - 40px, 960px); margin: 16px max(20px, calc((100% - 960px) / 2));` over wrapping the whole pane. The wrapper variant cost 7.8% unrelated pixel delta.
 - **Determinism for visual QA**: capture `getBoundingClientRect` of every relevant element at each breakpoint alongside the screenshot. Pairings render the false-positive oracle problem impossible to repeat.
+- **Gap surfaced post-round (user ping +37m)**: I fired 2 visual-QA subagents in `run_in_background=true` and *also* did my own `take-screenshots.sh` work in parallel. The subagent task IDs were unknown when I tried `background_output`, so their output was silently discarded — R132 shipped on my own harness's output alone. This is the v6 anti-pattern: "5-lens parallel review" was collapsed into Capability 5 Verify (mechanical gate only). Rule going forward: **visual QA must use `take-screenshots.sh` inline (lead-direct). Never fire visual-QA subagents in background.** Captured as project memory.
 
 ## Risks Surfaced (not actioned this round)
 
