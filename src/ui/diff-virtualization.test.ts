@@ -136,9 +136,8 @@ class FakeElement {
 
   querySelectorAll(selector: string): FakeElement[] {
     const results: FakeElement[] = [];
-    const self = this;
 
-    function matches(el: FakeElement): boolean {
+    const matches = (el: FakeElement): boolean => {
       if (selector.includes("[data-line=")) {
         const match = selector.match(/\[data-line="(\d+)"\]/);
         if (match) {
@@ -152,18 +151,18 @@ class FakeElement {
         }
       }
       return false;
-    }
+    };
 
-    function walk(node: FakeElement) {
-      if (node !== self && matches(node)) {
+    const walk = (root: FakeElement, node: FakeElement): void => {
+      if (node !== root && matches(node)) {
         results.push(node);
       }
       for (const child of node.children) {
-        walk(child);
+        walk(root, child);
       }
-    }
+    };
 
-    walk(this);
+    walk(this, this);
     return results;
   }
 

@@ -225,7 +225,7 @@ export async function spawnText(
     try {
       const proc = spawn(args[0]!, args.slice(1), {
         cwd: opts.cwd,
-        env: { ...process.env, ...(opts.env ?? {}) } as NodeJS.ProcessEnv,
+        env: { ...process.env, ...opts.env } as NodeJS.ProcessEnv,
         stdio: ["ignore", "pipe", "pipe"],
         // Cast through ChildProcess because spawn()'s overload
         // intersection collapses proc to `never` when stdio is a
@@ -280,7 +280,7 @@ export function spawnDetached(args: string[], opts: SpawnTextOptions = {}): void
   try {
     const proc = spawn(args[0]!, args.slice(1), {
       cwd: opts.cwd,
-      env: { ...process.env, ...(opts.env ?? {}) } as NodeJS.ProcessEnv,
+      env: { ...process.env, ...opts.env } as NodeJS.ProcessEnv,
       stdio: "ignore",
       detached: true,
     }) as ReturnType<typeof spawn>;
