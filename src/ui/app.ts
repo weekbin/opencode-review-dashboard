@@ -660,10 +660,6 @@ const DIFF_SEARCH_FLASH_MS = 1500;
 const COPY_FEEDBACK_MS = 1200;
 const PERMALINK_FLASH_MS = 1600;
 
-// Deprecated: navigator.clipboard.writeText is the primary copy path; this
-// is the catch-all fallback for environments where the Clipboard API is
-// unavailable. Migrate to ClipboardItem API when browser support stabilizes.
-
 type DiffSearchState = {
   query: string;
   matchElements: HTMLElement[];
