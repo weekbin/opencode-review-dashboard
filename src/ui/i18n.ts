@@ -455,6 +455,10 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "Notes you sent to the agent",
     "zh-CN": "你发送给 agent 的笔记",
   },
+  "previously.notes.empty": {
+    en: "(no notes sent this round)",
+    "zh-CN": "（本轮未发送笔记）",
+  },
   "previously.findingsHeader": {
     en: "Findings + comment threads",
     "zh-CN": "审查项 + 评论线程",
@@ -746,6 +750,12 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "Pin this finding to revisit it later",
     "zh-CN": "置顶此审查项以便稍后查看",
   },
+  "finding.pinned.tooltip": {
+    en: "Pinned for revisit ({ago}) — click to unpin",
+    "zh-CN": "已置顶以便稍后查看（{ago}）— 点击取消置顶",
+  },
+  "comment.author.agent": { en: "🤖 Agent", "zh-CN": "🤖 助手" },
+  "comment.author.user": { en: "🧑 You", "zh-CN": "🧑 你" },
   "action.copyMarkdown.title": {
     en: "Copy finding as a Markdown snippet (round, file:line, permalink, comment, audit count, reactions)",
     "zh-CN": "将审查项复制为 Markdown 代码段（轮次、文件:行、定位链接、评论、审计计数、表情反应）",

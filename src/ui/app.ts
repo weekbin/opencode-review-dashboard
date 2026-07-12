@@ -4801,7 +4801,7 @@ function renderConversationPanel(root: HTMLElement) {
       starBtn.className = `finding-star${isPinned ? " is-pinned" : ""}`;
       starBtn.textContent = isPinned ? "★" : "☆";
       starBtn.title = isPinned
-        ? `Pinned for revisit (${formatRelativeTime(entry.pinned?.at ?? 0)}) — click to unpin`
+        ? t("finding.pinned.tooltip", { ago: formatRelativeTime(entry.pinned?.at ?? 0) })
         : t("action.pin.title");
       starBtn.setAttribute("aria-pressed", isPinned ? "true" : "false");
       starBtn.addEventListener("click", (event) => {
@@ -4940,7 +4940,7 @@ function renderConversationPanel(root: HTMLElement) {
         commentEl.className = "conversation-comment";
         const meta = document.createElement("div");
         meta.className = "conversation-comment-meta";
-        meta.textContent = `${comment.author === "agent" ? "🤖 Agent" : "🧑 You"} · ${formatRelativeTime(comment.created_at)}`;
+        meta.textContent = `${comment.author === "agent" ? t("comment.author.agent") : t("comment.author.user")} · ${formatRelativeTime(comment.created_at)}`;
         commentEl.appendChild(meta);
         const text = document.createElement("div");
         text.className = "conversation-comment-text";
@@ -5393,7 +5393,7 @@ function renderPreviouslyDiscussedPanel(root: HTMLElement) {
     } else {
       const notesBlock = document.createElement("div");
       notesBlock.className = "previously-notes previously-notes-empty";
-      notesBlock.textContent = "(no notes sent this round)";
+      notesBlock.textContent = t("previously.notes.empty");
       section.appendChild(notesBlock);
     }
 
@@ -5445,7 +5445,7 @@ function renderPreviouslyDiscussedPanel(root: HTMLElement) {
             commentEl.className = "previously-comment";
             const meta = document.createElement("div");
             meta.className = "previously-comment-meta";
-            meta.textContent = `${comment.author === "agent" ? "🤖 Agent" : "🧑 You"} · ${formatRelativeTime(comment.created_at)}`;
+            meta.textContent = `${comment.author === "agent" ? t("comment.author.agent") : t("comment.author.user")} · ${formatRelativeTime(comment.created_at)}`;
             commentEl.appendChild(meta);
             const text = document.createElement("div");
             text.className = "previously-comment-text";
