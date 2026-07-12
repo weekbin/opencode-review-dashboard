@@ -5,7 +5,6 @@
 import { describe, expect, it } from "bun:test";
 
 const APP_TS_PATH = "src/ui/app.ts";
-const I18N_TS_PATH = "src/ui/i18n.ts";
 
 function extractEditModal(ts: string): string | null {
   const m = ts.match(/function showEditFindingModal[\s\S]*?dialog\.innerHTML = `([\s\S]*?)`;/);

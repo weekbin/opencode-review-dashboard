@@ -8,7 +8,6 @@
 import { describe, expect, it } from "bun:test";
 
 const APP_TS_PATH = "src/ui/app.ts";
-const I18N_TS_PATH = "src/ui/i18n.ts";
 
 describe("R70 — Cmd+P palette + 3 modal textareas use i18n", () => {
   it("Cmd+P palette placeholder uses t() (no hardcoded 'Jump to file')", async () => {

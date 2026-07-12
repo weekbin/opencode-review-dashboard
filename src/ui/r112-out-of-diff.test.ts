@@ -13,7 +13,6 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
 const APP_TS = join(import.meta.dir, "..", "..", "src", "ui", "app.ts");
-const INDEX_TS = join(import.meta.dir, "..", "..", "src", "index.ts");
 const I18N_TS = join(import.meta.dir, "..", "..", "src", "ui", "i18n.ts");
 
 class FakeStorage {
@@ -47,7 +46,6 @@ describe("R112 #76 AC1 — addFinding accepts out-of-diff files", () => {
   });
 
   it("anchor.kind union extended with 'out_of_diff' on src/index.ts (Finding type)", async () => {
-    const idxSrc = await fsPromises.readFile(INDEX_TS, "utf8");
     // We do NOT extend Finding.kind (line vs file) since out_of_diff is per-line.
     // Instead the badge carries the discriminator. Verify the i18n hint exists.
     const src = await fsPromises.readFile(APP_TS, "utf8");

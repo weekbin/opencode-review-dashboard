@@ -6,7 +6,6 @@
 import { describe, expect, it } from "bun:test";
 
 const APP_TS_PATH = "src/ui/app.ts";
-const I18N_TS_PATH = "src/ui/i18n.ts";
 
 describe("R67 — conversation badges + range-banner close use i18n", () => {
   it("range-banner close button uses t() for aria-label (no hardcoded 'Dismiss')", async () => {

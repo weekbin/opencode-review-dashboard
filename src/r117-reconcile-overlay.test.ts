@@ -20,7 +20,6 @@ import { join } from "node:path";
 import { describe, expect, it } from "bun:test";
 
 const APP_TS = join(import.meta.dir, "ui", "app.ts");
-const INDEX_TS = join(import.meta.dir, "index.ts");
 const I18N_TS = join(import.meta.dir, "ui", "i18n.ts");
 
 async function readSrc(file: string): Promise<string> {

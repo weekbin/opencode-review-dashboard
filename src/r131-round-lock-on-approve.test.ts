@@ -8,8 +8,6 @@ import { join } from "node:path";
 // Read source files for regex-style assertions
 const indexTs = readFileSync(join(import.meta.dir, "index.ts"), "utf8");
 const appTs = readFileSync(join(import.meta.dir, "ui", "app.ts"), "utf8");
-const i18nTs = readFileSync(join(import.meta.dir, "ui", "i18n.ts"), "utf8");
-const reviewHtml = readFileSync(join(import.meta.dir, "ui", "review.html"), "utf8");
 
 const STATE_TYPE_DEF_START = 5543;
 const STATE_TYPE_DEF_WINDOW = 800;

@@ -80,8 +80,6 @@ describe("R43 AC3 — settings button has no data-i18n (uses SVG instead)", () =
     // first >). The button is multi-line so use [\s\S] in place of dot.
     const btnStart = html.indexOf("<button");
     if (btnStart < 0) throw new Error("no <button in HTML");
-    const btnEnd = html.indexOf(">", btnStart);
-    const opening = html.substring(btnStart, btnEnd + 1);
     // The HTML has multiple buttons; locate the one with id="settings-btn"
     const idx = html.indexOf('id="settings-btn"');
     expect(idx).toBeGreaterThan(0);

@@ -1,6 +1,6 @@
 import * as fsPromises from "node:fs/promises";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { describe, expect, it } from "bun:test";
 
 const UI = join(import.meta.dir, "..", "..", "src", "ui");
 const APP_TS = join(UI, "app.ts");

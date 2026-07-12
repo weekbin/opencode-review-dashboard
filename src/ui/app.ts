@@ -23,7 +23,6 @@ import {
 import { formatReviewProgress } from "./review-progress";
 // R20 #42: in-diff search history (recent searches dropdown).
 import {
-  addRecentSearch,
   clearRecentSearches,
   commitRecentSearch,
   commitRecentSearchImmediate,

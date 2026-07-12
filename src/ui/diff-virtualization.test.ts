@@ -735,7 +735,6 @@ describe("AC9.10 — Expand all state visible in toolbar (getCollapsedCount)", (
 });
 
 const REVIEW_HTML = join(import.meta.dir, "..", "..", "src", "ui", "review.html");
-const I18N = join(import.meta.dir, "..", "..", "src", "ui", "i18n.ts");
 
 describe("AC11.1 — Diff virtualization toggle visible in settings modal Appearance section", () => {
   it("review.html contains settings-virtualization-toggle checkbox in appearance section", async () => {

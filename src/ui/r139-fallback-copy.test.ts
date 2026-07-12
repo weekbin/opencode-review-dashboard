@@ -1,7 +1,7 @@
 // R139 — Hoist `legacyExecCommandCopy` to file scope.
 // Direct test on the hoisted function for both happy and catch paths.
 
-import { describe, expect, it, beforeEach, mock } from "bun:test";
+import { describe, expect, it } from "bun:test";
 
 const APP_TS_PATH = "src/ui/app.ts";
 
