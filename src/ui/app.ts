@@ -170,6 +170,7 @@ type Launch = {
   previous_diff_base?: DiffBase;
   range_changed_from_last_round?: boolean;
   roundSystemNotes?: RoundSystemNoteClient[];
+  locked?: { at: number; round: number; by: "user" };
 };
 
 type Meta = {
@@ -3595,13 +3596,37 @@ function renderStatsPane(): void {
   const emptyEl = document.querySelector<HTMLElement>("[data-stats-empty]");
   if (!root) return;
   const findings = allFindingsForStats();
+  root.innerHTML = "";
+
+  const locked = state.data?.locked;
+  if (locked) {
+    const lockStatus = document.createElement("section");
+    lockStatus.className = "stats-lock-status";
+    lockStatus.setAttribute("role", "status");
+    lockStatus.setAttribute("aria-live", "polite");
+
+    const lockIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    lockIcon.setAttribute("viewBox", "0 0 16 16");
+    lockIcon.setAttribute("aria-hidden", "true");
+    lockIcon.innerHTML =
+      '<path fill="currentColor" d="M4.75 6V4.75a3.25 3.25 0 0 1 6.5 0V6h.5A1.25 1.25 0 0 1 13 7.25v6.5A1.25 1.25 0 0 1 11.75 15h-7.5A1.25 1.25 0 0 1 3 13.75v-6.5A1.25 1.25 0 0 1 4.25 6h.5Zm1.5 0h3.5V4.75a1.75 1.75 0 1 0-3.5 0V6Z" />';
+
+    const lockCopy = document.createElement("div");
+    lockCopy.className = "stats-lock-status-copy";
+    const lockHeading = document.createElement("strong");
+    lockHeading.textContent = t("view.stats.locked.heading");
+    const lockDetail = document.createElement("span");
+    lockDetail.textContent = t("view.stats.locked.detail", { round: locked.round });
+    lockCopy.append(lockHeading, lockDetail);
+    lockStatus.append(lockIcon, lockCopy);
+    root.appendChild(lockStatus);
+  }
+
   if (findings.length === 0) {
     if (emptyEl) emptyEl.hidden = false;
-    root.innerHTML = "";
     return;
   }
   if (emptyEl) emptyEl.hidden = true;
-  root.innerHTML = "";
 
   const byRoundSection = document.createElement("section");
   byRoundSection.className = "stats-section";

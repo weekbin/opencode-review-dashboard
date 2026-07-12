@@ -71,6 +71,14 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "No findings yet — submit a round to start tracking review velocity.",
     "zh-CN": "暂无审查项 — 提交一轮后开始追踪审查速度。",
   },
+  "view.stats.locked.heading": {
+    en: "Review complete",
+    "zh-CN": "审查已完成",
+  },
+  "view.stats.locked.detail": {
+    en: "Locked after round {round}; no further changes can be made.",
+    "zh-CN": "已在第 {round} 轮后锁定；无法继续修改。",
+  },
   "view.stats.byRound.heading": {
     en: "Findings by round",
     "zh-CN": "按轮次统计",

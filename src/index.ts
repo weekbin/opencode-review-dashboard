@@ -262,6 +262,7 @@ type Launch = {
   previous_diff_base?: DiffBase;
   range_changed_from_last_round?: boolean;
   roundSystemNotes?: RoundSystemNote[];
+  locked?: { at: number; round: number; by: "user" };
 };
 
 type Submit = {
@@ -1906,6 +1907,7 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
             previous_diff_base: priorDiffBase,
             range_changed_from_last_round,
             roundSystemNotes: base.roundSystemNotes,
+            locked: base.locked,
           };
 
           const map = new Map(files.map((item) => [item.path, item]));

@@ -9,6 +9,9 @@
         color-scheme: light dark;
         --radius: 8px;
         --sidebar-width: 400px;
+        --status-success-surface: light-dark(rgba(26, 127, 55, 0.08), rgba(63, 185, 80, 0.12));
+        --status-success-border: light-dark(rgba(26, 127, 55, 0.28), rgba(63, 185, 80, 0.35));
+        --status-success-text: light-dark(#1a7f37, #3fb950);
       }
 
       * {
@@ -433,6 +436,37 @@
       }
       .pane-files {
         align-items: stretch;
+      }
+      .stats-lock-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: min(calc(100vw - 40px), 960px);
+        margin: 16px max(20px, calc((100vw - 960px) / 2));
+        padding: 12px 16px;
+        color: var(--status-success-text);
+        background: var(--status-success-surface);
+        border: 1px solid var(--status-success-border);
+        border-radius: var(--radius);
+      }
+      .stats-lock-status svg {
+        width: 20px;
+        height: 20px;
+        flex: 0 0 auto;
+      }
+      .stats-lock-status-copy {
+        display: grid;
+        gap: 4px;
+      }
+      .stats-lock-status-copy strong {
+        font-size: 15px;
+        line-height: 1.4;
+      }
+      .stats-lock-status-copy span {
+        color: var(--status-success-text);
+        font-size: 14px;
+        line-height: 1.5;
+        opacity: 0.82;
       }
 
       /* ── Left sidebar (sticky below header+navbar) ── */
