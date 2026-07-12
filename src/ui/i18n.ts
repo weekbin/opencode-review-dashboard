@@ -323,6 +323,10 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "No prior discussion yet. Submit a round to start the history.",
     "zh-CN": "暂无历史讨论。提交一轮以开始记录历史。",
   },
+  "previously.panelHint": {
+    en: "Showing prior rounds only (round {prevRound} and earlier). The current round's findings are in the Conversation tab.",
+    "zh-CN": "仅显示历史轮次（第 {prevRound} 轮及更早）。本轮审查项在「会话」标签页中。",
+  },
   "export.modal.title": { en: "Export review", "zh-CN": "导出审查" },
   "export.modal.body": {
     en: "Choose a format. The file is generated client-side from the current round state.",
@@ -463,6 +467,10 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "selection.hint": {
     en: "Click a line number to start, click another to set range.",
     "zh-CN": "点击行号开始，再点击另一行以设置范围。",
+  },
+  "navHint.navigate": {
+    en: "Press <kbd>n</kbd> / <kbd>p</kbd> to navigate findings",
+    "zh-CN": "按 <kbd>n</kbd> / <kbd>p</kbd> 在审查项间导航",
   },
   "comment.placeholder": {
     en: "What should change and why?",

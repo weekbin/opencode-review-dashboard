@@ -50,11 +50,11 @@ describe("AC7-2.1 — hint renders when currentRound > 1", () => {
     expect(body).toMatch(/hint\.className\s*=\s*"previously-panel-hint"/);
   });
 
-  it("T7.4b hint text references prior rounds and the Conversation tab", async () => {
+  it("T7.4b hint text references prior rounds and the Conversation tab (R150 upgrade: behavior-contract + i18n)", async () => {
     const src = await readAppTs();
     const body = sliceRenderPreviouslyDiscussedPanel(src);
-    expect(body).toMatch(/hint\.textContent\s*=\s*`Showing prior rounds only/);
-    expect(body).toMatch(/Conversation tab/);
+    expect(body).toMatch(/hint\.textContent\s*=\s*t\("previously\.panelHint"/);
+    expect(body).toMatch(/prevRound:/);
   });
 
   it("T7.4c hint is appended to root", async () => {
@@ -106,15 +106,14 @@ describe("AC7-2.2 — no hint when currentRound <= 1", () => {
 });
 
 describe("AC7-2.3 — hint text concise (≤2 lines, ≤200 chars)", () => {
-  it("T7.4g hint text is short", async () => {
+  it("T7.4g hint text is short (R150 upgrade: source via i18n, ≤200 chars across locales)", async () => {
     const src = await readAppTs();
     const body = sliceRenderPreviouslyDiscussedPanel(src);
-    const m = body.match(/hint\.textContent\s*=\s*`([^`]+)`/);
-    expect(m).not.toBeNull();
-    if (!m) return;
-    const text: string = m[1] ?? "";
-    // Strip template-literal interpolations (best-effort character count).
-    const approxText = text.replace(/\$\{[^}]+\}/g, "NN");
+    expect(body).toMatch(/hint\.textContent\s*=\s*t\("previously\.panelHint"/);
+    const i18nSrc = await Bun.file("src/ui/i18n.ts").text();
+    const enLine = i18nSrc.split("\n").find((l) => l.includes("Showing prior rounds only"));
+    expect(enLine).toBeDefined();
+    const approxText = (enLine ?? "").replace(/\{prevRound\}/g, "NN");
     expect(approxText.length).toBeLessThanOrEqual(200);
   });
 });

@@ -115,9 +115,10 @@ describe("AC12 — Status bar hint visibility tied to textarea/input focus + act
     expect(src).toMatch(/document\.body\.appendChild\(el\)/);
   });
 
-  it("T12.K3b nav-hint text reads 'Press n / p to navigate findings'", async () => {
+  it("T12.K3b nav-hint text is routed via t('navHint.navigate') (R150 upgrade: behavior-contract + i18n)", async () => {
     const src = await readSource(APP_TS);
-    expect(src).toMatch(/Press\s*<kbd>n<\/kbd>\s*\/\s*<kbd>p<\/kbd>\s*to navigate findings/);
+    expect(src).toContain('el.innerHTML = t("navHint.navigate")');
+    expect(src).not.toMatch(/Press\s*<kbd>n<\/kbd>\s*\/\s*<kbd>p<\/kbd>\s*to navigate findings/);
   });
 
   it("T12.K3c updateNavHint hides the hint when textarea/input is focused OR activeTab is not conversation", async () => {

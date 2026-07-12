@@ -616,7 +616,7 @@ function ensureNavHint(): HTMLElement | null {
   const el = document.createElement("div");
   el.className = "nav-hint";
   el.id = "nav-hint";
-  el.innerHTML = "Press <kbd>n</kbd> / <kbd>p</kbd> to navigate findings";
+  el.innerHTML = t("navHint.navigate");
   el.hidden = true;
   document.body.appendChild(el);
   navHintEl = el;
@@ -5355,7 +5355,7 @@ function renderPreviouslyDiscussedPanel(root: HTMLElement) {
   if (currentRound > 1) {
     const hint = document.createElement("p");
     hint.className = "previously-panel-hint";
-    hint.textContent = `Showing prior rounds only (round ${currentRound - 1} and earlier). The current round's findings are in the Conversation tab.`;
+    hint.textContent = t("previously.panelHint", { prevRound: String(currentRound - 1) });
     root.appendChild(hint);
   }
 
