@@ -390,10 +390,10 @@ async function copyFindingPermalinkToClipboard(
       await navigator.clipboard.writeText(url);
       ok = true;
     } catch {
-      ok = fallbackCopy(url);
+      ok = legacyExecCommandCopy(url);
     }
   } else {
-    ok = fallbackCopy(url);
+    ok = legacyExecCommandCopy(url);
   }
   if (ok) {
     const original = button.textContent;
@@ -456,10 +456,10 @@ async function copyFindingAsMarkdownToClipboard(
       await navigator.clipboard.writeText(md);
       ok = true;
     } catch {
-      ok = fallbackCopy(md);
+      ok = legacyExecCommandCopy(md);
     }
   } else {
-    ok = fallbackCopy(md);
+    ok = legacyExecCommandCopy(md);
   }
   if (ok) {
     const original = button.textContent;
@@ -665,7 +665,10 @@ const DIFF_SEARCH_FLASH_MS = 1500;
 const COPY_FEEDBACK_MS = 1200;
 const PERMALINK_FLASH_MS = 1600;
 
-function fallbackCopy(text: string): boolean {
+// Deprecated: navigator.clipboard.writeText is the primary copy path; this
+// is the catch-all fallback for environments where the Clipboard API is
+// unavailable. Migrate to ClipboardItem API when browser support stabilizes.
+function legacyExecCommandCopy(text: string): boolean {
   try {
     const ta = document.createElement("textarea");
     ta.value = text;
@@ -1764,10 +1767,10 @@ async function copyBranchNameToClipboard(button: HTMLButtonElement): Promise<voi
       await navigator.clipboard.writeText(branch);
       ok = true;
     } catch {
-      ok = fallbackCopy(branch);
+      ok = legacyExecCommandCopy(branch);
     }
   } else {
-    ok = fallbackCopy(branch);
+    ok = legacyExecCommandCopy(branch);
   }
   if (ok) {
     const original = button.textContent ?? "";
@@ -1796,10 +1799,10 @@ async function copyRoundNotesToClipboard(notes: string, button: HTMLButtonElemen
       await navigator.clipboard.writeText(notes);
       ok = true;
     } catch {
-      ok = fallbackCopy(notes);
+      ok = legacyExecCommandCopy(notes);
     }
   } else {
-    ok = fallbackCopy(notes);
+    ok = legacyExecCommandCopy(notes);
   }
   if (ok) {
     const original = button.textContent ?? "";

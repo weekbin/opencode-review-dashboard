@@ -241,13 +241,13 @@ describe("AC8 — copyFindingAsMarkdownToClipboard function shape", () => {
     expect(block![0]).toMatch(/navigator\.clipboard\?\.writeText/);
   });
 
-  it("T16.8d function delegates clipboard fallback to hoisted fallbackCopy helper", async () => {
+  it("T16.8d function delegates clipboard fallback to hoisted legacyExecCommandCopy helper", async () => {
     const src = await readSource(APP_TS);
     const caller = src.match(/function\s+copyFindingAsMarkdownToClipboard\s*\([\s\S]*?\n\}/);
     expect(caller).toBeTruthy();
-    expect(caller![0]).toMatch(/fallbackCopy\(md\)/);
+    expect(caller![0]).toMatch(/legacyExecCommandCopy\(md\)/);
     const helper = src.match(
-      /function\s+fallbackCopy\s*\(\s*text:\s*string\s*\)\s*:\s*boolean\s*\{[\s\S]*?\n\}/,
+      /function\s+legacyExecCommandCopy\s*\(\s*text:\s*string\s*\)\s*:\s*boolean\s*\{[\s\S]*?\n\}/,
     );
     expect(helper).toBeTruthy();
     expect(helper![0]).toMatch(/document\.execCommand\(\s*"copy"\s*\)/);
@@ -336,15 +336,15 @@ describe("AC9 — Markdown snippet format", () => {
   });
 });
 
-describe("AC10 — Uses existing navigator.clipboard + fallbackCopy pattern", () => {
-  it("T16.10a clipboard writeText + fallbackCopy delegation matches permalink helper", async () => {
+describe("AC10 — Uses existing navigator.clipboard + legacyExecCommandCopy pattern", () => {
+  it("T16.10a clipboard writeText + legacyExecCommandCopy delegation matches permalink helper", async () => {
     const src = await readSource(APP_TS);
     const caller = src.match(/function\s+copyFindingAsMarkdownToClipboard\s*\([\s\S]*?\n\}/);
     expect(caller).toBeTruthy();
     expect(caller![0]).toMatch(/navigator\.clipboard\??\.writeText\(md\)/);
-    expect(caller![0]).toMatch(/fallbackCopy\(md\)/);
+    expect(caller![0]).toMatch(/legacyExecCommandCopy\(md\)/);
     const helper = src.match(
-      /function\s+fallbackCopy\s*\(\s*text:\s*string\s*\)\s*:\s*boolean\s*\{[\s\S]*?\n\}/,
+      /function\s+legacyExecCommandCopy\s*\(\s*text:\s*string\s*\)\s*:\s*boolean\s*\{[\s\S]*?\n\}/,
     );
     expect(helper).toBeTruthy();
     expect(helper![0]).toMatch(/document\.execCommand\(\s*"copy"\s*\)/);
@@ -355,7 +355,7 @@ describe("AC10 — Uses existing navigator.clipboard + fallbackCopy pattern", ()
     const block = src.match(/function\s+copyFindingAsMarkdownToClipboard\s*\([\s\S]*?\n\}/);
     expect(block).toBeTruthy();
     expect(block![0]).toMatch(/await\s+navigator\.clipboard\.writeText\(md\)/);
-    expect(block![0]).toMatch(/catch[\s\S]*?fallbackCopy\(md\)/);
+    expect(block![0]).toMatch(/catch[\s\S]*?legacyExecCommandCopy\(md\)/);
   });
 });
 
