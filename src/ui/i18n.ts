@@ -459,6 +459,10 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "(no notes sent this round)",
     "zh-CN": "（本轮未发送笔记）",
   },
+  "previously.notes.copyButton": {
+    en: "Copy notes",
+    "zh-CN": "复制笔记",
+  },
   "previously.findingsHeader": {
     en: "Findings + comment threads",
     "zh-CN": "审查项 + 评论线程",
@@ -545,6 +549,10 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "save.idle": { en: "All changes saved", "zh-CN": "所有更改已保存" },
   "save.fresh": { en: "Saved {seconds}s ago", "zh-CN": "{seconds} 秒前已保存" },
   "status.copiedMarkdown": { en: "Copied as Markdown", "zh-CN": "已复制为 Markdown" },
+  "status.copiedNotes": {
+    en: "Copied round notes",
+    "zh-CN": "已复制本轮笔记",
+  },
   "status.copiedBranch": { en: "Copied branch: {name}", "zh-CN": "已复制分支: {name}" },
   "status.copyBranchBlocked": {
     en: "Could not copy branch name — clipboard blocked",

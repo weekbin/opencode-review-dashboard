@@ -106,7 +106,9 @@ describe("R131: server 409 gates", () => {
 
 describe("R131: UI lock rendering", () => {
   test("AC7: showPostSubmit checks body.locked", () => {
-    const window = appTs.slice(264157, 266000);
+    const idx = appTs.indexOf("function showPostSubmit");
+    expect(idx).toBeGreaterThan(-1);
+    const window = appTs.slice(idx, idx + 2000);
     expect(window).toMatch(/body\.locked|locked/);
   });
 

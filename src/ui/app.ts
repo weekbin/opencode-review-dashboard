@@ -1811,6 +1811,52 @@ async function copyBranchNameToClipboard(button: HTMLButtonElement): Promise<voi
   }
 }
 
+async function copyRoundNotesToClipboard(notes: string, button: HTMLButtonElement): Promise<void> {
+  const fallbackCopy = (text: string) => {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  let ok = false;
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(notes);
+      ok = true;
+    } catch {
+      ok = fallbackCopy(notes);
+    }
+  } else {
+    ok = fallbackCopy(notes);
+  }
+  if (ok) {
+    const original = button.textContent ?? "";
+    const label = t("previously.notes.copyButton");
+    button.textContent = `✓ ${label}`;
+    button.disabled = true;
+    clearTimeout(
+      (button as HTMLButtonElement & { _copyNotesFeedbackTimer?: number })._copyNotesFeedbackTimer,
+    );
+    (button as HTMLButtonElement & { _copyNotesFeedbackTimer?: number })._copyNotesFeedbackTimer =
+      setTimeout(() => {
+        button.textContent = original || label;
+        button.disabled = false;
+      }, COPY_FEEDBACK_MS) as unknown as number;
+    showToast(t("status.copiedNotes"));
+  } else {
+    showToast(t("status.copyBlocked"), { error: true });
+  }
+}
+
 if (copyBranchButton) {
   copyBranchButton.addEventListener("click", () => {
     void copyBranchNameToClipboard(copyBranchButton);
@@ -5381,14 +5427,24 @@ function renderPreviouslyDiscussedPanel(root: HTMLElement) {
     if (roundEntry.notes) {
       const notesBlock = document.createElement("div");
       notesBlock.className = "previously-notes";
-      const notesLabel = document.createElement("div");
+      const notesHeader = document.createElement("div");
+      notesHeader.className = "previously-notes-header";
+      const notesLabel = document.createElement("span");
       notesLabel.className = "previously-notes-label";
       notesLabel.textContent = t("previously.notesLabel");
-      notesBlock.appendChild(notesLabel);
+      const copyNotesBtn = document.createElement("button");
+      copyNotesBtn.type = "button";
+      copyNotesBtn.className = "previously-notes-copy";
+      copyNotesBtn.textContent = t("previously.notes.copyButton");
+      copyNotesBtn.title = t("previously.notes.copyButton");
+      copyNotesBtn.addEventListener("click", () => {
+        void copyRoundNotesToClipboard(roundEntry.notes, copyNotesBtn);
+      });
+      notesHeader.append(notesLabel, copyNotesBtn);
       const notesText = document.createElement("div");
       notesText.className = "previously-notes-text";
       notesText.textContent = roundEntry.notes;
-      notesBlock.appendChild(notesText);
+      notesBlock.append(notesHeader, notesText);
       section.appendChild(notesBlock);
     } else {
       const notesBlock = document.createElement("div");
