@@ -4208,7 +4208,9 @@ function formatRelativeTime(ts: number): string {
     return t("view.stats.locked.ago.hours", { n: Math.floor(diff / 3_600_000) });
   if (diff < 2_592_000_000)
     return t("view.stats.locked.ago.days", { n: Math.floor(diff / 86_400_000) });
-  return t("view.stats.locked.ago.months", { n: Math.floor(diff / 2_592_000_000) });
+  if (diff < 31_536_000_000)
+    return t("view.stats.locked.ago.months", { n: Math.floor(diff / 2_592_000_000) });
+  return t("view.stats.locked.ago.years", { n: Math.floor(diff / 31_536_000_000) });
 }
 
 // ── Export review (R10 #4, GH#14) ──

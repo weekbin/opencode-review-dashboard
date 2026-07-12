@@ -16,6 +16,7 @@ const REQUIRED_KEYS = [
   "view.stats.locked.ago.hours",
   "view.stats.locked.ago.days",
   "view.stats.locked.ago.months",
+  "view.stats.locked.ago.years",
 ] as const;
 
 const I18N_KEY_RE = (key: string): RegExp =>
@@ -57,11 +58,12 @@ describe("R134 — relative timestamp on persistent lock banner", () => {
     expect(minutesBlock?.[0]).toContain("{n}");
   });
 
-  it("the relative-time thresholds cover 60s / 60min / 24h / 30d boundaries", async () => {
+  it("the relative-time thresholds cover 60s / 60min / 24h / 30d / 365d boundaries", async () => {
     const src = await Bun.file(APP_TS_PATH).text();
     expect(src).toMatch(/60_000/);
     expect(src).toMatch(/3_600_000/);
     expect(src).toMatch(/86_400_000/);
     expect(src).toMatch(/2_592_000_000/);
+    expect(src).toMatch(/31_536_000_000/);
   });
 });

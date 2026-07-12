@@ -87,6 +87,7 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "view.stats.locked.ago.hours": { en: "{n}h ago", "zh-CN": "{n}小时前" },
   "view.stats.locked.ago.days": { en: "{n}d ago", "zh-CN": "{n}天前" },
   "view.stats.locked.ago.months": { en: "{n}mo ago", "zh-CN": "{n}个月前" },
+  "view.stats.locked.ago.years": { en: "{n}y ago", "zh-CN": "{n}年前" },
   "view.stats.byRound.heading": {
     en: "Findings by round",
     "zh-CN": "按轮次统计",
