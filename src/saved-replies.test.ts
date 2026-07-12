@@ -88,7 +88,7 @@ describe("AC1.3 / AC1.5 / AC1.7 — Insert + persistence + soft cap UI", () => {
     expect(src).toMatch(/saved-replies-insert/);
     expect(src).toMatch(/saved-replies-delete/);
     expect(src).toMatch(/["']savedReplies\.empty["']/);
-    expect(src).toMatch(/Save current as template/);
+    expect(src).toMatch(/t\(["']savedReplies\.saveCurrent["']\)/);
     expect(src).toMatch(/overCap = initialReplies\.length > 100/);
   });
 

@@ -5045,7 +5045,7 @@ function renderConversationPanel(root: HTMLElement) {
     const savedRepliesBtn = document.createElement("button");
     savedRepliesBtn.type = "button";
     savedRepliesBtn.className = "saved-replies-toggle";
-    savedRepliesBtn.title = "Saved Replies (R10) — type /<name>+space to expand";
+    savedRepliesBtn.title = t("savedReplies.btn.title");
     const initialReplies = loadSavedReplies();
     const overCap = initialReplies.length > 100;
     savedRepliesBtn.textContent = `📋${initialReplies.length ? ` ${initialReplies.length}` : ""}${overCap ? " ⚠️" : ""}`;
@@ -5063,7 +5063,7 @@ function renderConversationPanel(root: HTMLElement) {
       const saveCurrent = document.createElement("button");
       saveCurrent.type = "button";
       saveCurrent.className = "saved-replies-save-current";
-      saveCurrent.textContent = "💾 Save current as template…";
+      saveCurrent.textContent = t("savedReplies.saveCurrent");
       saveCurrent.addEventListener("click", (e) => {
         e.stopPropagation();
         const body = textarea.value.trim();

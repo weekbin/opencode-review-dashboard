@@ -335,6 +335,14 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "Browser storage quota exceeded",
     "zh-CN": "浏览器存储空间已满",
   },
+  "savedReplies.btn.title": {
+    en: "Saved Replies (R10) — type /<name>+space to expand",
+    "zh-CN": "已保存回复 (R10) — 输入 /<name>+空格 展开",
+  },
+  "savedReplies.saveCurrent": {
+    en: "💾 Save current as template…",
+    "zh-CN": "💾 将当前回复存为模板…",
+  },
   "previously.empty": {
     en: "No prior discussion yet. Submit a round to start the history.",
     "zh-CN": "暂无历史讨论。提交一轮以开始记录历史。",
