@@ -431,11 +431,6 @@ function fnv1a(input: string): string {
   return (hash >>> 0).toString(16).padStart(8, "0");
 }
 
-function contextHash(anchor: Anchor | undefined): string | undefined {
-  if (!anchor) return undefined;
-  return fnv1a(`${anchor.before}\u0000${anchor.selected}\u0000${anchor.after}`);
-}
-
 function contentMatches(prev: Anchor, next: Anchor): boolean {
   return (
     fnv1a(prev.selected) === fnv1a(next.selected) &&

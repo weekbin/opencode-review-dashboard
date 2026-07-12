@@ -1,11 +1,6 @@
-/**
- * R113 #77 — Content-hash auto-resolve.
- *
- * When agent commits and the surrounding 5-line context (before + selected + after)
- * still matches, the finding is auto-resolved with close_reason: "content_match".
- * Hash is non-crypto (FNV-1a-like length+content) — collision risk acceptable for
- * a "looks-the-same" check.
- */
+// R113 #77 — Content-hash auto-resolve.
+// Behavior-contract upgrade (R152): sanitize() writes context_hash to each finding using fnv1a.
+// R152 also retired `contextHash` function (was unused).
 
 import * as fsPromises from "node:fs/promises";
 import { join } from "node:path";
@@ -44,21 +39,24 @@ describe("R113 #77 AC1 — close_reason union extended with content_match", () =
 });
 
 describe("R113 #77 AC2 — content-hash function computes hash from anchor context", () => {
-  it("src/index.ts defines hashContext or fnv1a function for anchor context hashing", async () => {
+  it("src/index.ts defines fnv1a function for anchor context hashing (R152: contextHash retired)", async () => {
     const src = await fsPromises.readFile(INDEX_TS, "utf8");
-    expect(
-      src.includes("fnv1a") || src.includes("hashContext") || src.includes("contextHash"),
-    ).toBe(true);
+    expect(src).toContain("function fnv1a");
   });
 });
 
-describe("R113 #77 AC3 — submit handler stamps context_hash on each finding", () => {
-  it("src/index.ts sanitize() or submit handler writes context_hash to finding", async () => {
+describe("R113 #77 AC3 — contentMatches uses fnv1a for hash comparison (R152 behavior-contract)", () => {
+  it("src/index.ts contentMatches() body uses fnv1a() to compare anchor selected/before/after", async () => {
     const src = await fsPromises.readFile(INDEX_TS, "utf8");
-    const idx =
-      src.indexOf("content_hash") >= 0 ? src.indexOf("content_hash") : src.indexOf("fnv1a");
-    expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(idx, idx + 500);
-    expect(window.includes("anchor") || window.includes("context")).toBe(true);
+    const contentMatchesMatch = src.match(/function\s+contentMatches\([\s\S]*?\n\}/);
+    expect(contentMatchesMatch).not.toBeNull();
+    const body = contentMatchesMatch![0];
+    // The auto-resolve logic compares each anchor field via fnv1a hash.
+    expect(body).toContain("fnv1a(prev.selected)");
+    expect(body).toContain("fnv1a(prev.before)");
+    expect(body).toContain("fnv1a(prev.after)");
+    expect(body).toContain("fnv1a(next.selected)");
+    expect(body).toContain("fnv1a(next.before)");
+    expect(body).toContain("fnv1a(next.after)");
   });
 });
