@@ -89,10 +89,8 @@ describe("AC1.2 — translate() returns expected string per language", () => {
   });
 
   it("{token} placeholders are filled from params map", () => {
-    expect(translate("status.copiedPermalink", "en", { id: "F-7" })).toBe(
-      "Copied permalink for F-7",
-    );
-    expect(translate("status.copiedPermalink", "zh-CN", { id: "F-7" })).toBe("已复制定位链接 F-7");
+    expect(translate("view.stats.locked.ago.minutes", "en", { n: 5 })).toBe("5m ago");
+    expect(translate("view.stats.locked.ago.minutes", "zh-CN", { n: 5 })).toBe("5分钟前");
   });
 });
 

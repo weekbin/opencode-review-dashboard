@@ -42,7 +42,6 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "app.title": { en: "Review Dashboard", "zh-CN": "代码审查面板" },
   "toolbar.layout.unified": { en: "Unified", "zh-CN": "统一" },
   "toolbar.layout.split": { en: "Split", "zh-CN": "分屏" },
-  "toolbar.ignoreWs": { en: "Ignore ws", "zh-CN": "忽略空白" },
   "toolbar.ignoreWs.label": { en: "Hide whitespace", "zh-CN": "隐藏空白" },
   "toolbar.ignoreWs.description": {
     en: "Collapse consecutive whitespace + trim trailing (useful for reformatting diffs)",
@@ -119,10 +118,6 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "toolbar.approveChanges": { en: "Approve changes", "zh-CN": "通过审查" },
   "toolbar.reconcile": { en: "Reconcile", "zh-CN": "对账" },
   "toolbar.reconcile.active": { en: "Reconcile: ON", "zh-CN": "对账模式：开" },
-  "toolbar.reconcile.tooltip": {
-    en: "Show per-file cross-round reconciliation status",
-    "zh-CN": "显示每文件跨轮次对账状态",
-  },
   "reconcile.banner.hint": {
     en: "Reconcile mode: click a badge to see which findings were addressed in each file.",
     "zh-CN": "对账模式：点击徽章查看每个文件中修复了哪些审查项。",
@@ -172,22 +167,6 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     "zh-CN": "本轮的可选全局笔记",
   },
   "submit.footprint.heading": { en: "Expected apply footprint", "zh-CN": "预计影响范围" },
-  "summary.silentRound.heading": {
-    en: "Round {round} silent-round summary",
-    "zh-CN": "第 {round} 轮静默汇总",
-  },
-  "summary.silentRound.body": {
-    en: "0 new findings and 0 new notes were submitted this round. State is preserved with a template summary so future grep can trace what happened.",
-    "zh-CN": "本轮未提交新审查项与新笔记。系统生成模板汇总以便后续回溯。",
-  },
-  "submit.footprint.body": {
-    en: "Rough estimate of files and primary categories the agent will touch this round.",
-    "zh-CN": "本轮 agent 将涉及的文件与主要类别的粗略估算。",
-  },
-  "submit.footprint.openFindings": {
-    en: "{count} open findings",
-    "zh-CN": "{count} 个未关闭审查项",
-  },
   "submit.footprint.files": {
     en: "~{count} file(s) affected",
     "zh-CN": "预计涉及 ~{count} 个文件",
@@ -196,17 +175,13 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "Primary categories: {categories}",
     "zh-CN": "主要类别：{categories}",
   },
-  "submit.footprint.noFindings": {
-    en: "No open findings to estimate.",
-    "zh-CN": "当前没有待提交的审查项。",
+  "summary.silentRound.heading": {
+    en: "Round {round} silent-round summary",
+    "zh-CN": "第 {round} 轮静默汇总",
   },
-  "settings.submitFootprint.label": {
-    en: "Show apply footprint in submit dialog",
-    "zh-CN": "在提交对话框中显示影响范围估算",
-  },
-  "settings.submitFootprint.description": {
-    en: "Off by default; estimates may mislead if read as exact predictions.",
-    "zh-CN": "默认关闭；估算值如被当作精确预测阅读可能误导。",
+  "submit.footprint.openFindings": {
+    en: "{count} open findings",
+    "zh-CN": "{count} 个未关闭审查项",
   },
   "editFinding.title": { en: "Edit finding", "zh-CN": "编辑审查项" },
   "editFinding.body": {
@@ -412,10 +387,6 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     "zh-CN": "无字段变更",
   },
   "settings.btn.ariaLabel": { en: "Settings", "zh-CN": "设置" },
-  "fileComments.tooltip": {
-    en: "File-level findings",
-    "zh-CN": "文件级审查项",
-  },
   "fileFinding.title": {
     en: "File-level findings",
     "zh-CN": "文件级审查项",
@@ -546,7 +517,6 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   },
   "sidebar.filter.unread": { en: "Show only unread", "zh-CN": "仅显示未审查" },
   "sidebar.bulkDelete": { en: "Mark selected as reviewed", "zh-CN": "标记已审查" },
-  "sidebar.selected": { en: "Selected", "zh-CN": "已选" },
   "search.recent.title": { en: "Recent searches", "zh-CN": "最近搜索" },
   "search.recent.clear": { en: "Clear", "zh-CN": "清空" },
   "search.recent.clear.confirm": { en: "Recent searches cleared", "zh-CN": "最近搜索已清空" },
@@ -589,7 +559,6 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "settings.layout.label": { en: "Layout", "zh-CN": "布局" },
   "settings.layout.unified": { en: "Unified", "zh-CN": "合并" },
   "settings.layout.split": { en: "Split", "zh-CN": "分屏" },
-  "settings.search.history": { en: "Recent searches", "zh-CN": "最近搜索" },
   "settings.search.max": { en: "Max items", "zh-CN": "最多条数" },
   "settings.reset": { en: "Reset to defaults", "zh-CN": "恢复默认设置" },
   "settings.virtualization.label": { en: "Diff virtualization", "zh-CN": "Diff 虚拟化" },
@@ -598,7 +567,6 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     "zh-CN": "仅渲染可见 hunk，加快滚动速度",
   },
   "save.idle": { en: "All changes saved", "zh-CN": "所有更改已保存" },
-  "save.fresh": { en: "Saved {seconds}s ago", "zh-CN": "{seconds} 秒前已保存" },
   "status.copiedMarkdown": { en: "Copied as Markdown", "zh-CN": "已复制为 Markdown" },
   "status.copiedNotes": {
     en: "Copied round notes",
@@ -621,17 +589,7 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "Could not copy permalink — clipboard blocked",
     "zh-CN": "复制定位链接失败 — 剪贴板被阻止",
   },
-  "status.copiedPermalink": {
-    en: "Copied permalink for {id}",
-    "zh-CN": "已复制定位链接 {id}",
-  },
   "status.findingAdded": { en: "Finding added", "zh-CN": "已添加审查项" },
-  "status.submitted": {
-    en: "Review submitted",
-    "zh-CN": "审查已提交",
-  },
-  // R34 AC2: post-submit banner i18n (Round 4 user feedback — was
-  // hardcoded English in app.ts:5591 + app.ts:5606-5607).
   "review.submitted.title": {
     en: "Review submitted{round}",
     "zh-CN": "审查已提交{round}",
@@ -641,11 +599,6 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     "zh-CN":
       "审查结果已发送到 OpenCode 会话。插件无法自动关闭此标签页（浏览器只允许脚本关闭自己打开的标签页），请用 {shortcut} 或标签页的关闭按钮手动关闭。",
   },
-  "status.submitFailed": {
-    en: "Submit failed ({code})",
-    "zh-CN": "提交失败 ({code})",
-  },
-  "status.noChanges": { en: "No changes to save", "zh-CN": "没有要保存的更改" },
   "status.selectLines": {
     en: "Select lines before adding a finding",
     "zh-CN": "请先选择代码行",
@@ -782,7 +735,6 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
     en: "(no reason provided)",
     "zh-CN": "（未提供原因）",
   },
-  "action.undo": { en: "Undo", "zh-CN": "撤销" },
   "action.reopen": { en: "Re-open", "zh-CN": "重新打开" },
   "action.mark": { en: "Mark as wontfix", "zh-CN": "标记为不修复" },
   "action.remove": { en: "Remove", "zh-CN": "删除" },
