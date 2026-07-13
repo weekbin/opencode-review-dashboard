@@ -21,6 +21,10 @@ The loop is a **cron-style process**, not a conversation. The lead makes all dec
 4. **≤3 feature / ≤5 bugfix / ≤8 total / ≤1 polish per round**
 5. **1 AC max per subagent** (subagent ≤15min wall, used only if absolutely required)
 
+## Project rules (HARD — never violate)
+
+0. **No remote CI / no GitHub Actions / no hosting-platform config.** This project does not use `.github/workflows/`, `vercel.json`, `netlify.toml`, `render.yaml`, or any equivalent. All CI / format / lint / typecheck / tests run **locally** via `.husky/pre-commit` (fired on every commit). If a round appears to need remote CI, extend the pre-commit hook instead. Discovery sweep check #6 enforces this — `find .github/workflows/ vercel.json netlify.toml render.yaml` must return empty.
+
 ## 7 Capabilities (one round = one pass through these)
 
 ### Capability 1 — Backlog Discovery

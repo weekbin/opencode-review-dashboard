@@ -62,13 +62,19 @@
 
 ![Submit Review 弹窗打开，里面有 round notes 文本框](docs/screenshots/r17-notes-in-submit-modal.png)
 
-*轮次笔记移到了 Submit Review 弹窗里，让你在准备发送的那一刻写总结。和 finding 一起自动保存到同一个 draft。*
+*轮次笔记移到了提交弹窗里，你写完直接发，不需要先记在别的地方再复制粘贴。自动保存到和审查项同一个草稿。*
+
+### 审查已锁定 banner
+
+![审查已锁定 banner，显示第 1 轮后锁定](docs/screenshots/r132-lock-banner-light.png)
+
+*最后一次通过审查后，整个会话进入锁定状态：统计标签页顶部出现绿色 banner，显示锁定状态和轮次。banner 上的相对时间戳也是双语的（"1m ago" / "1 分钟前"）。锁定期间所有写入端点（resolve、reaction、draft、submit）都会返回 409，防止误操作改动已通过的审查。*
 
 ### 切换语言（英文 / 中文）
 
 ![工具栏上的语言切换按钮，显示 EN | 中文](docs/screenshots/r19-s1-dashboard-initial.png)
 
-*点击工具栏上的语言切换按钮即可在中英文之间切换。你的选择会通过 localStorage 持久化，刷新后仍然保留。工具栏按钮、侧边栏标签和弹窗文本都会响应式更新。*
+*点击工具栏上的语言切换按钮即可在中英文之间切换。你的选择会通过 localStorage 持久化，刷新后仍然保留。工具栏按钮、侧边栏标签、弹窗文本、以及按钮的 tooltip / aria-label 都会响应式更新（6 个工具栏按钮的 tooltip——outline / zoom / navigate / edit / LSP diagnostics / apply patch——都是双语的标题和标签）。*
 
 ### 操作触发的轻量 Toast 通知
 
@@ -141,6 +147,12 @@
 
 *Conversation tab 的每个 finding 卡片现在都有 checkbox。勾选你想要删除的 findings，然后点「Delete selected」即可一次性全部删除。当前 tab 和 filter 会被保留。对齐 GitHub PR comments multi-select / VS Code problems panel multi-select。*
 
+### 从历史复制轮次笔记
+
+![复制轮次笔记按钮，点击后显示已复制反馈 toast](docs/screenshots/r137-copy-round-notes.png)
+
+*历史讨论 tab 里每一轮的轮次笔记旁边都有一个「复制笔记」按钮。点击后把当前轮的笔记复制到剪贴板——按钮短暂显示 ✓ 标记，toast 提示「已复制本轮笔记」。当你想复用上一轮的笔记作为当前轮模板时很有用。*
+
 ### IME 安全的搜索
 
 ![搜索框激活了中文 IME 组合输入](docs/screenshots/r17-ime-composition.png)
@@ -168,6 +180,24 @@
 **AI agent 自动修复。** agent 读你的 finding，做计划，应用修复，验证。你可以在同一轮里迭代：提交，agent 应用，刷新浏览器看 diff，再加 finding 或 resolve 喜欢的。
 
 **Worktree 自动识别。** 如果你在 git worktree 里干活，工具能自动识别你在哪个 worktree。不用传 `--worktree` 参数。
+
+---
+
+## 项目规则
+
+### 不使用 GitHub Actions / 不在远端跑 CI
+
+本项目**不使用** GitHub Actions、GitLab CI、Vercel、Netlify、Render 或任何其他远端 CI / 部署平台。所有检查（format、lint、typecheck、test、机械卫生检查）一律**在本地**通过 Husky 的 pre-commit hook ([`.husky/pre-commit`](.husky/pre-commit)) 执行。每次 `git commit` 时 hook 自动触发，任意一项失败都会阻止 commit。
+
+如果想在 commit 之前先看看 CI 风格的反馈，可以手动跑：
+
+```bash
+bash .husky/pre-commit   # 完整 gate
+bun run check           # format:check + lint + typecheck
+bun test                # 132 个文件里的 1119 个测试
+```
+
+`git push` 之后**不会**触发任何 workflow。这是故意为之——pre-commit hook 在 commit 时就拦下了问题，根本不会离开你的机器。如果你觉得需要远端 CI，**不要加**，而是扩展 `.husky/pre-commit`。
 
 ---
 

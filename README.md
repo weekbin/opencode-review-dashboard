@@ -64,11 +64,17 @@ If you review pull requests or diffs on a regular basis, this saves you the back
 
 *Round notes moved into the Submit Review modal so you write the summary at the moment you're ready to send. Auto-saves to the same draft as your findings.*
 
+### Lock status banner
+
+![Lock status banner showing the review is locked after round 1](docs/screenshots/r132-lock-banner-light.png)
+
+*After a final approve, the review session locks: a green banner appears in the Stats tab showing the locked state and round. The banner uses bilingual relative timestamps (e.g., "1m ago" / "1 分钟前"). All mutation endpoints (resolve, reaction, draft, submit) return 409 while locked, preventing accidental post-approval changes.*
+
 ### Switch languages (English / Chinese)
 
 ![Language toggle button in toolbar showing EN | 中文](docs/screenshots/r19-s1-dashboard-initial.png)
 
-*Click the language toggle in the toolbar to switch between English and Chinese. Your choice persists across reloads via localStorage. Toolbar buttons, sidebar tabs, and modal text update reactively.*
+*Click the language toggle in the toolbar to switch between English and Chinese. Your choice persists across reloads via localStorage. Toolbar buttons, sidebar tabs, modal text, and button tooltips/aria-labels all update reactively (the 6 toolbar tool buttons — outline, zoom, navigate, edit, LSP diagnostics, apply patch — all have bilingual titles and labels).*
 
 ### Toast notifications for your actions
 
@@ -141,6 +147,12 @@ If you review pull requests or diffs on a regular basis, this saves you the back
 
 *Each finding card in the Conversation tab now has a checkbox. Check the findings you want to remove, then click "Delete selected" to remove them all in one action. The active tab and filter are preserved. Mirrors GitHub PR comments multi-select / VS Code problems panel multi-select.*
 
+### Copy round notes from history
+
+![Copy round notes button showing the Copied feedback toast after clicking](docs/screenshots/r137-copy-round-notes.png)
+
+*Each prior round's notes block in the Previously-discussed tab has a "Copy notes" button. Click to copy the round notes to clipboard — the button briefly shows a ✓ check mark and a toast confirms "Copied round notes". Useful when you want to reuse a previous round's summary as a template for the current round.*
+
 ### IME-safe search
 
 ![Search box with Chinese IME composition active](docs/screenshots/r17-ime-composition.png)
@@ -168,6 +180,24 @@ If you review pull requests or diffs on a regular basis, this saves you the back
 **AI agent auto-apply.** The agent reads your findings, plans the fixes, applies them, and verifies. You can iterate within a single round: submit, the agent applies, you review the diff and add more findings if needed.
 
 **Worktree auto-detection.** If you're working in a git worktree, the tool figures out which worktree you're in. No need to pass `--worktree` flags.
+
+---
+
+## Project rules
+
+### No GitHub Actions / no CI on the remote
+
+This project intentionally does **not** use GitHub Actions, GitLab CI, Vercel, Netlify, Render, or any other remote CI / hosting platform. All checks (format, lint, typecheck, tests, mechanical hygiene) run **locally** via the Husky pre-commit hook at [`.husky/pre-commit`](.husky/pre-commit). The hook fires automatically on every `git commit` and blocks the commit if anything fails.
+
+If you want CI-style feedback before committing, run:
+
+```bash
+bash .husky/pre-commit   # full gate
+bun run check           # format:check + lint + typecheck
+bun test                # 1119 tests across 132 files
+```
+
+The remote (`git push`) does **not** trigger any workflow. This is by design — pre-commit hooks catch issues at commit time, before they leave your machine. If you ever feel the need for remote CI, **don't add it** — extend `.husky/pre-commit` instead.
 
 ---
 

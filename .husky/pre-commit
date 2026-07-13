@@ -10,7 +10,7 @@
 # New sequence: format --write FIRST (mutate any drift), re-stage, then bun test
 # (verify tests still pass). This catches anchor drift deterministically.
 #
-# Mechanical checks (v5 SG.R44.1 commands 1-8):
+# Mechanical checks (v5 SG.R44.1 commands 1-8, extended to 9 for R159):
 #   1. git status --porcelain  (working tree status; informational only)
 #   2. SKILL.md drift (files newer than SKILL.md)
 #   3. stale backup/tmp files (*.backup-*, *.swp, *.orig)
@@ -19,6 +19,7 @@
 #   6. scripts/verify-plugin-load.mjs (4-gate runtime probe)
 #   7. format --write + re-stage + bun test (anchor drift check)
 #   8. bun run lint + bun run typecheck
+#   9. (R159) No remote CI / no hosting-platform config (HARD PROJECT RULE)
 #
 # Failure of any check blocks the commit.
 # Use `git commit --no-verify` to skip (escape hatch for lead-direct emergencies).
@@ -95,4 +96,19 @@ bun run typecheck >/dev/null 2>&1 || { echo "  ❌ bun run typecheck failed"; bu
 echo "  ✓ typecheck PASS"
 echo ""
 
-echo "✅ v6 pre-commit: ALL 8 CHECKS PASS"
+# 9. No remote CI / no hosting-platform config (HARD PROJECT RULE)
+echo "[9/9] No remote CI / no hosting-platform config"
+FORBIDDEN_CI=$(find . -maxdepth 3 \( -path ./.git -o -path ./node_modules \) -prune -o \( \
+  -path './.github/workflows/*' -o \
+  -name 'vercel.json' -o -name 'netlify.toml' -o -name 'render.yaml' \
+  \) -print 2>/dev/null | grep -v '^./.git/' | grep -v '^./node_modules/' || true)
+if [ -n "$FORBIDDEN_CI" ]; then
+  echo "  ❌ Remote CI / hosting-platform config detected (HARD RULE — see SKILL.md § Project rules):"
+  echo "$FORBIDDEN_CI"
+  echo "  This project runs ALL CI locally via .husky/pre-commit. Do not add .github/workflows/, vercel.json, netlify.toml, render.yaml."
+  exit 1
+fi
+echo "  ✓ no remote CI config"
+echo ""
+
+echo "✅ v6 pre-commit: ALL 9 CHECKS PASS"
