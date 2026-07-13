@@ -24,7 +24,7 @@ If you review pull requests or diffs on a regular basis, this saves you the back
 
 ### Expand or collapse everything
 
-![Diff panel toolbar with Expand all and Collapse all buttons next to each file's diff](docs/screenshots/r16-diff-toolbar.png)
+![Diff panel toolbar with global Expand all and Collapse all buttons at the top of the diff pane](docs/screenshots/r16-diff-toolbar.png)
 
 *Two buttons at the top of the diff panel flip every file's collapsed-context setting at once. Useful for skimming a 30-file diff vs. reviewing line-by-line.*
 
@@ -48,7 +48,7 @@ If you review pull requests or diffs on a regular basis, this saves you the back
 
 ### Search inside the diff
 
-![In-diff search bar overlay with match highlighting](docs/screenshots/r13-in-diff-search.png)
+![In-diff search bar at the top right of the diff pane, with up/down navigation and match counter](docs/screenshots/r13-in-diff-search.png)
 
 *`Ctrl+F` (or `Cmd+F`) to find any text in the loaded diff.*
 

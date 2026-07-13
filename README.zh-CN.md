@@ -24,7 +24,7 @@
 
 ### 一键展开或折叠
 
-![Diff 面板工具栏，Expand all / Collapse all 按钮并列在每个文件 diff 上方](docs/screenshots/r16-diff-toolbar.png)
+![Diff 面板工具栏，全局 Expand all / Collapse all 按钮在 diff 面板顶部](docs/screenshots/r16-diff-toolbar.png)
 
 *两个按钮一键切换所有文件的折叠上下文设置。30 个文件的 diff 想要快速扫一遍，按一下就展开。*
 
@@ -48,7 +48,7 @@
 
 ### 在 diff 内搜索
 
-![In-diff 搜索栏覆盖层和匹配高亮](docs/screenshots/r13-in-diff-search.png)
+![In-diff 搜索栏在 diff 面板右上角，带上下导航和匹配计数](docs/screenshots/r13-in-diff-search.png)
 
 *`Ctrl+F`（Mac `Cmd+F`）在已加载 diff 里找任意文本。*
 
