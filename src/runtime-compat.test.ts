@@ -109,3 +109,21 @@ describe("runtime-compat — runtime detection (IS_BUN)", () => {
     expect(typeof IS_BUN).toBe("boolean");
   });
 });
+
+describe("runtime-compat — test-injection seam (R158 carry-over closure)", () => {
+  it("_BUN is captured from globalThis.Bun at module-init time (R156 carry-over closure)", async () => {
+    const src = await Bun.file("src/runtime-compat.ts").text();
+    expect(src).toMatch(/const _BUN: typeof Bun \| undefined/);
+    expect(src).toMatch(/\(globalThis as \{ Bun\?: typeof Bun \}\)\.Bun/);
+  });
+
+  it("fileExists calls bun().file(path).exists() on the Bun path (R158 behavior-contract)", async () => {
+    const src = await Bun.file("src/runtime-compat.ts").text();
+    expect(src).toMatch(/bun\(\)\.file\(path\)\.exists\(\)/);
+  });
+
+  it("fileExists falls back to fs.access() on the Node path (R158 behavior-contract)", async () => {
+    const src = await Bun.file("src/runtime-compat.ts").text();
+    expect(src).toMatch(/fs\.access\(/);
+  });
+});
