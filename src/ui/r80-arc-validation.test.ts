@@ -2,7 +2,6 @@
 // Validates v6 SKILL.md + pre-commit hook + i18n STRINGS table + .omo/round-* artifacts + proposals.jsonl tracking.
 
 import { describe, expect, it } from "bun:test";
-import { join } from "node:path";
 
 const PROJECT_ROOT = process.cwd();
 
