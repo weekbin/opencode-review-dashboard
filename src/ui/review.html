@@ -256,6 +256,12 @@
         top: 50px;
         z-index: 48;
       }
+      /* R162 #89: HTML [hidden] attribute is overridden by `display: flex`
+         above. Explicitly re-apply display: none when the JS sets banner.hidden
+         so the collapsed yellow box doesn't render when range hasn't changed. */
+      .range-banner[hidden] {
+        display: none;
+      }
       .range-banner .icon {
         flex-shrink: 0;
       }
@@ -290,6 +296,12 @@
         border-radius: 6px;
         padding: 2px;
         gap: 2px;
+      }
+      /* R162 #91: layout toggle is consolidated into the settings modal — these
+         topbar duplicates are kept in DOM (JS still binds them as a fallback)
+         but hidden so the user has one canonical entry point (gear icon). */
+      .layout-toggle[hidden] {
+        display: none;
       }
 
       .layout-toggle button {
@@ -376,6 +388,11 @@
         border-radius: 6px;
         padding: 2px;
         gap: 2px;
+      }
+      /* R162 #91: theme + language toggles consolidated into settings modal */
+      .theme-toggle[hidden],
+      .language-toggle[hidden] {
+        display: none;
       }
 
       .theme-toggle button {
@@ -1375,8 +1392,11 @@
       .sidebar-mode button {
         all: unset;
         cursor: pointer;
-        padding: 5px 12px;
-        font-size: 14px;
+        /* R162 #90: padding tightened from 5px → 3px so the toggle button row
+           matches the height of adjacent file-name rows in the sidebar. */
+        padding: 3px 10px;
+        font-size: 13px;
+        line-height: 1.4;
         color: light-dark(#666, #bac2de);
         font-weight: 500;
       }
@@ -3386,7 +3406,7 @@
         >
       </div>
       <div class="header-right">
-        <div class="layout-toggle" id="layout-toggle">
+        <div class="layout-toggle" id="layout-toggle" hidden>
           <button
             data-layout="unified"
             aria-pressed="false"
@@ -3421,7 +3441,7 @@
         >
           Ignore ws
         </button>
-        <div class="theme-toggle" id="theme-toggle">
+        <div class="theme-toggle" id="theme-toggle" hidden>
           <button data-theme="light" aria-pressed="false" data-i18n="toolbar.theme.light">
             Light
           </button>
@@ -3430,7 +3450,7 @@
           </button>
           <button data-theme="dark" aria-pressed="true" data-i18n="toolbar.theme.dark">Dark</button>
         </div>
-        <div class="language-toggle" id="language-toggle"></div>
+        <div class="language-toggle" id="language-toggle" hidden></div>
         <button
           type="button"
           id="settings-btn"
@@ -3824,7 +3844,12 @@
           <button type="button" class="btn" id="settings-reset" data-i18n="settings.reset">
             Reset to defaults
           </button>
-          <button type="button" class="btn btn-primary" id="settings-ok">Close</button>
+          <button type="button" class="btn" id="settings-cancel" data-i18n="settings.cancel">
+            Cancel
+          </button>
+          <button type="button" class="btn btn-primary" id="settings-ok" data-i18n="settings.save">
+            Save
+          </button>
         </div>
       </div>
     </div>

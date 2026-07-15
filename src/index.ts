@@ -270,6 +270,7 @@ type Submit = {
   new_findings?: DraftFinding[];
   lastSavedAt?: number;
   intent?: SubmitIntent;
+  locale?: "en" | "zh-CN";
 };
 
 type Done = {
@@ -796,6 +797,7 @@ function markdown(input: {
   findings: Finding[];
   filter?: string[];
   base?: string;
+  locale?: "en" | "zh-CN";
 }) {
   const list = input.findings
     .map((item) => {
@@ -810,13 +812,23 @@ function markdown(input: {
   const notes = input.notes || "(none)";
   const files = input.filter?.length ? input.filter.join(", ") : "all changed files";
   const source = input.base ? `${input.base}...HEAD` : "working tree";
+  // R162 #88: surface the user's UI locale to the agent in the round
+  // summary. Agent uses this to choose the language for `add_review_comment`
+  // replies and Post-Apply Trace comments.
+  const localeDirective =
+    input.locale === "zh-CN"
+      ? "## Reply language\nThe user's UI is set to **zh-CN (中文)**. Write all `add_review_comment` replies and Post-Apply Trace prose in 简体中文. Code, file paths, and tool identifiers stay in their canonical form."
+      : "## Reply language\nThe user's UI is set to **en (English)**. Write all `add_review_comment` replies and Post-Apply Trace prose in English. Code, file paths, and tool identifiers stay in their canonical form.";
   return [
     `# Diff Review Round ${input.round}`,
     "",
     `- Session: ${input.session_id}`,
     `- Diff source: ${source}`,
     `- Scope: ${files}`,
+    `- Locale: ${input.locale ?? "en"}`,
     `- Timestamp: ${new Date().toISOString()}`,
+    "",
+    localeDirective,
     "",
     "## Notes",
     notes,
@@ -2613,6 +2625,12 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
               const input = (await request.json().catch(() => ({}))) as Submit;
               const notes = typeof input.notes === "string" ? input.notes.trim() : "";
               const fresh = Array.isArray(input.new_findings) ? input.new_findings : [];
+              // R162 #88: read user's UI locale from submit payload. Fallback to
+              // "en" when not provided so legacy clients (no locale in payload)
+              // keep working. The locale is embedded in the agent prompt section
+              // below so AI-written comments / resolution_reason come back in
+              // the user's language. Historical comments are NOT rewritten.
+              const locale: "en" | "zh-CN" = input.locale === "zh-CN" ? "zh-CN" : "en";
               const intent: SubmitIntent = isSubmitIntent(input.intent)
                 ? input.intent
                 : "request_changes";
@@ -2628,7 +2646,19 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                   { status: 400, headers: { "content-type": "application/json" } },
                 );
               }
-              const round = base.round + 1;
+              // R162 #92: when the user submits with a different `diff_base.from`
+              // than what's stored in state, treat this as the start of a new
+              // diff series rather than `base.round + 1`. This avoids the
+              // "round 9 → round 4 after cross-branch diff" data-integrity bug
+              // where switching --base resets the perceived round count.
+              const baseFromFingerprint = base.diff_base
+                ? `${base.diff_base.type}:${base.diff_base.from}`
+                : "none";
+              const dataFromFingerprint = data.diff_base
+                ? `${data.diff_base.type}:${data.diff_base.from}`
+                : "none";
+              const sameDiffBase = baseFromFingerprint === dataFromFingerprint;
+              const round = sameDiffBase ? base.round + 1 : 1;
               const created = sanitize(fresh, round, map);
               const closed = base.findings.filter((item) => item.status !== "open");
               const openCarry = base.findings.filter((item) => item.status === "open");
@@ -2712,6 +2742,7 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                   findings,
                   filter: parsed.files,
                   base: parsed.base,
+                  locale,
                 }),
               );
 
@@ -2738,6 +2769,7 @@ export const DiffReviewPlugin: Plugin = async (ctx) => {
                   locked: Boolean(next.locked),
                   json_path,
                   md_path,
+                  locale,
                 }),
                 {
                   headers: { "content-type": "application/json" },

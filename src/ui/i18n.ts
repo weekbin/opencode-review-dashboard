@@ -568,6 +568,12 @@ export const STRINGS: Record<string, Record<Lang, string>> = {
   "settings.layout.unified": { en: "Unified", "zh-CN": "合并" },
   "settings.layout.split": { en: "Split", "zh-CN": "分屏" },
   "settings.search.max": { en: "Max items", "zh-CN": "最多条数" },
+  "settings.cancel": { en: "Cancel", "zh-CN": "取消" },
+  "settings.save": { en: "Save", "zh-CN": "保存" },
+  "settings.save.toast": {
+    en: "Settings saved",
+    "zh-CN": "设置已保存",
+  },
   "settings.reset": { en: "Reset to defaults", "zh-CN": "恢复默认设置" },
   "settings.virtualization.label": { en: "Diff virtualization", "zh-CN": "Diff 虚拟化" },
   "settings.virtualization.description": {

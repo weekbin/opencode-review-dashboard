@@ -2,8 +2,9 @@
 // Validates v6 SKILL.md + pre-commit hook + i18n STRINGS table + .omo/round-* artifacts + proposals.jsonl tracking.
 
 import { describe, expect, it } from "bun:test";
+import { join } from "node:path";
 
-const PROJECT_ROOT = "/Users/yangweibin/Projects/opencode-review-dashboard";
+const PROJECT_ROOT = process.cwd();
 
 describe("R80 — 28-round arc state validation (R53-R79 SHIPped)", () => {
   it("SKILL.md is v6 (≤ 450 lines, 7 capabilities, 0 SG.R## patches)", async () => {

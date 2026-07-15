@@ -43,6 +43,21 @@ function extractProductionCalls(): Set<string> {
       }
     }
   }
+  // R162 #91: also scan review.html so data-i18n attributes on elements
+  // count as production references (prevents false-positive orphans for
+  // keys only used in static markup, e.g. settings.save / settings.cancel).
+  try {
+    const html = readFileSync(join(SRC_UI, "review.html"), "utf-8");
+    for (const pattern of [
+      /data-i18n(?:-title|-placeholder|-aria-label)?="([a-zA-Z][a-zA-Z0-9_.]+)"/g,
+    ]) {
+      for (const m of html.matchAll(pattern)) {
+        if (m[1]) used.add(m[1]);
+      }
+    }
+  } catch {
+    /* ignore */
+  }
   return used;
 }
 

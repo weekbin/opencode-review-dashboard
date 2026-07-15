@@ -1690,6 +1690,8 @@ registerUITranslator("settings.layout.label", () => t("settings.layout.label"));
 registerUITranslator("settings.layout.unified", () => t("settings.layout.unified"));
 registerUITranslator("settings.layout.split", () => t("settings.layout.split"));
 registerUITranslator("settings.search.max", () => t("settings.search.max"));
+registerUITranslator("settings.cancel", () => t("settings.cancel"));
+registerUITranslator("settings.save", () => t("settings.save"));
 registerUITranslator("settings.reset", () => t("settings.reset"));
 registerUITranslator("settings.virtualization.label", () => t("settings.virtualization.label"));
 registerUITranslator("settings.virtualization.description", () =>
@@ -1849,6 +1851,7 @@ const settingsLanguageSelect = document.querySelector("#settings-language") as H
 const settingsSearchMaxSelect = document.querySelector("#settings-search-max") as HTMLSelectElement;
 const settingsResetBtn = document.querySelector("#settings-reset") as HTMLButtonElement;
 const settingsOkBtn = document.querySelector("#settings-ok") as HTMLButtonElement;
+const settingsCancelBtn = document.querySelector("#settings-cancel") as HTMLButtonElement;
 const settingsCloseBtn = document.querySelector("#settings-close") as HTMLButtonElement;
 const settingsVirtualizationToggle = document.querySelector(
   "#settings-virtualization-toggle",
@@ -1892,7 +1895,19 @@ function resetSettings(): void {
 }
 
 settingsBtn?.addEventListener("click", openSettingsModal);
-settingsOkBtn?.addEventListener("click", closeSettingsModal);
+settingsOkBtn?.addEventListener("click", () => {
+  settingsOkBtn.disabled = true;
+  try {
+    showToast(t("settings.save.toast"));
+  } catch {
+    /* ignore */
+  }
+  closeSettingsModal();
+  setTimeout(() => {
+    settingsOkBtn.disabled = false;
+  }, 0);
+});
+settingsCancelBtn?.addEventListener("click", closeSettingsModal);
 settingsCloseBtn?.addEventListener("click", closeSettingsModal);
 settingsResetBtn?.addEventListener("click", resetSettings);
 
@@ -6405,6 +6420,10 @@ function draftPayload(intent: "request_changes" | "approve" = "request_changes")
       kind: item.kind ?? "line",
     })),
     intent,
+    // R162 #88: surface the user's current UI language to the backend so
+    // the agent writes comments / resolution_reason in the same language.
+    // Historical comments are NOT retroactively rewritten.
+    locale: peekLanguage(),
     // R14 #24: client stamp of the last save. Server uses max(client, server)
     // to keep state.draft.lastSavedAt monotonic across clock skew.
     lastSavedAt: Date.now(),
