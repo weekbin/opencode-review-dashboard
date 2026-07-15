@@ -32,7 +32,10 @@ const onlyFlag = process.argv.find((a) => a === "--only");
 const onlyName = onlyFlag ? process.argv[process.argv.indexOf(onlyFlag) + 1] : null;
 
 const plugin = await import(PLUGIN_PATH);
-const DiffReviewPlugin = plugin.default;
+// R166: SDK 1.17.12+ requires the default export to be the PluginModule shape
+// `{ id, server, tui? }` (see src/index.ts:2942 and project memory #1836).
+// The actual plugin entry function lives at `default.server`.
+const DiffReviewPlugin = plugin.default.server;
 
 let pass = 0;
 let fail = 0;
