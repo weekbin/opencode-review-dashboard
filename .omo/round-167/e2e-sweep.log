@@ -1,0 +1,70 @@
+Review Dashboard — scenario e2e
+
+  PASS  no-worktree-clean
+  PASS  has-worktree-unpushed  (some checks skipped — best-effort)
+  PASS  multiple-worktrees-pick-most  (some checks skipped — best-effort)
+  PASS  base-branch
+  PASS  base-commit-single
+  PASS  base-commit-range
+  PASS  working-tree-changes
+  PASS  files-filter
+  PASS  worktree-flag-override  (some checks skipped — best-effort)
+  PASS  empty-repo
+  PASS  uncommitted-with-commits
+  PASS  range-changed-banner
+  PASS  default-base-on-main
+  PASS  untracked-file-in-tree
+  PASS  previously-discussed-panel
+  PASS  previously-discussed-race
+  PASS  previously-discussed-hint
+  PASS  in-tab-search
+  PASS  sidebar-keyboard-nav
+  PASS  reopen-stale-finding
+  PASS  saved-replies
+  PASS  export-review
+  PASS  edit-finding
+  PASS  saved-replies-trigger
+  PASS  permalink
+  PASS  pinned-toggle
+  PASS  react-add
+  PASS  react-remove
+  PASS  n-jump-next
+  PASS  p-jump-prev
+  PASS  jump-skips-stale
+  PASS  resolve-with-reason
+  PASS  mark-as-wontfix
+  PASS  in-diff-search
+  PASS  search-ime-composition
+
+35 passed, 0 failed
+
+state.json validated by atomic-write helper:
+  ✓ /tmp/rd-scenario-E9AmQr/.opencode/reviews/test-1784112487912-u0u4/state.json
+  ✓ /tmp/rd-scenario-tE3dfP/.opencode/reviews/test-1784112487973-3nhd/state.json
+  ✓ /tmp/rd-scenario-AJ8Vsc/.opencode/reviews/test-1784112488071-ivpr/state.json
+  ✓ /tmp/rd-scenario-nZdMwv/.opencode/reviews/test-1784112488120-2mh9/state.json
+  ✓ /tmp/rd-scenario-NsCW8G/.opencode/reviews/test-1784112488201-m18g/state.json
+  ✓ /tmp/rd-scenario-uMtUfv/.opencode/reviews/test-1784112488440-w6gf/state.json
+  ✓ /tmp/rd-scenario-HMHSXg/.opencode/reviews/test-1784112488493-ytaf/state.json
+  ✓ /tmp/rd-scenario-JoTJ1b/.opencode/reviews/test-1784112488567-ymtw/state.json
+  ✓ /tmp/rd-scenario-nXbnR7/.opencode/reviews/test-1784112488621-w5ie/state.json
+  ✓ /tmp/rd-scenario-rH5oEG/.opencode/reviews/test-1784112488683-ai2q/state.json
+  ✓ /tmp/rd-scenario-I97y6P/.opencode/reviews/test-1784112488750-b496/state.json
+  ✓ /tmp/rd-scenario-ZdAzce/.opencode/reviews/test-1784112488829-7uj7/state.json
+  ✓ /tmp/rd-scenario-LCMKhr/.opencode/reviews/test-1784112488889-yb7n/state.json
+  ✓ /tmp/rd-scenario-htEjOT/.opencode/reviews/test-1784112488943-7qlz/state.json
+  ✓ /tmp/rd-scenario-m1hvEL/.opencode/reviews/test-1784112488992-zp63/state.json
+  ✓ /tmp/rd-scenario-YDCDrP/.opencode/reviews/test-1784112489045-zrh9/state.json
+  ✓ /tmp/rd-scenario-4hU1xm/.opencode/reviews/test-1784112489103-1oxr/state.json
+  ✓ /tmp/rd-scenario-qUHe0v/.opencode/reviews/test-1784112489162-ytf3/state.json
+  ✓ /tmp/rd-scenario-LOvov1/.opencode/reviews/test-1784112489219-rlxa/state.json
+  ✓ /tmp/rd-scenario-RmMNZP/.opencode/reviews/test-1784112489275-h61u/state.json
+  ✓ /tmp/rd-scenario-yygvJx/.opencode/reviews/test-1784112489324-d8ww/state.json
+  ✓ /tmp/rd-scenario-49nQTI/.opencode/reviews/test-1784112489380-ozgi/state.json
+  ✓ /tmp/rd-scenario-c3O5BZ/.opencode/reviews/test-1784112489433-yiox/state.json
+  ✓ /tmp/rd-scenario-bMqeY0/.opencode/reviews/test-1784112489492-jy5g/state.json
+  ✓ /tmp/rd-scenario-7xft8Q/.opencode/reviews/test-1784112489552-a7th/state.json
+  ✓ /tmp/rd-scenario-gG3ldS/.opencode/reviews/test-1784112489612-dggp/state.json
+  ✓ /tmp/rd-scenario-FzqY92/.opencode/reviews/test-1784112489668-rjvi/state.json
+  ✓ /tmp/rd-scenario-47vi7c/.opencode/reviews/test-1784112489717-l7ia/state.json
+  ✓ /tmp/rd-scenario-d6t4XK/.opencode/reviews/test-1784112489769-68fr/state.json
