@@ -6645,7 +6645,7 @@ function showPostSubmit(round: number | undefined, approved = false, locked = fa
   document.body.appendChild(overlay);
 }
 
-findingsRoot.addEventListener("click", (event) => {
+findingsRoot.addEventListener("click", async (event) => {
   const target = event.target;
   if (!(target instanceof HTMLElement)) return;
 
@@ -6653,7 +6653,15 @@ findingsRoot.addEventListener("click", (event) => {
   if (resolveBtn instanceof HTMLElement) {
     const id = resolveBtn.dataset.resolve;
     if (!id) return;
-    resolveFinding(id);
+    // R165 #87: route drawer Resolve through showResolveReasonModal so the
+    // user gets a visible reaction (modal pops up) and can add a reason,
+    // matching the conversation panel UX at app.ts:4669-4686. Previously
+    // the drawer called resolveFinding() directly with no await and no
+    // feedback, so the button click had no visible reaction in the mock
+    // env (501 from /resolve) and silently succeeded in real env.
+    const result = await showResolveReasonModal(id);
+    if (result === null) return;
+    await resolveFinding(id, { reason: result.reason });
     return;
   }
 

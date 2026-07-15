@@ -114,6 +114,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
             sys.stderr.write(f"[srv] reopen POST body: {body.decode('utf-8', errors='replace')}\n")
             self.send_text(json.dumps({"ok": True, "received": json.loads(body or b"{}")}), 200, "application/json")
             return
+        # R165 #87: support /api/review/<id>/resolve so the drawer Resolve
+        # walkthrough completes without 501 errors. The mock doesn't persist
+        # state — it just echoes the payload back so the e2e walkthrough can
+        # assert the request shape (finding_id, reason, resolution_kind).
+        if re.match(r"^/api/review/[^/]+/resolve$", path):
+            sys.stderr.write(f"[srv] resolve POST body: {body.decode('utf-8', errors='replace')}\n")
+            self.send_text(json.dumps({"ok": True, "received": json.loads(body or b"{}")}), 200, "application/json")
+            return
         self.send_text("Unsupported method", 501)
 
     def send_text(self, text, status=200, mime="text/plain"):
