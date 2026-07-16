@@ -657,6 +657,10 @@ window.addEventListener("focusout", () => updateNavHint());
 const DIFF_SEARCH_KEY = "diff-review:diff-search-query";
 const DIFF_SEARCH_MAX_MATCHES = 100;
 const DIFF_SEARCH_FLASH_MS = 1500;
+// R168: debounce window for findMatchesInDiff DOM scans. 150ms is below
+// the human "instant" perception threshold (~200ms) so the user does not
+// feel the delay, but it stops us from re-scanning on every keystroke.
+const DIFF_SEARCH_DEBOUNCE_MS = 150;
 const COPY_FEEDBACK_MS = 1200;
 const PERMALINK_FLASH_MS = 1600;
 
@@ -684,6 +688,10 @@ const diffSearch: DiffSearchState = {
   history: null,
   historyClickGuard: 0,
 };
+
+// R168: pending-timer handle for the findMatchesInDiff debounce. Cleared
+// on each keystroke so only the last call within the debounce window runs.
+let _pendingDiffSearch: ReturnType<typeof setTimeout> | null = null;
 
 function readSessionStored(key: string): string | null {
   try {
@@ -897,10 +905,20 @@ function openDiffSearch(initialQuery: string | null = null): void {
       return;
     }
     writeSessionStored(DIFF_SEARCH_KEY, q);
-    diffSearch.matchElements = findMatchesInDiff(q);
-    diffSearch.currentIndex = diffSearch.matchElements.length > 0 ? 0 : -1;
-    updateDiffSearchCounter();
-    // R21 #43: debounced commit — 300ms quiet window; Enter path uses
+    // R168: debounce the DOM scan (findMatchesInDiff) by 150ms. Each
+    // keystroke otherwise triggers an O(N) full-diff scan synchronously,
+    // which is sluggish on 1000+ line diffs. 150ms is below the human
+    // "instant" perception threshold (~200ms). Enter-key jump path
+    // (keydown handler below) is unaffected — it acts on the cached
+    // matchElements from the last debounced scan.
+    if (_pendingDiffSearch !== null) clearTimeout(_pendingDiffSearch);
+    _pendingDiffSearch = setTimeout(() => {
+      _pendingDiffSearch = null;
+      diffSearch.matchElements = findMatchesInDiff(q);
+      diffSearch.currentIndex = diffSearch.matchElements.length > 0 ? 0 : -1;
+      updateDiffSearchCounter();
+    }, DIFF_SEARCH_DEBOUNCE_MS);
+    // R21 #43: history-commit debounce — 300ms quiet window; Enter path uses
     // commitRecentSearchImmediate() instead (see keydown handler below).
     commitRecentSearch(q);
   };
